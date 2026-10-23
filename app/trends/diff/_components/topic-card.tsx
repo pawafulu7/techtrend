@@ -54,7 +54,8 @@ export function HotTopicChip({
         isNew
           ? 'border-l-4 border-l-[var(--tt-color-warning)] hover:border-[var(--tt-color-warning-border)]'
           : 'border-l-4 border-l-[var(--tt-color-info)] hover:border-[var(--tt-color-info-border)]',
-        'hover:-translate-y-0.5 hover:shadow-md'
+        // ホバーで持ち上げない（動かさず、線と影の変化だけにする）
+        'hover:shadow-md'
       )}
       onMouseEnter={() => {
         setHoverDismissed(false);

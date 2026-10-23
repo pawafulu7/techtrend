@@ -162,7 +162,8 @@ export function ScrollToTopButton() {
   return (
     <button
       onClick={scrollToTop}
-      className={`animate-fade-in bg-tt-primary text-tt-on-primary focus:ring-tt-primary-border fixed right-6 bottom-24 z-50 transform rounded-full p-3 shadow-lg transition-all duration-300 ease-in-out hover:scale-110 hover:opacity-90 hover:shadow-xl focus:ring-2 focus:ring-offset-2 focus:outline-none`}
+      // ホバーは塗りの色だけを変える。浮いているボタンなので、静止時の影は残す
+      className={`animate-fade-in bg-tt-primary text-tt-on-primary hover:bg-tt-primary-hover focus:ring-tt-primary-border fixed right-6 bottom-24 z-50 rounded-full p-3 shadow-lg transition-colors duration-150 focus:ring-2 focus:ring-offset-2 focus:outline-none`}
       aria-label="ページトップへ戻る"
       title="ページトップへ戻る (Ctrl+Home)"
     >

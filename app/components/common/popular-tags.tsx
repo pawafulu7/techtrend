@@ -43,8 +43,8 @@ export function PopularTags({ tags, currentTag }: PopularTagsProps) {
                   data-testid="tag-item"
                   variant={currentTag === tag.name ? 'default' : 'secondary'}
                   className={cn(
-                    'cursor-pointer whitespace-nowrap transition-all',
-                    'hover:scale-105 hover:shadow-sm',
+                    // ホバーは塗りの色だけを変える（拡大や影で浮かせない）
+                    'cursor-pointer whitespace-nowrap',
                     currentTag === tag.name
                       ? 'bg-primary text-primary-foreground'
                       : 'hover:bg-primary/10'

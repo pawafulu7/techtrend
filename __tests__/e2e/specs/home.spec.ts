@@ -51,6 +51,20 @@ test.describe('ホームページ', () => {
     }
   });
 
+  test('記事カードはホバーで線を濃くする', async ({ page }) => {
+    // カードは影で浮かせず、線で区切る（app/globals.css の .card-hover）。線の色を utility で
+    // 付けると :hover が負けて変わらなくなっていた（#704）ので、class ではなく算出した色で確かめる
+    const card = page.locator(SELECTORS.HOME_ARTICLE_CARD).first();
+    await expect(card).toBeVisible({ timeout: isCI ? 30000 : 15000 });
+    const borderColor = () =>
+      card.evaluate((el) => getComputedStyle(el).borderTopColor);
+
+    await page.mouse.move(0, 0);
+    const rest = await borderColor();
+    await card.hover();
+    await expect.poll(borderColor).not.toBe(rest);
+  });
+
   test('検索ボックスが機能する', async ({ page }) => {
     // 検索入力フィールドを探す（SearchBoxコンポーネント）
     const searchInput = page.locator(SELECTORS.SEARCH_INPUT).first();

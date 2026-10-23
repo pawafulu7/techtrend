@@ -104,7 +104,7 @@ export function AgentAnswerPanel({
 
   return (
     <CardV2
-      variant="hover"
+      // 押せるカードではないので、ホバーで線を変える variant="hover" にしない
       className="border-l-4 border-[var(--tt-color-primary)] p-6"
       role="article"
       aria-labelledby="answer-heading"

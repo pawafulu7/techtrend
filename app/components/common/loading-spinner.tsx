@@ -1,6 +1,7 @@
-import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SITE_NAME } from '@/lib/constants';
 import { LiveStatus } from '@/components/ui-v2/live-status';
+import { ObservatoryMark } from '@/components/icons/observatory-mark';
 
 interface LoadingSpinnerProps {
   message?: string;
@@ -19,11 +20,11 @@ export function LoadingSpinner({
         fullPage ? 'h-full min-h-[400px]' : 'py-12'
       )}
     >
-      {/* Brand mark */}
+      {/* Brand mark: ヘッダーのロゴと同じ印と書体にする */}
       <div className="flex items-center gap-2" aria-hidden="true">
-        <TrendingUp className="text-primary h-6 w-6" aria-hidden="true" />
-        <span className="text-foreground text-base font-semibold tracking-tight">
-          TechTrend
+        <ObservatoryMark className="h-[22px] w-[22px] shrink-0" />
+        <span className="font-heading text-foreground text-lg font-bold tracking-[-0.01em] [font-stretch:88%]">
+          {SITE_NAME}
         </span>
       </div>
 

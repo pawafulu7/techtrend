@@ -132,11 +132,11 @@ export function StatusCounts() {
         return (
           <div
             key={status}
-            className={`group relative overflow-hidden rounded-xl border border-[var(--tt-color-border)] ${config.bg} p-4 transition-all duration-200 hover:border-[var(--tt-color-border-hover)] hover:shadow-md`}
+            className={`relative overflow-hidden rounded-xl border border-[var(--tt-color-border)] ${config.bg} p-4 transition-all duration-200 hover:border-[var(--tt-color-border-hover)] hover:shadow-md`}
           >
             <div className="flex items-center gap-3">
               <div
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${config.iconBg} transition-transform duration-200 group-hover:scale-105`}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${config.iconBg}`}
               >
                 <span className={config.textColor}>{config.icon}</span>
               </div>
