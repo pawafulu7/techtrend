@@ -9,7 +9,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import { normalizeCommentContent } from '@/lib/comments/normalize-content';
+import { normalizeCommentContent } from '@/lib/utils/comment/comment-content-normalizer';
 import { commentsCache } from '@/lib/cache/comments-cache';
 import { logger } from '@/lib/logger';
 import type { Comment, CommentVisibility } from '@/lib/prisma-exports';

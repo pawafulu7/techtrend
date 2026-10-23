@@ -1,4 +1,4 @@
-import { normalizeCommentContent } from '@/lib/comments/normalize-content';
+import { normalizeCommentContent } from '@/lib/utils/comment/comment-content-normalizer';
 
 describe('normalizeCommentContent', () => {
   it('should handle empty input', () => {
@@ -21,7 +21,14 @@ describe('normalizeCommentContent', () => {
   it('should collapse horizontal whitespace and keep up to two consecutive newlines', () => {
     expect(
       normalizeCommentContent('  line1\r\nline2\t\ttab\n\n\n\nend  ')
-    ).toBe('line1 \nline2 tab\n\nend');
+    ).toBe('line1\nline2 tab\n\nend');
+  });
+
+  it('should not let CR or whitespace-only lines exceed two consecutive newlines', () => {
+    expect(normalizeCommentContent('a\r\n\r\n\r\n\r\nb')).toBe('a\n\nb');
+    expect(normalizeCommentContent('a\rb')).toBe('a\nb');
+    expect(normalizeCommentContent('a\n \n\t\n \nb')).toBe('a\n\nb');
+    expect(normalizeCommentContent(' x \n y ')).toBe('x \n y');
   });
 
   it('should remove NUL characters', () => {
@@ -37,6 +44,7 @@ describe('normalizeCommentContent', () => {
       'AT&T &copy; 2024',
       '  line1\r\n\n\n\n  line2  end \0 ',
       '\n\n\n',
+      'a\r\n \r\n\t\r\n\r\nb',
     ];
 
     inputs.forEach((input) => {
