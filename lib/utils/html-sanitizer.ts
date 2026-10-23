@@ -21,18 +21,20 @@ import sanitizeHtmlLib from 'sanitize-html';
 export function decodeHtmlEntities(html: string): string {
   if (!html) return '';
 
-  return html
-    // Process standard entities first (except &amp;)
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#60;/g, '<')  // Numeric entity for <
-    .replace(/&#62;/g, '>')  // Numeric entity for >
-    // Process &amp; last to avoid double-unescaping
-    .replace(/&amp;/g, '&');
+  return (
+    html
+      // Process standard entities first (except &amp;)
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&apos;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&#60;/g, '<') // Numeric entity for <
+      .replace(/&#62;/g, '>') // Numeric entity for >
+      // Process &amp; last to avoid double-unescaping
+      .replace(/&amp;/g, '&')
+  );
 }
 
 /**
@@ -56,21 +58,19 @@ export function stripHtmlTags(html: string): string {
 
   // Use sanitize-html library to safely remove all HTML tags
   const result = sanitizeHtmlLib(processedHtml, {
-    allowedTags: [],  // Remove all tags
-    allowedAttributes: {},  // Remove all attributes
-    textFilter: function(text) {
-      return text;  // Keep text content
+    allowedTags: [], // Remove all tags
+    allowedAttributes: {}, // Remove all attributes
+    textFilter: function (text) {
+      return text; // Keep text content
     },
-    exclusiveFilter: function(frame) {
+    exclusiveFilter: function (frame) {
       // Remove script and style tags completely including content
       return frame.tag === 'script' || frame.tag === 'style';
-    }
+    },
   });
 
   // Clean up whitespace
-  return result
-    .replace(/\s+/g, ' ')
-    .trim();
+  return result.replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -87,17 +87,46 @@ export function sanitizeHtml(html: string): string {
 
   // Use sanitize-html library with strict settings
   const sanitized = sanitizeHtmlLib(html, {
-    allowedTags: [],  // Remove all HTML tags for text-only output
+    allowedTags: [], // Remove all HTML tags for text-only output
     allowedAttributes: {},
-    textFilter: function(text) {
+    textFilter: function (text) {
       return text;
-    }
+    },
   });
 
   // Decode HTML entities safely and clean whitespace
-  return decodeHtmlEntities(sanitized)
-    .replace(/\s+/g, ' ')
+  return decodeHtmlEntities(sanitized).replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Upper bound on sanitize passes in sanitizeUserInput.
+ *
+ * Each pass peels one layer (one level of entity encoding, or 8 levels of
+ * nested <iframe>), so without a bound crafted input could force a full
+ * re-parse per layer (the concern behind sanitize-html's
+ * MAX_IFRAME_FALLBACK_DEPTH, GHSA-c9rx-x947-fp3h). Real input settles in 1-3.
+ */
+const MAX_USER_INPUT_PASSES = 10;
+
+function normalizeUserInputWhitespace(text: string): string {
+  return text
+    .replace(/[^\S\n]+/g, ' ') // Replace horizontal whitespace with single space
+    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
     .trim();
+}
+
+function sanitizeUserInputOnce(input: string): string {
+  // Use sanitize-html library to strip all HTML tags
+  const sanitized = sanitizeHtmlLib(input, {
+    allowedTags: [],
+    allowedAttributes: {},
+    textFilter: function (text) {
+      return text;
+    },
+  });
+
+  // Decode HTML entities and normalize whitespace (preserve newlines)
+  return normalizeUserInputWhitespace(decodeHtmlEntities(sanitized));
 }
 
 /**
@@ -106,26 +135,27 @@ export function sanitizeHtml(html: string): string {
  * Removes HTML tags while preserving newlines for user-generated content
  * like comments. Unlike sanitizeHtml, this function keeps line breaks intact.
  *
+ * The result is idempotent: sanitizing it again returns it unchanged, so
+ * editing and re-saving stored content does not alter it.
+ *
  * @param input - User input string
  * @returns Sanitized text with preserved newlines
  */
 export function sanitizeUserInput(input: string): string {
   if (!input) return '';
 
-  // Use sanitize-html library to strip all HTML tags
-  const sanitized = sanitizeHtmlLib(input, {
-    allowedTags: [],
-    allowedAttributes: {},
-    textFilter: function(text) {
-      return text;
-    }
-  });
+  // Decoding entities can turn text back into markup (`&lt;b&gt;` -> `<b>`),
+  // so repeat until a pass no longer changes the text
+  let current = sanitizeUserInputOnce(input);
+  for (let pass = 1; pass < MAX_USER_INPUT_PASSES; pass++) {
+    const next = sanitizeUserInputOnce(current);
+    if (next === current) return current;
+    current = next;
+  }
 
-  // Decode HTML entities and normalize whitespace (preserve newlines)
-  return decodeHtmlEntities(sanitized)
-    .replace(/[^\S\n]+/g, ' ')  // Replace horizontal whitespace with single space
-    .replace(/\n{3,}/g, '\n\n') // Max 2 consecutive newlines
-    .trim();
+  // Still changing at the bound: drop the characters that can start a tag or
+  // an entity, which leaves text that further passes keep as is
+  return normalizeUserInputWhitespace(current.replace(/[<&]/g, ''));
 }
 
 /**
@@ -148,15 +178,15 @@ export function cleanHtml(html: string): string {
   // First pass: Use sanitize-html to strip all tags but preserve text content
   // This ensures no malformed or incomplete tags remain
   let cleaned = sanitizeHtmlLib(processedHtml, {
-    allowedTags: [],  // Remove ALL tags for text extraction
+    allowedTags: [], // Remove ALL tags for text extraction
     allowedAttributes: {},
-    textFilter: function(text) {
+    textFilter: function (text) {
       return text;
     },
-    exclusiveFilter: function(frame) {
+    exclusiveFilter: function (frame) {
       // Remove script and style tags completely including content
       return frame.tag === 'script' || frame.tag === 'style';
-    }
+    },
   });
 
   // Decode HTML entities in the correct order
@@ -173,14 +203,12 @@ export function cleanHtml(html: string): string {
     .replace(/&trade;/g, '™')
     .replace(/&mdash;/g, '—')
     .replace(/&ndash;/g, '–')
-    .replace(/&hellip;/g, '...')  // Three dots for compatibility
+    .replace(/&hellip;/g, '...') // Three dots for compatibility
     // Process &amp; last
     .replace(/&amp;/g, '&');
 
   // Clean up whitespace
-  cleaned = cleaned
-    .replace(/\s+/g, ' ')
-    .trim();
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
   return cleaned;
 }
@@ -207,7 +235,19 @@ export function sanitizeArticleHtml(html: string): string {
 
   try {
     const sanitized = sanitizeHtmlLib(html, {
-      allowedTags: ['p', 'ul', 'ol', 'li', 'strong', 'em', 'code', 'pre', 'a', 'blockquote', 'br'],
+      allowedTags: [
+        'p',
+        'ul',
+        'ol',
+        'li',
+        'strong',
+        'em',
+        'code',
+        'pre',
+        'a',
+        'blockquote',
+        'br',
+      ],
       allowedAttributes: {
         a: ['href', 'title', 'rel'],
         code: ['class'],
@@ -225,7 +265,12 @@ export function sanitizeArticleHtml(html: string): string {
         },
       },
       exclusiveFilter: (frame) => {
-        return frame.tag === 'script' || frame.tag === 'style' || frame.tag === 'iframe' || frame.tag === 'object';
+        return (
+          frame.tag === 'script' ||
+          frame.tag === 'style' ||
+          frame.tag === 'iframe' ||
+          frame.tag === 'object'
+        );
       },
     });
 
@@ -254,8 +299,8 @@ export function escapeHtml(text: string): string {
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;',
-    '/': '&#x2F;'
+    '/': '&#x2F;',
   };
 
-  return text.replace(/[&<>"'\/]/g, char => htmlEscapeMap[char] || char);
+  return text.replace(/[&<>"'\/]/g, (char) => htmlEscapeMap[char] || char);
 }
