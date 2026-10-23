@@ -99,7 +99,7 @@ export function sanitizeHtml(html: string): string {
 }
 
 /**
- * Upper bound on sanitize passes in sanitizeUserInput.
+ * Upper bound on passes that change the text in sanitizeUserInput.
  *
  * Each pass peels one layer (one level of entity encoding, or 8 levels of
  * nested <iframe>), so without a bound crafted input could force a full
@@ -107,6 +107,13 @@ export function sanitizeHtml(html: string): string {
  * MAX_IFRAME_FALLBACK_DEPTH, GHSA-c9rx-x947-fp3h). Real input settles in 1-3.
  */
 const MAX_USER_INPUT_PASSES = 10;
+
+/**
+ * `<` and `&` (as a run) right before a character that can begin a tag name,
+ * comment, declaration or entity. Text without them passes through
+ * sanitizeUserInputOnce unchanged.
+ */
+const MARKUP_OR_ENTITY_START = /[<&]+(?=[A-Za-z0-9!/?#])/g;
 
 function normalizeUserInputWhitespace(text: string): string {
   return text
@@ -145,17 +152,20 @@ export function sanitizeUserInput(input: string): string {
   if (!input) return '';
 
   // Decoding entities can turn text back into markup (`&lt;b&gt;` -> `<b>`),
-  // so repeat until a pass no longer changes the text
-  let current = sanitizeUserInputOnce(input);
-  for (let pass = 1; pass < MAX_USER_INPUT_PASSES; pass++) {
+  // so repeat until a pass no longer changes the text. The pass after the
+  // bound only confirms that the last change was the final one.
+  let current = input;
+  for (let pass = 0; pass <= MAX_USER_INPUT_PASSES; pass++) {
     const next = sanitizeUserInputOnce(current);
     if (next === current) return current;
     current = next;
   }
 
-  // Still changing at the bound: drop the characters that can start a tag or
-  // an entity, which leaves text that further passes keep as is
-  return normalizeUserInputWhitespace(current.replace(/[<&]/g, ''));
+  // Still changing past the bound: drop only the `<` and `&` that start
+  // markup or an entity, so plain text such as `a < b && c` stays
+  return normalizeUserInputWhitespace(
+    current.replace(MARKUP_OR_ENTITY_START, '')
+  );
 }
 
 /**

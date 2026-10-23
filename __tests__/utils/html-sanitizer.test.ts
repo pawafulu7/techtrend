@@ -156,14 +156,26 @@ describe('HTML Sanitizer', () => {
       expect(sanitizeUserInput('<iframe>'.repeat(40) + '<script>DROP</script>KEEP')).toBe('KEEP');
     });
 
-    it('should converge for entities encoded up to 8 times', () => {
-      expect(sanitizeUserInput(encodeEntities('<script>DROP</script>KEEP', 8))).toBe('KEEP');
+    it('should converge for entities encoded up to 10 times', () => {
+      expect(sanitizeUserInput(encodeEntities('<script>DROP</script>KEEP', 10))).toBe('KEEP');
     });
 
-    it('should drop < and & when the input does not settle within the pass bound', () => {
-      const result = sanitizeUserInput(encodeEntities('<script>DROP</script>KEEP', 30));
+    it('should keep plain text when the last allowed pass settles', () => {
+      expect(sanitizeUserInput('a < b && c > d ' + encodeEntities('&', 10))).toBe(
+        'a < b && c > d &'
+      );
+      expect(sanitizeUserInput('a < b && c > d\n&' + 'amp;'.repeat(10))).toBe(
+        'a < b && c > d\n&'
+      );
+    });
 
-      expect(result).not.toMatch(/[<&]/);
+    it('should drop only markup and entity starts when the input does not settle within the pass bound', () => {
+      const result = sanitizeUserInput(
+        'a < b && c > d ' + encodeEntities('<script>DROP</script>KEEP', 30)
+      );
+
+      expect(result.startsWith('a < b && c > d ')).toBe(true);
+      expect(result).not.toMatch(/[<&][A-Za-z0-9!/?#]/);
       expect(result).toContain('KEEP');
     });
 
@@ -171,9 +183,11 @@ describe('HTML Sanitizer', () => {
       const inputs = [
         '&lt;script&gt;DROP&lt;/script&gt;KEEP',
         encodeEntities('<script>DROP</script>KEEP', 2),
-        encodeEntities('<script>DROP</script>KEEP', 8),
-        encodeEntities('<script>DROP</script>KEEP', 9),
+        encodeEntities('<script>DROP</script>KEEP', 10),
+        encodeEntities('<script>DROP</script>KEEP', 11),
         encodeEntities('<script>DROP</script>KEEP', 30),
+        'a < b && c > d ' + encodeEntities('<b>x</b>', 30),
+        'AT&T x<1 ' + encodeEntities('&<lt>', 12),
         '<iframe>'.repeat(9) + '<script>DROP</script>KEEP',
         '<iframe>'.repeat(200) + '<script>DROP</script>KEEP',
         '<<script>script>alert(1)<</script>/script>',
