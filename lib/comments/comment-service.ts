@@ -2,14 +2,14 @@
  * Comment Service
  *
  * Provides CRUD operations for comments with:
- * - XSS sanitization
+ * - Whitespace normalization (content is plain text, rendered as React text)
  * - Content validation (1000 char limit)
  * - Article existence verification
  * - Result-based error handling
  */
 
 import { prisma } from '@/lib/prisma';
-import { sanitizeUserInput } from '@/lib/utils/html-sanitizer';
+import { normalizeCommentContent } from '@/lib/comments/normalize-content';
 import { commentsCache } from '@/lib/cache/comments-cache';
 import { logger } from '@/lib/logger';
 import type { Comment, CommentVisibility } from '@/lib/prisma-exports';
@@ -66,18 +66,18 @@ export class CommentService {
   /**
    * Create a new comment
    *
-   * Flow: Sanitize → Validate → Check Article → Save
+   * Flow: Normalize → Validate → Check Article → Save
    */
   async createComment(
     input: CreateCommentInput
   ): Promise<Result<Comment, CommentError>> {
     const { articleId, userId, content, visibility } = input;
 
-    // 1. Sanitize content (XSS prevention, preserves newlines)
-    const sanitizedContent = sanitizeUserInput(content);
+    // 1. Normalize content (stored as plain text, preserves newlines)
+    const normalizedContent = normalizeCommentContent(content);
 
     // 2. Validate content
-    const validationError = this.validateContent(sanitizedContent);
+    const validationError = this.validateContent(normalizedContent);
     if (validationError) {
       return { success: false, error: validationError };
     }
@@ -104,7 +104,7 @@ export class CommentService {
         data: {
           articleId,
           userId,
-          content: sanitizedContent,
+          content: normalizedContent,
           visibility,
         },
       });
@@ -205,7 +205,7 @@ export class CommentService {
    *
    * - Owner check: only the comment owner can update
    * - Validates content if provided
-   * - Sanitizes content before saving
+   * - Normalizes content before saving
    */
   async updateComment(
     id: string,
@@ -242,13 +242,13 @@ export class CommentService {
     const updateData: { content?: string; visibility?: CommentVisibility } = {};
 
     if (input.content !== undefined) {
-      // Sanitize and validate content (preserves newlines)
-      const sanitizedContent = sanitizeUserInput(input.content);
-      const validationError = this.validateContent(sanitizedContent);
+      // Normalize and validate content (preserves newlines)
+      const normalizedContent = normalizeCommentContent(input.content);
+      const validationError = this.validateContent(normalizedContent);
       if (validationError) {
         return { success: false, error: validationError };
       }
-      updateData.content = sanitizedContent;
+      updateData.content = normalizedContent;
     }
 
     if (input.visibility !== undefined) {

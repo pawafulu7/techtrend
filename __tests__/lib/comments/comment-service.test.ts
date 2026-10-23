@@ -2,7 +2,7 @@
  * CommentService Unit Tests
  *
  * Tests for comment CRUD functionality (Task 2.1, 2.2, 2.3)
- * - createComment: Sanitize → Validate → Check Article Exists → Save → Invalidate Cache
+ * - createComment: Normalize → Validate → Check Article Exists → Save → Invalidate Cache
  * - getCommentsByArticle: Cache → Pagination, userId filter, deletedAt exclusion → Set Cache
  * - updateComment: Owner check, validation → Invalidate Cache
  * - deleteComment: Soft delete, owner check → Invalidate Cache
@@ -102,11 +102,11 @@ describe('CommentService', () => {
         }
       });
 
-      it('should sanitize HTML content before saving', async () => {
+      it('should save markup-like text as written (plain text)', async () => {
         prismaMock.article.findUnique.mockResolvedValue(mockArticle);
         prismaMock.comment.create.mockResolvedValue({
           ...mockComment,
-          content: 'Clean content',
+          content: '<script>alert("xss")</script>Clean content',
         });
 
         const result = await service.createComment({
@@ -117,11 +117,11 @@ describe('CommentService', () => {
         });
 
         expect(result.success).toBe(true);
-        // Verify sanitized content was passed to create
+        // Content is rendered as React text, so it is stored as written
         expect(prismaMock.comment.create).toHaveBeenCalledWith(
           expect.objectContaining({
             data: expect.objectContaining({
-              content: 'Clean content',
+              content: '<script>alert("xss")</script>Clean content',
             }),
           })
         );
@@ -248,68 +248,69 @@ describe('CommentService', () => {
       });
     });
 
-    describe('XSSサニタイズ', () => {
-      it('should remove script tags', async () => {
+    describe('本文の正規化', () => {
+      it('should keep entities and comparison symbols as written', async () => {
         prismaMock.article.findUnique.mockResolvedValue(mockArticle);
-        prismaMock.comment.create.mockResolvedValue({
-          ...mockComment,
-          content: 'Safe text',
-        });
+        prismaMock.comment.create.mockResolvedValue(mockComment);
 
         await service.createComment({
           articleId: 'article-123',
           userId: 'user-123',
-          content: '<script>alert("xss")</script>Safe text',
+          content: '&lt;div&gt; と if a<b && c>d',
           visibility: 'PRIVATE',
         });
 
         expect(prismaMock.comment.create).toHaveBeenCalledWith(
           expect.objectContaining({
             data: expect.objectContaining({
-              content: expect.not.stringContaining('<script>'),
+              content: '&lt;div&gt; と if a<b && c>d',
             }),
           })
         );
       });
 
-      it('should remove event handlers', async () => {
+      it('should remove NUL and normalize whitespace', async () => {
         prismaMock.article.findUnique.mockResolvedValue(mockArticle);
-        prismaMock.comment.create.mockResolvedValue({
-          ...mockComment,
-          content: 'Click me',
-        });
+        prismaMock.comment.create.mockResolvedValue(mockComment);
 
         await service.createComment({
           articleId: 'article-123',
           userId: 'user-123',
-          content: '<div onclick="alert(1)">Click me</div>',
+          content: '  a\0b\t\tc\n\n\n\nd  ',
           visibility: 'PRIVATE',
         });
 
         expect(prismaMock.comment.create).toHaveBeenCalledWith(
           expect.objectContaining({
             data: expect.objectContaining({
-              content: expect.not.stringContaining('onclick'),
+              content: 'ab c\n\nd',
             }),
           })
         );
       });
 
-      it('should handle HTML entities in content', async () => {
+      it('should keep content unchanged when the saved content is saved again', async () => {
         prismaMock.article.findUnique.mockResolvedValue(mockArticle);
-        prismaMock.comment.create.mockResolvedValue({
-          ...mockComment,
-          content: 'Test & example',
-        });
+        prismaMock.comment.create.mockResolvedValue(mockComment);
 
         await service.createComment({
           articleId: 'article-123',
           userId: 'user-123',
-          content: 'Test &amp; example',
+          content: '&lt;script&gt;DROP&lt;/script&gt;KEEP\n\n\n<b>x</b>',
           visibility: 'PRIVATE',
         });
+        const saved = prismaMock.comment.create.mock.calls[0][0].data.content as string;
 
-        expect(prismaMock.comment.create).toHaveBeenCalled();
+        prismaMock.comment.findUnique.mockResolvedValue(mockComment);
+        prismaMock.comment.update.mockResolvedValue(mockComment);
+        await service.updateComment('comment-123', 'user-123', { content: saved });
+
+        expect(saved).toBe('&lt;script&gt;DROP&lt;/script&gt;KEEP\n\n<b>x</b>');
+        expect(prismaMock.comment.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ content: saved }),
+          })
+        );
       });
     });
   });
@@ -484,11 +485,11 @@ describe('CommentService', () => {
         }
       });
 
-      it('should sanitize updated content', async () => {
+      it('should save updated markup-like text as written', async () => {
         prismaMock.comment.findUnique.mockResolvedValue(mockComment);
         prismaMock.comment.update.mockResolvedValue({
           ...mockComment,
-          content: 'Safe content',
+          content: '<script>xss</script>Safe content',
         });
 
         await service.updateComment('comment-123', 'user-123', {
@@ -498,7 +499,7 @@ describe('CommentService', () => {
         expect(prismaMock.comment.update).toHaveBeenCalledWith(
           expect.objectContaining({
             data: expect.objectContaining({
-              content: 'Safe content',
+              content: '<script>xss</script>Safe content',
             }),
           })
         );

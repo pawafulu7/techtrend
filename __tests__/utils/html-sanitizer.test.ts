@@ -2,19 +2,9 @@ import {
   decodeHtmlEntities,
   stripHtmlTags,
   sanitizeHtml,
-  sanitizeUserInput,
   cleanHtml,
   escapeHtml
 } from '@/lib/utils/html-sanitizer';
-
-// Encodes `&`, `<` and `>` as entities `layers` times
-function encodeEntities(text: string, layers: number): string {
-  let encoded = text;
-  for (let i = 0; i < layers; i++) {
-    encoded = encoded.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-  return encoded;
-}
 
 describe('HTML Sanitizer', () => {
   describe('decodeHtmlEntities', () => {
@@ -125,82 +115,6 @@ describe('HTML Sanitizer', () => {
         </div>
       `;
       expect(sanitizeHtml(html)).toBe('Title & Subtitle Content with <code>');
-    });
-  });
-
-  describe('sanitizeUserInput', () => {
-    it('should handle empty input', () => {
-      expect(sanitizeUserInput('')).toBe('');
-      expect(sanitizeUserInput(null as any)).toBe('');
-    });
-
-    it('should strip tags and preserve up to two consecutive newlines', () => {
-      expect(sanitizeUserInput('<b>line1</b>\r\nline2\t\ttab\n\n\n\nend')).toBe(
-        'line1 \nline2 tab\n\nend'
-      );
-    });
-
-    it('should keep plain-text < and > that do not form tags', () => {
-      expect(sanitizeUserInput('a < b && c > d')).toBe('a < b && c > d');
-      expect(sanitizeUserInput('x &lt; y &amp; z')).toBe('x < y & z');
-    });
-
-    it('should strip tags that appear only after decoding entities', () => {
-      expect(sanitizeUserInput('&lt;script&gt;DROP&lt;/script&gt;KEEP')).toBe('KEEP');
-      expect(sanitizeUserInput('&#x3C;b&#x3E;bold&#x3C;/b&#x3E;')).toBe('bold');
-      expect(sanitizeUserInput(encodeEntities('<script>DROP</script>KEEP', 2))).toBe('KEEP');
-    });
-
-    it('should strip markup inside iframes nested beyond the sanitize-html fallback depth', () => {
-      expect(sanitizeUserInput('<iframe>'.repeat(9) + '<script>DROP</script>KEEP')).toBe('KEEP');
-      expect(sanitizeUserInput('<iframe>'.repeat(40) + '<script>DROP</script>KEEP')).toBe('KEEP');
-    });
-
-    it('should converge for entities encoded up to 10 times', () => {
-      expect(sanitizeUserInput(encodeEntities('<script>DROP</script>KEEP', 10))).toBe('KEEP');
-    });
-
-    it('should keep plain text when the last allowed pass settles', () => {
-      expect(sanitizeUserInput('a < b && c > d ' + encodeEntities('&', 10))).toBe(
-        'a < b && c > d &'
-      );
-      expect(sanitizeUserInput('a < b && c > d\n&' + 'amp;'.repeat(10))).toBe(
-        'a < b && c > d\n&'
-      );
-    });
-
-    it('should drop only markup and entity starts when the input does not settle within the pass bound', () => {
-      const result = sanitizeUserInput(
-        'a < b && c > d ' + encodeEntities('<script>DROP</script>KEEP', 30)
-      );
-
-      expect(result.startsWith('a < b && c > d ')).toBe(true);
-      expect(result).not.toMatch(/[<&][A-Za-z0-9!/?#]/);
-      expect(result).toContain('KEEP');
-    });
-
-    it('should return its own output unchanged (idempotent)', () => {
-      const inputs = [
-        '&lt;script&gt;DROP&lt;/script&gt;KEEP',
-        encodeEntities('<script>DROP</script>KEEP', 2),
-        encodeEntities('<script>DROP</script>KEEP', 10),
-        encodeEntities('<script>DROP</script>KEEP', 11),
-        encodeEntities('<script>DROP</script>KEEP', 30),
-        'a < b && c > d ' + encodeEntities('<b>x</b>', 30),
-        'AT&T x<1 ' + encodeEntities('&<lt>', 12),
-        '<iframe>'.repeat(9) + '<script>DROP</script>KEEP',
-        '<iframe>'.repeat(200) + '<script>DROP</script>KEEP',
-        '<<script>script>alert(1)<</script>/script>',
-        'a < b && c > d',
-        'AT&T &copy; 2024 &#x3C;b&#x3E;bold&#x3C;/b&#x3E;',
-        '"quoted" \'single\' a>b',
-        'line1\r\n\n\n\n  line2&nbsp;&nbsp;end',
-      ];
-
-      inputs.forEach(input => {
-        const once = sanitizeUserInput(input);
-        expect(sanitizeUserInput(once)).toBe(once);
-      });
     });
   });
 
