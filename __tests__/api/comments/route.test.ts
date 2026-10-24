@@ -106,11 +106,11 @@ describe('/api/comments', () => {
         expect(data.content).toBe('Test comment content');
       });
 
-      it('HTMLタグをサニタイズして保存する', async () => {
+      it('タグに見える文字列も書いたとおりに保存する', async () => {
         prismaMock.article.findUnique.mockResolvedValue(mockArticle);
         prismaMock.comment.create.mockResolvedValue({
           ...mockComment,
-          content: 'Clean content',
+          content: '<script>alert("xss")</script>Clean content',
         });
 
         const POST = await getPostHandler();
@@ -123,8 +123,14 @@ describe('/api/comments', () => {
         const response = await POST(request);
 
         expect(response.status).toBe(201);
-        // createCommentが呼ばれていることを確認
-        expect(prismaMock.comment.create).toHaveBeenCalled();
+        // 本文は React のテキストとして表示するので、タグとして外さない
+        expect(prismaMock.comment.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              content: '<script>alert("xss")</script>Clean content',
+            }),
+          })
+        );
       });
     });
 
