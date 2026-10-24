@@ -58,7 +58,7 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 import { NextRequest } from 'next/server';
-import { GET, POST } from '@/app/api/ai/diff-summary/route';
+import { GET } from '@/app/api/ai/diff-summary/route';
 
 describe('GET /api/ai/diff-summary - rate limiting', () => {
   it('should include rate limit headers in response', async () => {
@@ -67,19 +67,5 @@ describe('GET /api/ai/diff-summary - rate limiting', () => {
 
     expect(response.headers.get('X-RateLimit-Limit')).toBeDefined();
     expect(response.headers.get('X-RateLimit-Remaining')).toBeDefined();
-  });
-});
-
-describe('POST /api/ai/diff-summary - auth required', () => {
-  it('should reject unauthenticated requests', async () => {
-    const request = new NextRequest('http://localhost:3000/api/ai/diff-summary', {
-      method: 'POST',
-      body: JSON.stringify({}),
-    });
-    const response = await POST(request);
-
-    expect(response.status).toBe(401);
-    const data = await response.json();
-    expect(data.error).toBe('Unauthorized');
   });
 });

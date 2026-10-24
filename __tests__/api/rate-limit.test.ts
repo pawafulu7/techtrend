@@ -63,11 +63,11 @@ describe('Rate Limiting Integration Tests', () => {
         session: { id: 's1', userId: 'user123', token: 'tok', expiresAt: new Date('2099-01-01') },
       } as any);
 
-      const config = getRateLimitConfig('ai:summary');
+      const config = getRateLimitConfig('admin:ai-generate');
       expect(config.keyStrategy).toBe('user');
 
       // User-scoped limiters should use user ID
-      const limiter = createRateLimiterFromConfig('ai:summary');
+      const limiter = createRateLimiterFromConfig('admin:ai-generate');
       expect(limiter).toBeDefined();
     });
 
@@ -148,10 +148,10 @@ describe('Rate Limiting Integration Tests', () => {
     });
 
     it('should have valid AI configs', () => {
-      const aiSummary = getRateLimitConfig('ai:summary');
-      expect(aiSummary.points).toBe(10);
-      expect(aiSummary.duration).toBe(60);
-      expect(aiSummary.keyStrategy).toBe('user');
+      const aiGenerate = getRateLimitConfig('admin:ai-generate');
+      expect(aiGenerate.points).toBe(5);
+      expect(aiGenerate.duration).toBe(60);
+      expect(aiGenerate.keyStrategy).toBe('user');
     });
 
     it('should fallback to default for unknown keys', () => {

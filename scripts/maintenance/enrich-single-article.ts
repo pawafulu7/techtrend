@@ -5,7 +5,8 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { GoogleAIEnricher } from '../../lib/enrichers/google-ai';
-import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
+import { getAppDependencies } from '@/lib/di/bootstrap';
+import type { SummaryServiceResult } from '@/lib/ai/service/unified-summary-service.interface';
 import { isEnrichmentSkipped } from '../../lib/fetchers/generic-foreign-rss';
 import {
   contentStateWhere,
@@ -17,10 +18,21 @@ import { closeRedisConnection } from '@/lib/redis/client';
 
 const prisma = createPrismaClient();
 const enricher = new GoogleAIEnricher();
-const summaryService = new UnifiedSummaryService();
 const embeddingScheduler = new EmbeddingScheduler(prisma);
 
-type GeneratedSummary = Awaited<ReturnType<UnifiedSummaryService['generate']>>;
+type GeneratedSummary = SummaryServiceResult;
+
+/** 定期実行と同じ要約サービス（lib/ai/service/）で、記事の要約を作る */
+function generateSummary(
+  article: { title: string; url: string },
+  content: string
+): Promise<GeneratedSummary> {
+  return getAppDependencies().service.generateSummary({
+    title: article.title,
+    content,
+    url: article.url,
+  });
+}
 
 /**
  * 生成した要約を保存する内容。定期実行の要約生成（batch-processor）と同じ状態を書く。
@@ -30,6 +42,7 @@ function summarySavedData(result: GeneratedSummary) {
   return {
     summary: result.summary,
     detailedSummary: result.detailedSummary,
+    translatedTitle: result.translatedTitle,
     summaryVersion: result.summaryVersion,
     articleType: 'unified',
     summaryComputedAt: new Date(),
@@ -146,15 +159,7 @@ async function enrichSingleArticle(articleId: string) {
         return;
       }
       
-      const result = await summaryService.generate(
-        article.title,
-        enrichedData.content,
-        undefined,
-        {
-          sourceName: article.source.name,
-          url: article.url
-        }
-      );
+      const result = await generateSummary(article, enrichedData.content);
       
       if (result) {
         // CAS: 要約は enrichedData.content から生成されたものなので、その本文が
@@ -199,15 +204,7 @@ async function enrichSingleArticle(articleId: string) {
       if (article.content && article.content.length >= 100) {
         console.error('\n既存コンテンツで要約再生成を試みます...');
         
-        const result = await summaryService.generate(
-          article.title,
-          article.content,
-          undefined,
-          {
-            sourceName: article.source.name,
-            url: article.url
-          }
-        );
+        const result = await generateSummary(article, article.content);
         
         if (result) {
           // CAS: 要約は取得時点の article.content から生成したものなので、その本文が

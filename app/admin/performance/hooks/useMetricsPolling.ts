@@ -1,5 +1,5 @@
-import { useQueries, useQuery } from '@tanstack/react-query';
-import { useMemo, useState, useEffect } from 'react';
+import { useQueries } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import type { PerformanceMetrics, DashboardError } from '../types/dashboard';
 import { createEmptyPerformanceMetrics } from '../types/dashboard';
 
@@ -110,67 +110,5 @@ export function useMetricsPolling(
     error,
     lastUpdated,
     refresh,
-  };
-}
-
-/**
- * メトリクスデータフック
- * 単一のAPI呼び出しでメトリクスを取得
- */
-export function useMetricsData(endpoint: string) {
-  const {
-    data,
-    isLoading: loading,
-    error,
-  } = useQuery({
-    queryKey: ['metrics-data', endpoint],
-    queryFn: async () => {
-      const response = await fetch(endpoint);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data from ${endpoint}`);
-      }
-      return response.json();
-    },
-  });
-
-  return {
-    data: data ?? null,
-    loading,
-    error: error as Error | null,
-  };
-}
-
-/**
- * ポーリング状態管理フック
- * バックグラウンドタブでのポーリング制御
- */
-export function usePollingControl(defaultInterval: number = 30000) {
-  const [isActive, setIsActive] = useState(true);
-  const [interval, setInterval] = useState(defaultInterval);
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // バックグラウンドタブではポーリング停止
-        setIsActive(false);
-      } else {
-        // フォアグラウンドに戻ったらポーリング再開
-        setIsActive(true);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  return {
-    isActive,
-    interval,
-    setInterval,
-    pause: () => setIsActive(false),
-    resume: () => setIsActive(true),
   };
 }

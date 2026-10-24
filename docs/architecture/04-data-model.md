@@ -1,6 +1,6 @@
 # データモデル概要
 
-31 model（2026-08-15 時点）のうち、`Article` を中心に実際の Prisma `@relation` でつながるものだけを抜き出し、コア記事系（04-A）とユーザー・パーソナライズ系（04-B）の 2 図に分けて示す。関係を持たない/薄い独立系テーブルは図に含めず、末尾の表にまとめた。
+32 model（2026-10-25 時点）のうち、`Article` を中心に実際の Prisma `@relation` でつながるものだけを抜き出し、コア記事系（04-A）とユーザー・パーソナライズ系（04-B）の 2 図に分けて示す。関係を持たない/薄い独立系テーブルは図に含めず、末尾の表にまとめた。
 
 ---
 
@@ -24,6 +24,8 @@ erDiagram
         timestamp contentUpdatedAt
         timestamp qualityScoreComputedAt
         timestamp summaryComputedAt
+        string storyId
+        boolean isOffTopic
     }
     Source {
         string id PK
@@ -72,7 +74,7 @@ erDiagram
 
 ### 読み方
 
-- **Article**: 記事本体。`qualityScore` は品質スコア、`contentUpdatedAt`/`qualityScoreComputedAt`/`summaryComputedAt` は各バッチが差分判定・完了マーキングに使う個別タイムスタンプ
+- **Article**: 記事本体。`qualityScore` は品質スコア、`contentUpdatedAt`/`qualityScoreComputedAt`/`summaryComputedAt` は各バッチが差分判定・完了マーキングに使う個別タイムスタンプ。`storyId`/`storySize` は同じ出来事をまとめたストーリー（`scripts/scheduled/assign-stories.ts` が書く）、`isOffTopic`/`offTopicCheckedAt` は技術者向けでない記事の判定（`scripts/scheduled/classify-off-topic.ts` が書く。一覧の既定の表示から外す）
 - **Source**: 記事の収集元（RSS/スクレイピング/API）。`groupId` は任意（`SourceGroup` に属さない Source もある）
 - **SourceGroup**: Source を分類するグループ
 - **Tag**: 記事タグ。`Article` とは暗黙の中間テーブル `_ArticleToTag` による多対多（Prisma が自動生成、schema.prisma 上に明示モデルはない）
@@ -102,6 +104,7 @@ erDiagram
     InterestCategory ||--o{ UserCategoryPreference : "categoryId"
     Tag ||--o{ TagCategoryMapping : "tagId"
     InterestCategory ||--o{ TagCategoryMapping : "categoryId"
+    User |o--o{ Inquiry : "userId（任意・SetNull）"
 
     User {
         string id PK
@@ -152,12 +155,18 @@ erDiagram
         string id PK
         string userId FK
         string categoryId FK
-        string scope
+        int weight
     }
     TagCategoryMapping {
         string id PK
         string tagId FK
         string categoryId FK
+    }
+    Inquiry {
+        string id PK
+        string userId FK
+        string category
+        string status
     }
     Article {
         string id PK
@@ -176,8 +185,9 @@ erDiagram
 - **Comment**: 記事への個人メモ。`visibility` で公開/非公開を区別
 - **UserSourcePreset**: ユーザーが保存したソースフィルタ設定。`sourceIds` は `String[]`（**`Source` への Prisma `@relation` ではなく ID 配列を保持するだけの論理参照**）。そのため本図では `Source` への関係線を引いていない
 - **InterestCategory**: パーソナライズ用の興味カテゴリ。`centroidEmbedding` は pgvector の `vector(1536)` 型（カテゴリの重心ベクトル）
-- **UserCategoryPreference**: ユーザーごとのカテゴリ重み付け（`scope` で home/digest を区別）
-- **TagCategoryMapping**: `Tag`—`InterestCategory` の中間テーブル（`schema.prisma:415-421`）
+- **UserCategoryPreference**: ユーザーごとの興味の分野（`weight` で重み付け、`userId`+`categoryId` で一意）。ホームとダイジェストで同じ設定を使う。ホームの一覧を分野で絞るかどうかは `User.homePersonalizationEnabled` が持つ
+- **TagCategoryMapping**: `Tag`—`InterestCategory` の中間テーブル（`schema.prisma:418-429`）
+- **Inquiry**: 問い合わせ（`/contact` → `POST /api/inquiries`、管理は `/admin/inquiries`）。ログイン中に送ったときだけ `userId` が入り、ユーザーが消えても問い合わせは残す（`onDelete: SetNull`）
 - **Article** / **Tag**: 04-A の実体を参照用に再掲（属性は PK のみ）
 
 ---
@@ -205,9 +215,9 @@ erDiagram
 - **pgvector を使うフィールドは 3 つ**: `ArticleEmbedding.embedding`、`ArticleChunk.embedding`、`InterestCategory.centroidEmbedding`。いずれも `Unsupported("vector(1536)")`（1536 次元）。Mermaid の `erDiagram` は型に `()` を使えないため、図上は `vector embedding` のように次元を省略して表記している
 - pgvector 拡張を追加したマイグレーション: `prisma/migrations/20251018154552_add_article_embeddings/migration.sql`
 - **`ArticleChunk` は現行パイプラインでは書き込まれない**: embedding 生成の実装 `lib/rag/article-embedding-pipeline.ts` が書き込むのは `ArticleEmbedding` のみで、`ArticleChunk` への `create`/`upsert`/`INSERT` はリポジトリ内に存在しない（`grep -rn 'articleChunk\.(create|upsert)|INSERT INTO "ArticleChunk"' lib app scripts` で確認）。スキーマ上は将来のチャンク分割 RAG 用に残っている
-- model 総数: **31**（2026-08-15 時点）。取得コマンド: `grep -c '^model ' prisma/schema.prisma`
-- 全 31 model の完全な列挙・カラム定義は `prisma/schema.prisma` を参照
+- model 総数: **32**（2026-10-25 時点）。取得コマンド: `grep -c '^model ' prisma/schema.prisma`
+- 全 32 model の完全な列挙・カラム定義は `prisma/schema.prisma` を参照
 
 ---
 
-2026-08-15 時点の `prisma/schema.prisma` をもとに作成。更新ルールは [索引](./README.md) を参照。
+2026-08-15 時点の `prisma/schema.prisma` をもとに作成し、2026-10-25 時点のスキーマに合わせて更新。更新ルールは [索引](./README.md) を参照。

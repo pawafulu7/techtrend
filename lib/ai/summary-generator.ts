@@ -1,19 +1,12 @@
 /**
- * 要約生成の共通処理
- * 統一プロンプトによる品質保証と再生成ロジックを含む
+ * 旧経路（lib/ai/gemini.ts）の要約生成の共通処理（プロンプト・後処理・検証）。
+ * 本番の要約生成は lib/ai/service/ を使う
  */
 
 // import { detectArticleType, ArticleType } from '../utils/article/article-type-detector';  // 統一プロンプト移行により無効化
 // import { generatePromptForArticleType } from '../utils/article/article-type-prompts';  // 統一プロンプト移行により無効化
 import { generateUnifiedPrompt } from '../utils/article/article-type-prompts';
 import { validateSummary, validateDetailedSummary } from '../utils/summary/summary-validator';
-import { 
-  checkSummaryQuality, 
-  isQualityCheckEnabled,
-  getMaxRegenerationAttempts,
-  QualityCheckResult
-} from '../utils/summary/summary-quality-checker';
-import { generateSummaryAndTags as geminiGenerateSummary } from './gemini-handler';
 import { SUMMARY_LENGTH } from './constants';
 
 /**
@@ -21,21 +14,8 @@ import { SUMMARY_LENGTH } from './constants';
  * @param title 記事タイトル
  * @param content 記事内容
  * @returns 生成されたプロンプト
- * @deprecated 統一プロンプトに移行。createUnifiedSummaryPromptを使用してください
  */
 export function createSummaryPrompt(title: string, content: string): string {
-  // 統一プロンプトにリダイレクト
-  return generateUnifiedPrompt(title, content);
-}
-
-/**
- * 詳細要約用のプロンプトを生成（統一プロンプトを使用）
- * @param title 記事タイトル
- * @param content 記事内容
- * @returns 生成されたプロンプト
- * @deprecated 統一プロンプトに移行。createUnifiedSummaryPromptを使用してください
- */
-export function createDetailedSummaryPrompt(title: string, content: string): string {
   // 統一プロンプトにリダイレクト
   return generateUnifiedPrompt(title, content);
 }
@@ -112,124 +92,4 @@ export function validateSummaryQuality(
   } else {
     return validateDetailedSummary(summary);
   }
-}
-
-/**
- * 記事情報を取得（デバッグ用）
- * @param title 記事タイトル
- * @param content 記事内容
- * @returns 記事情報
- */
-export function getArticleInfo(title: string, content: string) {
-  // 統一プロンプト移行により記事タイプは'unified'固定
-  return {
-    type: 'unified',
-    titleLength: title.length,
-    contentLength: content.length,
-    estimatedReadingTime: Math.ceil(content.length / 400) // 400文字/分として計算
-  };
-}
-
-/**
- * 品質チェックを含む要約生成（再生成ロジック付き）
- * @param title 記事タイトル
- * @param content 記事内容
- * @param maxAttempts 最大試行回数
- * @returns 生成された要約とタグ
- */
-export async function generateSummaryWithRetry(
-  title: string,
-  content: string,
-  maxAttempts?: number
-): Promise<{
-  summary: string;
-  detailedSummary: string;
-  tags: string[];
-  articleType: string;
-  qualityScore?: number;
-  attempts?: number;
-}> {
-  // 品質チェックが無効の場合は従来の処理
-  if (!isQualityCheckEnabled()) {
-    const result = await geminiGenerateSummary(title, content);
-    return result;
-  }
-
-  const maxTries = maxAttempts || getMaxRegenerationAttempts();
-  let lastResult: {
-    summary: string;
-    detailedSummary: string;
-    tags: string[];
-    articleType: string;
-  } | null = null;
-  let lastQuality: QualityCheckResult | null = null;
-  
-  for (let attempt = 1; attempt <= maxTries; attempt++) {
-    try {
-      // 要約生成
-      const result = await geminiGenerateSummary(title, content);
-      
-      // 品質チェック
-      const quality = checkSummaryQuality(result.summary, result.detailedSummary);
-      
-      // 品質レポートをログ出力
-      if (attempt === 1 || quality.requiresRegeneration) {
-      }
-      
-      // 品質基準を満たした場合
-      if (quality.isValid && !quality.requiresRegeneration) {
-        return {
-          ...result,
-          qualityScore: quality.score,
-          attempts: attempt
-        };
-      }
-      
-      lastResult = result;
-      lastQuality = quality;
-      
-      // 再生成が必要な場合
-      if (attempt < maxTries && quality.requiresRegeneration) {
-        
-        // API負荷軽減のため待機
-        const waitTime = attempt * 1000; // 試行回数に応じて待機時間を増やす
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-      }
-      
-    } catch (_error) {
-      
-      // 最終試行でエラーの場合は例外を再スロー
-      if (attempt === maxTries) {
-        throw _error;
-      }
-      
-      // エラー時はより長い待機時間
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-  }
-  
-  // 最大試行回数に達した場合、最後の結果を返す（ベストエフォート）
-  if (lastResult && lastQuality) {
-    return {
-      summary: lastResult.summary,
-      detailedSummary: lastResult.detailedSummary,
-      tags: lastResult.tags,
-      articleType: lastResult.articleType,
-      qualityScore: lastQuality.score,
-      attempts: maxTries
-    };
-  }
-  
-  // 結果が全く得られなかった場合
-  throw new Error('要約生成に失敗しました');
-}
-
-/**
- * 統一プロンプトによる要約生成
- * @param title 記事タイトル
- * @param content 記事内容
- * @returns 統一プロンプト
- */
-export function createUnifiedSummaryPrompt(title: string, content: string): string {
-  return generateUnifiedPrompt(title, content);
 }

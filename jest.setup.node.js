@@ -2,7 +2,6 @@
 import '@testing-library/jest-dom';
 import { RedisMockFactory } from './test/factories/redis-mock-factory';
 import { CacheMockFactory } from './test/factories/cache-mock-factory';
-import { initializeTestDI, resetTestProviders } from './lib/di/testing';
 const { prismaMock, resetPrismaMock } = require('./test/utils/prisma-mock');
 // Polyfill for web File/Blob in Node test environment
 try {
@@ -68,16 +67,10 @@ jest.mock('dns', () => {
   };
 });
 
-// テスト環境のDI初期化
-beforeAll(() => {
-  initializeTestDI();
-});
-
 // 各テストの前にモックをリセット
 beforeEach(() => {
   RedisMockFactory.reset();
   CacheMockFactory.reset();
-  resetTestProviders();
   resetPrismaMock();
 
 });

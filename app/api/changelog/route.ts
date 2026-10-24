@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { RedisCache } from '@/lib/cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
-import { handleApiError } from '@/lib/api/error-handler';
 
 const NOT_FOUND_SENTINEL = { notFound: true as const };
 
@@ -174,7 +173,10 @@ async function handler(request: NextRequest) {
       { err: error, route: '/api/changelog' },
       'API error in /api/changelog'
     );
-    return handleApiError(error, '/api/changelog');
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 

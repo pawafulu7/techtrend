@@ -84,8 +84,6 @@
     "scripts/test-*.ts",
     "scripts/fetch-*.ts",
     "scripts/regenerate-*.ts",
-    "lib/fetchers/generic-corporate-rss.ts",
-    "lib/recommendation/**",
     "lib/services/**",
     "lib/utils/article/article-manual-adder.ts",
     "lib/utils/content/content-quality-checker.ts",

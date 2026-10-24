@@ -2,7 +2,7 @@
  * トレンドページの Server Component 用の取得（trends-data.ts）が、キャッシュが無いときに
  * 無効化したソースの記事を数えないこと（issue #688）。
  *
- * route（/api/trends/keywords・/api/trends/analysis・/api/stats）と同じキャッシュキーを読むので、
+ * route（/api/trends/analysis・/api/stats）と同じキャッシュキーを読むので、
  * DB から直接引く経路も route と同じ条件にそろえる。
  */
 jest.mock('@/lib/cache/keywords-cache', () => ({
@@ -59,19 +59,14 @@ describe('trends-data: 無効化したソースの記事を数えない（issue 
     );
   });
 
-  it('fetchKeywordsData: 区間別の集計と、新規タグの判定の内側', async () => {
+  it('fetchKeywordsData: 区間別の集計', async () => {
     await fetchKeywordsData();
 
-    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
-    const [buckets, newTags] = prismaMock.$queryRaw.mock.calls;
-    for (const call of [buckets, newTags]) {
-      const sql = sqlFragmentsOf(call).join(' ');
-      expect(sql).toContain(ENABLED);
-      expect(sql).toContain('a."isHidden" = false');
-    }
-    const newSql = sqlFragmentsOf(newTags).join(' ');
-    expect(newSql).toContain(`a2."sourceId" ${ENABLED_SOURCE_SQL}`);
-    expect(newSql).toContain('a2."isHidden" = false');
+    // 新着タグはタグ分析（/tags）だけが使うので、急上昇の集計では数えない
+    expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(1);
+    const sql = sqlFragmentsOf(prismaMock.$queryRaw.mock.calls[0]).join(' ');
+    expect(sql).toContain(ENABLED);
+    expect(sql).toContain('a."isHidden" = false');
   });
 
   it('fetchAnalysisData: 上位タグとその時系列', async () => {

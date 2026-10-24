@@ -2,24 +2,19 @@
  * Diff Summary API Route
  *
  * GET: Retrieve diff summaries for categories
- * POST: Generate diff summaries (admin/cron only)
+ * （生成は scripts/ai/generate-diff-summaries.ts の週次バッチ）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { BatchStatus } from '@/lib/prisma-exports';
-import {
-  getDiffSummaryService,
-  getISOWeek,
-  getPreviousISOWeek,
-} from '@/lib/ai/diff-summary';
+import { getISOWeek, getPreviousISOWeek } from '@/lib/ai/diff-summary/iso-week';
 import {
   SOURCE_CATEGORIES,
   SourceCategoryId,
 } from '@/lib/constants/source-categories';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
-import { withCronOrAdminAuth } from '@/lib/middleware/with-cron-or-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
 import { publicCacheHeaders } from '@/lib/api/cache-headers';
@@ -205,133 +200,4 @@ async function getDiffSummaryHandler(request: NextRequest) {
   }
 }
 
-/**
- * POST /api/ai/diff-summary
- * Generate diff summaries (admin/cron only)
- *
- * Body:
- * - week: ISO week format (optional, default: current week)
- * - category: Specific category slug (optional, default: all)
- */
-async function generateDiffSummaryHandler(request: NextRequest) {
-  try {
-    const body = await request.json().catch(() => ({}));
-    const weekParam = body.week;
-    const categoryParam = body.category;
-
-    // Validate week format and range (01-53)
-    let week = weekParam;
-    if (week) {
-      const weekMatch = week.match(/^(\d{4})-W(\d{2})$/);
-      if (!weekMatch) {
-        return NextResponse.json(
-          { error: 'Invalid week format. Use YYYY-Www (e.g., 2026-W01)' },
-          { status: 400 }
-        );
-      }
-      const weekNum = parseInt(weekMatch[2], 10);
-      if (weekNum < 1 || weekNum > 53) {
-        return NextResponse.json(
-          { error: 'Invalid week number. Must be between 01 and 53' },
-          { status: 400 }
-        );
-      }
-    }
-    week = week || getISOWeek(new Date());
-    const baseline = getPreviousISOWeek(week);
-
-    // Validate category if provided
-    if (
-      categoryParam &&
-      !SOURCE_CATEGORIES[categoryParam as SourceCategoryId]
-    ) {
-      return NextResponse.json(
-        {
-          error: 'Invalid category',
-          validCategories: Object.keys(SOURCE_CATEGORIES),
-        },
-        { status: 400 }
-      );
-    }
-
-    const service = getDiffSummaryService();
-
-    let result;
-    const cacheInstance = getCache();
-
-    if (categoryParam) {
-      // Single category
-      result = await service.generateForCategory(
-        categoryParam as SourceCategoryId,
-        week,
-        baseline
-      );
-
-      if (!result.success) {
-        return NextResponse.json(
-          { error: result.error || 'Generation failed' },
-          { status: 500 }
-        );
-      }
-
-      // Invalidate cache for this category and 'all' view
-      try {
-        await Promise.all([
-          cacheInstance.del(`diff-summary:${week}:${categoryParam}`),
-          cacheInstance.del(`diff-summary:${week}:all`),
-        ]);
-      } catch (cacheError) {
-        logger.warn({ err: cacheError }, 'Cache invalidation error');
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: `Diff summary generated for ${categoryParam}`,
-        week,
-        baseline,
-        result,
-      });
-    } else {
-      // All categories
-      result = await service.generateForAllCategories(week, baseline);
-
-      // Invalidate cache for all categories (parallelized)
-      try {
-        const cacheKeys = [
-          `diff-summary:${week}:all`,
-          ...Object.keys(SOURCE_CATEGORIES).map(
-            (cat) => `diff-summary:${week}:${cat}`
-          ),
-        ];
-        await Promise.all(cacheKeys.map((key) => cacheInstance.del(key)));
-      } catch (cacheError) {
-        logger.warn({ err: cacheError }, 'Cache invalidation error');
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: 'Diff summaries generated',
-        week,
-        baseline,
-        summary: {
-          total: result.total,
-          successful: result.successful,
-          failed: result.failed,
-        },
-      });
-    }
-  } catch (error) {
-    logger.error({ err: error }, 'Failed to generate diff summaries');
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
 export const GET = withRateLimit('read:diff-summary', getDiffSummaryHandler);
-
-// Wrap with auth middleware for POST
-export const POST = withCronOrAdminAuth(
-  withRateLimit('admin:ai-generate', generateDiffSummaryHandler)
-);

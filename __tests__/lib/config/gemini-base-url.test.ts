@@ -2,7 +2,7 @@
  * GEMINI_BASE_URL・GEMINI_MODEL が全経路の Gemini 呼び出しに反映されることを検証する（issue #655 項目 3・4）
  *
  * DI の主経路（GeminiTransportImpl）は以前から設定の base URL を使っている。
- * ここでは直書きが残っていた経路（週次差分要約・旧要約サービス・GeminiClient・トレンドレポート）を見る。
+ * ここでは直書きが残っていた経路（週次差分要約・GeminiClient・トレンドレポート）を見る。
  */
 
 const mockGetGenerativeModel = jest.fn();
@@ -10,12 +10,6 @@ jest.mock('@google/generative-ai', () => ({
   GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
     getGenerativeModel: (...args: unknown[]) => mockGetGenerativeModel(...args),
   })),
-}));
-
-const mockNodeFetch = jest.fn();
-jest.mock('node-fetch', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockNodeFetch(...args),
 }));
 
 jest.mock('@/lib/services/embedding-scheduler', () => ({
@@ -42,7 +36,6 @@ import {
   resetGeminiConfigCache,
 } from '@/lib/config/gemini';
 import { LLMExtractionPipeline } from '@/lib/ai/extraction/llm-extraction-pipeline';
-import { UnifiedSummaryService } from '@/lib/ai/unified-summary-service';
 import { GeminiClient } from '@/lib/ai/gemini';
 import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-generator';
 import { GEMINI_API } from '@/lib/constants';
@@ -81,7 +74,6 @@ describe.each([
     resetGeminiConfigCache();
     global.fetch = mockFetch as unknown as typeof fetch;
     mockFetch.mockResolvedValue(okResponse());
-    mockNodeFetch.mockResolvedValue(okResponse());
   });
 
   afterEach(() => {
@@ -111,20 +103,6 @@ describe.each([
 
     expect(mockFetch).toHaveBeenCalledWith(
       `${expectedBaseUrl}/v1beta/models/gemini-2.5-flash-lite:generateContent`,
-      expect.objectContaining({ method: 'POST' })
-    );
-  });
-
-  it('旧要約サービス（UnifiedSummaryService）がその URL を呼ぶ', async () => {
-    const service = new UnifiedSummaryService();
-    await (
-      service as unknown as {
-        callGeminiAPI: (prompt: string) => Promise<string>;
-      }
-    ).callGeminiAPI('prompt');
-
-    expect(mockNodeFetch).toHaveBeenCalledWith(
-      `${expectedBaseUrl}/v1beta/models/gemini-2.5-flash-lite:generateContent?key=test-api-key`,
       expect.objectContaining({ method: 'POST' })
     );
   });
@@ -174,12 +152,9 @@ describe('GEMINI_MODEL', () => {
     resetGeminiConfigCache();
   });
 
-  it('週次差分要約・旧要約サービスが設定のモデルを使う', () => {
+  it('週次差分要約が設定のモデルを使う', () => {
     expect(getGeminiModel()).toBe('gemini-custom');
     expect(new LLMExtractionPipeline().getModelVersion()).toBe('gemini-custom');
-    expect(
-      (new UnifiedSummaryService() as unknown as { apiUrl: string }).apiUrl
-    ).toContain('/models/gemini-custom:generateContent');
   });
 
   it('トレンドレポートのモデルは GEMINI_MODEL で変わらない', () => {

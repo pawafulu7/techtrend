@@ -77,7 +77,7 @@ describe('DailyTrendContent: 取得の失敗の文言（issue #701）', () => {
 });
 
 describe('DailyTrendContent: 見出しと前日／翌日の移動（Issue #700）', () => {
-  // サーバーからは日時が ISO 文字列で届く（daily-data.ts が toISOString() で渡す）
+  // サーバーからは日時が ISO 文字列で届く（lib/services/trend-report/daily-report.ts が toISOString() で渡す）
   const report: SerializedTrendReport = {
     periodType: 'DAILY',
     periodStart: '2026-09-28T15:00:00.000Z', // JST 2026-09-29

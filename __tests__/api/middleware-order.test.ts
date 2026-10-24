@@ -168,8 +168,6 @@ const RATE_LIMITED_ENDPOINTS: {
   { method: 'DELETE', path: '/api/user/source-presets/[id]', modulePath: '@/app/api/user/source-presets/[id]/route' },
   { method: 'POST', path: '/api/user/source-presets', modulePath: '@/app/api/user/source-presets/route' },
   { method: 'POST', path: '/api/comments', modulePath: '@/app/api/comments/route' },
-  { method: 'POST', path: '/api/favorites', modulePath: '@/app/api/favorites/route' },
-  { method: 'DELETE', path: '/api/favorites', modulePath: '@/app/api/favorites/route' },
   { method: 'POST', path: '/api/favorites/[articleId]', modulePath: '@/app/api/favorites/[articleId]/route' },
   { method: 'DELETE', path: '/api/favorites/[articleId]', modulePath: '@/app/api/favorites/[articleId]/route' },
   { method: 'POST', path: '/api/articles/read-status', modulePath: '@/app/api/articles/read-status/route' },

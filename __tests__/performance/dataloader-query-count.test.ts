@@ -19,7 +19,6 @@ import DataLoader from 'dataloader';
 
 import { prisma } from '@/lib/prisma';
 import { createLoaders } from '@/lib/dataloader';
-import { batchGetFavorites, batchGetViews, batchGetUserStates } from '@/lib/batch/batch-utils';
 import { resetFavoriteLoaderCaches } from '@/lib/dataloader/favorite-loader';
 import { resetPrismaMock } from '../../test/utils/prisma-mock';
 
@@ -215,65 +214,6 @@ describe('DataLoader Query Count Performance', () => {
 
         console.log(`Batch Test: 1 query for ${testArticles.length} different articles`);
       });
-    });
-  });
-
-  describe('Batch Utils Performance', () => {
-    it('batchGetFavorites should make 1 query for multiple articles', async () => {
-      const results = await batchGetFavorites(userId, articleIds);
-
-      // Should make exactly 1 query
-      expect(prismaMock.favorite.findMany).toHaveBeenCalledTimes(1);
-
-      // Verify query structure
-      const call = prismaMock.favorite.findMany.mock.calls[0][0];
-      expect(call.where.userId).toBe(userId);
-      expect(call.where.articleId.in).toEqual(articleIds);
-
-      // Verify results
-      expect(results).toHaveLength(50);
-      expect(results[0]).toBe(true);  // article-0 is favorited
-      expect(results[1]).toBe(false); // article-1 is not favorited
-      expect(results[10]).toBe(true); // article-10 is favorited
-
-      console.log(`batchGetFavorites: 1 query for ${articleIds.length} articles`);
-    });
-
-    it('batchGetViews should make 1 query for multiple articles', async () => {
-      const results = await batchGetViews(userId, articleIds);
-
-      // Should make exactly 1 query
-      expect(prismaMock.articleView.findMany).toHaveBeenCalledTimes(1);
-
-      // Verify query structure
-      const call = prismaMock.articleView.findMany.mock.calls[0][0];
-      expect(call.where.userId).toBe(userId);
-      expect(call.where.articleId.in).toEqual(articleIds);
-      expect(call.where.isRead).toBe(true);
-
-      // Verify results
-      expect(results).toHaveLength(50);
-      expect(results[5]).toBe(true);  // article-5 is viewed
-      expect(results[0]).toBe(false); // article-0 is not viewed
-
-      console.log(`batchGetViews: 1 query for ${articleIds.length} articles`);
-    });
-
-    it('batchGetUserStates should make 2 parallel queries', async () => {
-      const { favorites, views } = await batchGetUserStates(userId, articleIds);
-
-      // Should make exactly 2 queries (1 for favorites, 1 for views)
-      expect(prismaMock.favorite.findMany).toHaveBeenCalledTimes(1);
-      expect(prismaMock.articleView.findMany).toHaveBeenCalledTimes(1);
-
-      // Verify results - batchGetUserStates now returns Maps, not Sets
-      expect(favorites).toBeInstanceOf(Map);
-      expect(views).toBeInstanceOf(Map);
-      expect(favorites.has(articleIds[0])).toBe(true);
-      expect(favorites.has(articleIds[10])).toBe(true);
-      expect(views.has(articleIds[5])).toBe(true);
-
-      console.log(`batchGetUserStates: 2 parallel queries for ${articleIds.length} articles`);
     });
   });
 

@@ -25,7 +25,7 @@ scripts/
 | Directory | Purpose | Example |
 |-----------|---------|---------|
 | scheduled/ | GitHub Actions scheduled jobs | collect-feeds.ts |
-| manual/ | On-demand tools | compare-summaries.ts |
+| manual/ | On-demand tools | debug-article.ts |
 | maintenance/ | System maintenance | generate-summaries.ts |
 | ci/ | CI/CD pipelines | run-golden-set-regression.ts |
 | dev/ | Development utilities | run-embedding-worker.ts |

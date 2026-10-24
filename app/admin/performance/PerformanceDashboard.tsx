@@ -18,10 +18,8 @@ import {
   Zap,
   RefreshCw,
 } from 'lucide-react';
-import {
-  useMetricsPolling,
-  usePollingControl,
-} from './hooks/useMetricsPolling';
+import { useMetricsPolling } from './hooks/useMetricsPolling';
+import { usePollingControl } from '@/lib/hooks/use-polling-control';
 /**
  * パフォーマンスダッシュボード
  * DBアクセス最適化Phase 3のメトリクスを可視化

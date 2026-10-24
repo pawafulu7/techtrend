@@ -11,7 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { RefreshCw, AlertCircle, Settings2 } from 'lucide-react';
-import { useJobsPolling, usePollingControl } from '../hooks/useJobsPolling';
+import { useJobsPolling } from '../hooks/useJobsPolling';
+import { usePollingControl } from '@/lib/hooks/use-polling-control';
 import { SummaryCardsSection } from './SummaryCardsSection';
 import { ProcessingLogsTable } from './ProcessingLogsTable';
 import { EmbeddingJobsPanel } from './EmbeddingJobsPanel';

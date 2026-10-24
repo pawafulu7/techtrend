@@ -150,43 +150,8 @@ const ROUTES: Array<{
       },
     },
   },
-  {
-    modulePath: '@/app/api/telemetry/baseline/route',
-    methods: {
-      GET: adminAuth(rateLimit('admin:read', HANDLER)),
-      POST: csrf(rateLimit('admin:write', adminAuth(HANDLER))),
-    },
-  },
-  {
-    modulePath: '@/app/api/telemetry/batch/route',
-    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
-  },
-  {
-    modulePath: '@/app/api/telemetry/cache/route',
-    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
-  },
-  {
-    modulePath: '@/app/api/telemetry/memory/route',
-    methods: {
-      GET: adminAuth(rateLimit('admin:read', HANDLER)),
-      POST: csrf(rateLimit('admin:write', adminAuth(HANDLER))),
-    },
-  },
-  {
-    modulePath: '@/app/api/telemetry/metrics/route',
-    methods: { GET: adminAuth(rateLimit('admin:read', HANDLER)) },
-  },
   // issue #783: telemetry の外で内部の状態を返す監視系 API も、管理者だけにして回数を制限する。
   // Redis の障害で制限を数えられないときは通す（障害のときにこそ見る API のため）
-  {
-    modulePath: '@/app/api/cache/health/route',
-    methods: {
-      GET: adminAuth({
-        ...rateLimit('admin:read', HANDLER),
-        options: { allowOnLimiterError: true },
-      }),
-    },
-  },
   {
     modulePath: '@/app/api/cache/stats/route',
     methods: {
@@ -220,9 +185,9 @@ const ROWS = ROUTES.flatMap((route) =>
 );
 
 describe('Auth middleware composition (issues #659, #662)', () => {
-  it('covers all 29 HTTP methods of the 22 routes', () => {
-    expect(ROUTES).toHaveLength(22);
-    expect(ROWS).toHaveLength(29);
+  it('covers all 21 HTTP methods of the 16 routes', () => {
+    expect(ROUTES).toHaveLength(16);
+    expect(ROWS).toHaveLength(21);
   });
 
   it.each(ROUTES.map((route) => [route.modulePath, route] as const))(

@@ -14,14 +14,6 @@ jest.mock('@/lib/logger', () => ({
     error: jest.fn(),
   },
 }));
-jest.mock('@/lib/api/error-handler', () => ({
-  handleApiError: jest.fn().mockReturnValue(
-    new Response(JSON.stringify({ error: { message: 'Internal server error' } }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  ),
-}));
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
   withRateLimit: jest.fn().mockImplementation((_key: string, handler: Function) => handler),
 }));
@@ -418,8 +410,7 @@ describe('/api/changelog', () => {
       });
     });
 
-    it('データベースエラー時にhandleApiErrorが呼ばれる', async () => {
-      const { handleApiError } = require('@/lib/api/error-handler');
+    it('データベースエラー時は内部のエラー文を返さずに500を返す', async () => {
       prismaMock.changelogProject.findFirst.mockRejectedValue(
         new Error('Database error')
       );
@@ -436,10 +427,7 @@ describe('/api/changelog', () => {
       const response = await GET(request);
 
       expect(response.status).toBe(500);
-      expect(handleApiError).toHaveBeenCalledWith(
-        expect.any(Error),
-        '/api/changelog'
-      );
+      expect(await response.json()).toEqual({ error: 'Internal server error' });
     });
   });
 

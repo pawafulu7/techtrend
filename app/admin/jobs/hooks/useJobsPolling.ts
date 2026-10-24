@@ -1,7 +1,7 @@
 'use client';
 
 import { useQueries } from '@tanstack/react-query';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import type {
   ProcessingLogsResponse,
   EmbeddingSummaryResponse,
@@ -156,40 +156,5 @@ export function useJobsPolling(
     error,
     lastUpdated,
     refresh,
-  };
-}
-
-/**
- * Polling control hook for background tab handling
- * Reused pattern from Performance Dashboard
- */
-export function usePollingControl(defaultInterval: number = 30000) {
-  const [isActive, setIsActive] = useState(true);
-  const [interval, setIntervalState] = useState(defaultInterval);
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        // Pause polling when tab is in background
-        setIsActive(false);
-      } else {
-        // Resume polling when tab is in foreground
-        setIsActive(true);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  return {
-    isActive,
-    interval,
-    setInterval: setIntervalState,
-    pause: () => setIsActive(false),
-    resume: () => setIsActive(true),
   };
 }

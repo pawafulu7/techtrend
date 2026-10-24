@@ -1,5 +1,4 @@
 import { daysAgo } from '@/lib/database/article-aggregation-filter';
-import { findNewTags } from '@/lib/database/new-tags';
 import { countTagsByDayBucket } from '@/lib/database/tag-day-buckets';
 import { prisma } from '@/lib/prisma';
 import {
@@ -8,7 +7,6 @@ import {
 } from '@/lib/cache/keywords-cache';
 import {
   buildTrendingSeries,
-  type TrendingKeyword,
   type TrendingKeywordWithSeries,
 } from '@/lib/services/trending-series';
 
@@ -17,17 +15,11 @@ export type {
   TrendingKeywordWithSeries,
 } from '@/lib/services/trending-series';
 
-export interface NewTag {
-  id: string;
-  name: string;
-  count: number;
-}
-
 /** キャッシュに載せる急上昇のタグの数（トレンド概要の一覧の上位 20 件） */
 const TRENDING_LIMIT = 20;
 
 /**
- * 急上昇の話題の集計。トレンド概要・/api/trends/keywords が同じ値を使う。
+ * 急上昇の話題の集計。トレンド概要が使う。
  * 数える記事はホームに出る記事（論文・技術以外・要約の無い記事を除く。話題を押した先のホームの一覧と同じ母集団）
  */
 export interface TrendingSeries {
@@ -35,8 +27,6 @@ export interface TrendingSeries {
   trending: TrendingKeywordWithSeries[];
   /** 急上昇のタグの総数 */
   trendingTotal: number;
-  /** 直近 24 時間に初めて集計の対象になったタグ */
-  newTags: NewTag[];
   /** 直近 24 時間の区間。to が集計した時刻 */
   period: { from: string; to: string };
 }
@@ -45,22 +35,13 @@ async function loadTrendingSeries(): Promise<TrendingSeries> {
   const now = new Date();
   const oneDayAgo = daysAgo(1, now);
 
-  const [rows, newTags] = await Promise.all([
-    countTagsByDayBucket(prisma, { now }),
-    // 新規タグ（過去24時間に初めて使われたタグ）
-    findNewTags(prisma, { from: oneDayAgo, to: now, limit: 10 }),
-  ]);
+  const rows = await countTagsByDayBucket(prisma, { now });
 
   const { trending, trendingTotal } = buildTrendingSeries(rows, TRENDING_LIMIT);
 
   return {
     trending,
     trendingTotal,
-    newTags: newTags.map((tag) => ({
-      id: tag.id,
-      name: tag.name,
-      count: tag.count,
-    })),
     period: {
       from: oneDayAgo.toISOString(),
       to: now.toISOString(),
@@ -68,24 +49,10 @@ async function loadTrendingSeries(): Promise<TrendingSeries> {
   };
 }
 
-/** 急上昇の一覧・区間の件数・総数・新着タグを1つの値として取る（Redis にキャッシュ） */
+/** 急上昇の一覧・区間の件数・総数を1つの値として取る（Redis にキャッシュ） */
 export function getTrendingSeries(): Promise<TrendingSeries> {
   return keywordsCache.getOrSetWithLock(
     TRENDING_SERIES_CACHE_KEY,
     loadTrendingSeries
   );
-}
-
-/** /api/trends/keywords とトレンド概要の形（区間の件数を除く）。getTrendingSeries と同じ値から作る */
-export async function getTrendingKeywords(): Promise<{
-  trending: TrendingKeyword[];
-  newTags: NewTag[];
-  period: { from: string; to: string };
-}> {
-  const { trending, newTags, period } = await getTrendingSeries();
-  return {
-    trending: trending.map(({ series: _series, ...keyword }) => keyword),
-    newTags,
-    period,
-  };
 }

@@ -39,9 +39,6 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
-jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
-  withCronOrAdminAuth: jest.fn((handler: Function) => handler),
-}));
 
 import { GET } from '@/app/api/trends/daily/route';
 import { prisma } from '@/lib/prisma';
