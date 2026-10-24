@@ -3,10 +3,11 @@ import { logger } from '@/lib/logger';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 /**
- * Manual worker execution for local development.
+ * Embedding worker entry point.
  *
- * In production, this runs automatically via Vercel Cron (/api/workers/embedding).
- * In local dev, Vercel Cron doesn't work, so use this script instead.
+ * In production, GitHub Actions runs this every 30 minutes
+ * (.github/workflows/scheduler-embedding-worker.yml).
+ * In local dev, run it manually.
  *
  * Usage:
  *   npm run worker:embedding

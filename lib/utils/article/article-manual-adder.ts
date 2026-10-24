@@ -5,7 +5,8 @@
 import type { PrismaClient } from '@/lib/prisma-exports';
 import { Source } from '@/lib/prisma-exports';
 import { prisma as defaultPrisma } from '@/lib/prisma';
-import { UnifiedSummaryService } from '../../ai/unified-summary-service';
+import { getAppDependencies } from '@/lib/di/bootstrap';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { ContentEnricherFactory } from '../../enrichers';
 import {
@@ -320,6 +321,9 @@ export async function addArticleManually(
         detailedSummary: null,
         thumbnail,
         content: content || null,
+        // 本文を書いた時刻。品質スコアの定期計算（manage-quality-scores.ts）は contentUpdatedAt で
+        // 対象を選ぶので、NULL のままだとスコアが付かない（collect-feeds.ts と同じく保存時に書く）
+        contentUpdatedAt: content ? new Date() : null,
         publishedAt: new Date(),
         sourceId: source!.id,
         bookmarks: 0,
@@ -341,13 +345,12 @@ export async function addArticleManually(
 
     if (!skipSummary && content && content.length > 100) {
       try {
-        const summaryService = new UnifiedSummaryService();
-        const result = await summaryService.generate(
-          finalTitle,
+        // 定期実行と同じ要約サービス（lib/ai/service/）で作る
+        const result = await getAppDependencies().service.generateSummary({
+          title: finalTitle,
           content,
-          {},
-          {}
-        );
+          url,
+        });
 
         // resultが正常に返ってきた場合
         summary = result.summary;
@@ -360,8 +363,14 @@ export async function addArticleManually(
           data: {
             summary,
             detailedSummary,
-            summaryVersion: result.summaryVersion || 7,
-            articleType: result.articleType || 'unified',
+            translatedTitle: result.translatedTitle,
+            summaryVersion: result.summaryVersion,
+            articleType: 'unified',
+            // 定期実行の要約生成（batch-processor）と同じ状態を書く。一覧は summaryComputedAt が
+            // ある記事だけを出すので、書かないと手動で追加した記事がホームに出ない
+            summaryComputedAt: new Date(),
+            summaryError: null,
+            skipReason: null,
           },
         });
         // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む。失敗はログだけ）
@@ -386,6 +395,17 @@ export async function addArticleManually(
           'Summary generation failed'
         );
       }
+    }
+
+    // 一覧・件数・ソースのキャッシュを消す（collect-feeds.ts の取り込みの後と同じ）。
+    // 記事は保存済みなので、失敗しても警告だけにする（値は TTL で切れる）
+    try {
+      await cacheInvalidator.onBulkImport();
+    } catch (cacheError) {
+      logger.warn(
+        { err: cacheError, articleId: article.id },
+        'Cache invalidation after manual add failed'
+      );
     }
 
     return {

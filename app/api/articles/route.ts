@@ -2,17 +2,13 @@
  * Articles API Route Handler
  *
  * Entry point for /api/articles endpoint.
- * Delegates to modular handlers for GET and POST operations.
+ * Delegates to modular handlers.
  *
  * GET  - List articles with pagination, filtering, and personalization
- * POST - Create new article with tags
  */
 
 import { NextRequest } from 'next/server';
-import { handleGet, handlePost } from './handlers';
-import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
-import { withRateLimit } from '@/lib/middleware/with-rate-limit';
-import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
+import { handleGet } from './handlers';
 
 /**
  * GET /api/articles
@@ -43,23 +39,3 @@ import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 export async function GET(request: NextRequest) {
   return handleGet(request);
 }
-
-/**
- * POST /api/articles
- *
- * Authorization: admin session required (withAdminAuth). Non-admin and
- * unauthenticated requests are rejected before reaching the handler.
- *
- * Request Body:
- * - title: Article title (required)
- * - url: Article URL (required, unique)
- * - sourceId: Source ID (required)
- * - summary: Article summary
- * - thumbnail: Thumbnail URL
- * - content: Full article content
- * - publishedAt: Publication date (default: now)
- * - tagNames: Array of tag names
- */
-export const POST = withCSRFProtection(
-  withRateLimit('admin:write', withAdminAuth(handlePost))
-);

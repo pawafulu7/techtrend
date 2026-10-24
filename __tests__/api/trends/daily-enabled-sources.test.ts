@@ -28,9 +28,6 @@ jest.mock('@/lib/cache', () => ({
   })),
 }));
 
-jest.mock('@/lib/middleware/with-cron-or-admin-auth', () => ({
-  withCronOrAdminAuth: jest.fn((handler: unknown) => handler),
-}));
 
 import { NextRequest } from 'next/server';
 import { TrendPeriodType } from '@/lib/prisma-exports';

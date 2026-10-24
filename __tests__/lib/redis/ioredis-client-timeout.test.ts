@@ -1,7 +1,7 @@
 /**
  * Redis の命令の応答を待つ上限（commandTimeout）。接続が生きたまま応答が止まると、命令は既定では
  * 永遠に待ち、ホームの表示がソース・タグの取得で止まる（Redis を一時停止して確認した）。
- * どちらのクライアント（lib/redis/ioredis-client.ts と DI の redis.provider）も上限を渡すことを確かめる。
+ * lib/redis/ioredis-client.ts が上限を渡すことを確かめる。
  */
 const constructed: Array<{ args: unknown[] }> = [];
 jest.mock('ioredis', () => {
@@ -51,22 +51,4 @@ it('上限で失敗にした命令を、再接続のときに送り直さない�
 it('IoRedisClient は設定で上限を変えられる', () => {
   new IoRedisClient({ commandTimeout: 250 });
   expect(optionsOf(0).commandTimeout).toBe(250);
-});
-
-it('DI の Redis も同じ上限を渡す', () => {
-  jest.isolateModules(() => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const {
-      registerRedisProvider,
-      getRedisClient,
-    } = require('@/lib/di/providers/redis.provider');
-    registerRedisProvider();
-    getRedisClient();
-  });
-  expect(optionsOf(constructed.length - 1).commandTimeout).toBe(
-    REDIS_COMMAND_TIMEOUT_MS
-  );
-  expect(optionsOf(constructed.length - 1).autoResendUnfulfilledCommands).toBe(
-    false
-  );
 });

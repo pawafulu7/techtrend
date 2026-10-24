@@ -120,10 +120,6 @@ const envSchema = z
     RAG_ACTIVE_VERSION: safeCoerceInt(1),
     RAG_ENABLED: booleanEnum.optional().default('false'),
 
-    // Upstash Redis (for rate limiting in production)
-    UPSTASH_REDIS_REST_URL: optionalUrl,
-    UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
-
     // Feature Flags
     ENABLE_CACHE: booleanEnum.optional().default('true'),
     ENABLE_AUTH: booleanEnum.optional().default('true'),
@@ -492,8 +488,6 @@ export const features = {
   isQualityCheckEnabled: () => env.QUALITY_CHECK_ENABLED === 'true',
   shouldExcludeEventArticles: () => env.EXCLUDE_EVENT_ARTICLES === 'true',
   isRagEnabled: () => env.RAG_ENABLED === 'true' && !!env.OPENAI_API_KEY,
-  isRateLimitingEnabled: () =>
-    !!(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN),
   // NOTE: proxy.ts は env.ts を import できない（pino 依存）ため、proxy 側では
   // process.env.MAINTENANCE_MODE?.trim() === 'true' を直接参照する。
   // このヘルパは env.ts を import 可能なアプリ他所からの参照用（型定義・一貫性目的）。

@@ -4,13 +4,14 @@
  * - 品質スコアに関係なく全記事を対象
  * - 統一フォーマットで詳細要約を生成
  * - API負荷軽減のため適切な間隔で実行
+ * - 要約は定期実行と同じ要約サービス（lib/ai/service/）で作る
  */
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import type { Prisma } from '@/lib/prisma-exports';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
-import { getUnifiedSummaryService } from '../../lib/ai/unified-summary-service';
+import { getAppDependencies } from '@/lib/di/bootstrap';
 import { resolveTags } from '@/lib/services/tag-service';
 import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { closeRedisConnection } from '@/lib/redis/client';
@@ -28,14 +29,21 @@ const unprocessedWhere = {
 const args = process.argv.slice(2);
 const isDryRun = args.includes('--dry-run');
 const limit = args.find(arg => arg.startsWith('--limit='))?.split('=')[1];
-const maxArticles = limit ? parseInt(limit, 10) : undefined;
+const maxArticles = limit !== undefined ? Number(limit) : undefined;
+// 0・負の数・数字でない値を「上限なし」と取り違えないよう、始める前に止める（--force と併用すると全件になる）
+if (maxArticles !== undefined && (!Number.isSafeInteger(maxArticles) || maxArticles <= 0)) {
+  console.error(`--limit には 1 以上の整数を指定してください: ${limit}`);
+  process.exit(1);
+}
 const continueMode = args.includes('--continue'); // 中断した場合の継続モード
 const forceRegenerate = args.includes('--force'); // 処理済みでも強制再生成
 
 interface SummaryResult {
   summary: string;
   detailedSummary: string;
+  translatedTitle?: string;
   tags: string[];
+  summaryVersion: number;
 }
 
 interface ProcessStats {
@@ -49,9 +57,6 @@ interface ProcessStats {
 }
 
 async function generateUnifiedSummary(title: string, content: string): Promise<SummaryResult> {
-  // 統一サービスを使用
-  const service = getUnifiedSummaryService();
-  
   // コンテンツを適切な長さに調整
   let processedContent = content;
   if (content.length < 300) {
@@ -62,9 +67,10 @@ async function generateUnifiedSummary(title: string, content: string): Promise<S
     processedContent = content.substring(0, 5000);
   }
 
-  const result = await service.generate(title, processedContent, {
-    maxRetries: 3,
-    minQualityScore: 40
+  const result = await getAppDependencies().service.generateSummary({
+    title,
+    content: processedContent,
+    qualityThreshold: 40,
   });
   
   // 重複チェック
@@ -99,7 +105,9 @@ async function generateUnifiedSummary(title: string, content: string): Promise<S
   return {
     summary: finalSummary,
     detailedSummary: finalDetailedSummary,
-    tags: result.tags
+    translatedTitle: result.translatedTitle,
+    tags: result.tags ?? [],
+    summaryVersion: result.summaryVersion
   };
 }
 
@@ -130,8 +138,9 @@ async function saveRegeneratedSummary(articleId: string, result: SummaryResult):
       data: {
         summary: result.summary,
         detailedSummary: result.detailedSummary,
+        translatedTitle: result.translatedTitle,
         articleType: 'unified',
-        summaryVersion: getUnifiedSummaryService().getSummaryVersion(),
+        summaryVersion: result.summaryVersion,
         // 定期実行の要約生成（batch-processor）と同じ状態を書く。一覧は summaryComputedAt が
         // ある記事だけを出す
         summaryComputedAt: new Date(),
@@ -284,9 +293,9 @@ async function main() {
         console.error(`  ❌ エラー: ${errorMessage}`);
         
         // Rate Limitエラーの場合は特別処理
-        // 旧サービスは「API request failed: 429 - {本文}」で投げる。本文にはエラーの種類に関わらず
-        // generativelanguage.googleapis.com が入るので、'rate' の部分一致では判定しない
-        if (/API request failed: 429\b|RESOURCE_EXHAUSTED/.test(errorMessage)) {
+        // 要約サービス（lib/ai/service/）は「... HTTP 429: {本文}」の形で投げる（transport の HTTP エラー）。
+        // 本文にはエラーの種類に関わらず generativelanguage.googleapis.com が入るので、'rate' の部分一致では判定しない
+        if (/HTTP 429\b|RESOURCE_EXHAUSTED/.test(errorMessage)) {
           console.error('⚠️  Rate Limitエラーを検出しました。');
           console.error('📊 現在の進捗:');
           console.error(`  - 処理済み: ${stats.processed}件`);

@@ -54,7 +54,7 @@ async function getArticle(id: string) {
 }
 
 // ISR: Revalidate every 60 seconds
-// Article updates trigger revalidatePath via articleDetailCache.invalidate()
+// Article updates trigger revalidatePath via articleDetailCache.invalidateArticle()
 export const revalidate = 60;
 
 export default async function ArticlePage({ params, searchParams }: PageProps) {

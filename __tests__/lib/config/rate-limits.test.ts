@@ -16,8 +16,7 @@ describe('Rate Limit Configuration', () => {
     });
 
     it('should have AI policies', () => {
-      expect(RATE_LIMIT_POLICIES['ai:summary']).toBeDefined();
-      expect(RATE_LIMIT_POLICIES['ai:tags']).toBeDefined();
+      expect(RATE_LIMIT_POLICIES['admin:ai-generate']).toBeDefined();
     });
 
     it('should have RAG policies', () => {
@@ -73,8 +72,8 @@ describe('Rate Limit Configuration', () => {
     });
 
     it('should use user strategy for AI endpoints', () => {
-      expect(RATE_LIMIT_POLICIES['ai:summary'].keyStrategy).toBe('user');
-      expect(RATE_LIMIT_POLICIES['ai:tags'].keyStrategy).toBe('user');
+      expect(RATE_LIMIT_POLICIES['admin:ai-generate'].keyStrategy).toBe('user');
+      expect(RATE_LIMIT_POLICIES['rag:agent'].keyStrategy).toBe('user');
     });
   });
 
@@ -212,7 +211,7 @@ describe('Rate Limit Configuration', () => {
       expect(authConfig.blockDuration).toBe(60);
 
       // AI policies have 0s block (soft throttle only)
-      const aiConfig = getRateLimitConfig('ai:summary');
+      const aiConfig = getRateLimitConfig('rag:agent');
       expect(aiConfig.blockDuration).toBe(0);
 
       // Public endpoints have 0s block
@@ -225,7 +224,7 @@ describe('Rate Limit Configuration', () => {
     it('should have telemetry events for high-value policies', () => {
       expect(RATE_LIMIT_POLICIES['auth:register'].telemetryEvent).toBeDefined();
       expect(RATE_LIMIT_POLICIES['auth:login'].telemetryEvent).toBeDefined();
-      expect(RATE_LIMIT_POLICIES['ai:summary'].telemetryEvent).toBeDefined();
+      expect(RATE_LIMIT_POLICIES['admin:ai-generate'].telemetryEvent).toBeDefined();
       expect(RATE_LIMIT_POLICIES['rag:agent'].telemetryEvent).toBeDefined();
     });
 

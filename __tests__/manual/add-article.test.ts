@@ -27,16 +27,19 @@ import { detectSourceFromUrl, normalizeSourceName, isValidUrl, isSupportedUrl } 
 import { addArticleManually, setPrismaClient } from '../../lib/utils/article/article-manual-adder';
 import { PrismaClient } from '@/lib/prisma-exports';
 import { WebFetcher } from '../../lib/utils/web-fetcher';
-import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
+import { getAppDependencies } from '@/lib/di/bootstrap';
 
-// UnifiedSummaryServiceのモック
-jest.mock('../../lib/ai/unified-summary-service', () => ({
-  UnifiedSummaryService: jest.fn().mockImplementation(() => ({
-    generate: jest.fn().mockResolvedValue({
-      success: true,
-      summary: 'テスト要約',
-      detailedSummary: 'テスト詳細要約',
-    }),
+// 一覧・ソースのキャッシュの無効化
+const mockOnBulkImport = jest.fn();
+jest.mock('@/lib/cache/cache-invalidator', () => ({
+  cacheInvalidator: { onBulkImport: (...args: unknown[]) => mockOnBulkImport(...args) },
+}));
+
+// 要約サービス（定期実行と同じ lib/ai/service/）のモック
+const mockGenerateSummary = jest.fn();
+jest.mock('@/lib/di/bootstrap', () => ({
+  getAppDependencies: jest.fn(() => ({
+    service: { generateSummary: mockGenerateSummary },
   })),
 }));
 
@@ -137,6 +140,16 @@ describe('addArticleManually', () => {
     // モックインスタンスを実際のコードに注入
     setPrismaClient(mockPrisma);
     jest.clearAllMocks();
+    mockOnBulkImport.mockResolvedValue(undefined);
+    mockGenerateSummary.mockResolvedValue({
+      summary: 'テスト要約',
+      detailedSummary: 'テスト詳細要約',
+      translatedTitle: 'テスト記事',
+      tags: [],
+      qualityScore: 80,
+      processingTimeMs: 1,
+      summaryVersion: 9,
+    });
   });
 
   test('新規記事を正常に追加', async () => {
@@ -180,8 +193,33 @@ describe('addArticleManually', () => {
 
     expect(result.summary).toBe('テスト要約');
     // 要約の生成には記事の ID を渡さない（生成の時点ではジョブを積まない）
-    const { generate } = (UnifiedSummaryService as jest.Mock).mock.results[0].value;
-    expect(generate.mock.calls[0]).toHaveLength(4);
+    expect(getAppDependencies).toHaveBeenCalled();
+    expect(mockGenerateSummary).toHaveBeenCalledWith({
+      title: 'Test Article',
+      content: expect.any(String),
+      url: 'https://example.com/article',
+    });
+    // 一覧は summaryComputedAt がある記事だけを出すので、定期実行と同じ状態を書く
+    expect(mockPrisma.article.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'article-1' },
+        data: expect.objectContaining({
+          summary: 'テスト要約',
+          translatedTitle: 'テスト記事',
+          summaryComputedAt: expect.any(Date),
+          summaryError: null,
+          skipReason: null,
+        }),
+      })
+    );
+    // 本文を書いた時刻を残す（品質スコアの定期計算は contentUpdatedAt で対象を選ぶ）
+    expect(mockPrisma.article.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ contentUpdatedAt: expect.any(Date) }),
+      })
+    );
+    // 保存の後に一覧・ソースのキャッシュを消す
+    expect(mockOnBulkImport).toHaveBeenCalledTimes(1);
     expect(mockPrisma.embeddingJob.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ where: { articleId: 'article-1' } })
     );

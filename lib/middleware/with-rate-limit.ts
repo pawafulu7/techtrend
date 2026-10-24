@@ -65,7 +65,7 @@ interface WithRateLimitOptions {
  * @example
  * // With custom key resolver
  * export const POST = withRateLimit(
- *   'ai:summary',
+ *   'admin:ai-generate',
  *   async (request) => { ... },
  *   {
  *     keyResolver: async (req, session) => `custom:${session?.user?.email}`,

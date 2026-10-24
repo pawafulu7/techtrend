@@ -16,12 +16,12 @@ qualityScoresCommand
     try {
       logger.info('品質スコア計算を開始します');
       
-      const scriptPath = path.join(process.cwd(), 'scripts/core/manage-quality-scores.ts');
-      const args = ['calculate'];
+      const scriptPath = path.join(process.cwd(), 'scripts/scheduled/manage-quality-scores.ts');
+      // 既存のスコアも計算し直すときは、差分の絞り込みを外す（calculate --force）。
+      // スクリプトの recalculate は全記事のスコアを 0 に戻してから採点し直し、その間は品質の
+      // 絞り込みを使う一覧に記事が出なくなるので、CLI からは使わない
+      const args = ['calculate', ...(_options.recalculate ? ['--force'] : [])];
       
-      if (_options.recalculate) {
-        args.push('--recalculate');
-      }
       if (_options.source) {
         args.push('--source', _options.source);
       }
@@ -58,8 +58,8 @@ qualityScoresCommand
     try {
       logger.info('品質スコア修正を開始します');
       
-      const scriptPath = path.join(process.cwd(), 'scripts/core/manage-quality-scores.ts');
-      const args = ['fix'];
+      const scriptPath = path.join(process.cwd(), 'scripts/scheduled/manage-quality-scores.ts');
+      const args = ['fix-zero'];
       
       const child = fork(scriptPath, args, {
         execArgv: ['-r', 'tsx/cjs'],

@@ -1,6 +1,6 @@
 /**
  * キャッシュ関連のモックヘルパー
- * RedisCache、RedisService、CircuitBreakerのモック
+ * RedisCache、RedisServiceのモック
  */
 
 /**
@@ -78,41 +78,6 @@ export const createGetRedisClientMock = () => {
 };
 
 /**
- * CircuitBreakerのモックステータスを作成
- */
-export const createCircuitBreakerStats = (
-  state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED',
-  options: {
-    failures?: number;
-    successes?: number;
-    consecutiveFailures?: number;
-    lastFailureTime?: string | null;
-    nextRetryTime?: string | null;
-  } = {}
-) => ({
-  state,
-  failures: options.failures ?? (state === 'OPEN' ? 10 : 0),
-  successes: options.successes ?? (state === 'OPEN' ? 0 : 100),
-  consecutiveFailures: options.consecutiveFailures ?? (state === 'OPEN' ? 10 : 0),
-  lastFailureTime: options.lastFailureTime ?? (state === 'OPEN' ? new Date().toISOString() : null),
-  nextRetryTime: options.nextRetryTime ?? (state === 'OPEN' ? new Date(Date.now() + 60000).toISOString() : null),
-});
-
-/**
- * CircuitBreakerのモックを作成
- */
-export const createCircuitBreakerMock = (initialState: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED') => {
-  const mock = {
-    getStats: jest.fn().mockReturnValue(createCircuitBreakerStats(initialState)),
-    execute: jest.fn().mockResolvedValue(undefined),
-    open: jest.fn(),
-    close: jest.fn(),
-    halfOpen: jest.fn(),
-  };
-  return mock;
-};
-
-/**
  * SourceCacheのモックインスタンスを作成
  */
 export const createSourceCacheMock = () => ({
@@ -132,7 +97,6 @@ export const setupGlobalCacheMocks = () => {
   const redisCacheMock = createRedisCacheMock();
   const redisServiceMock = createRedisServiceMock();
   const redisClientMock = createRedisClientMock();
-  const circuitBreakerMock = createCircuitBreakerMock();
   const sourceCacheMock = createSourceCacheMock();
 
   // グローバルにモックを設定
@@ -148,10 +112,6 @@ export const setupGlobalCacheMocks = () => {
     getRedisClient: jest.fn().mockReturnValue(redisClientMock),
   }));
 
-  jest.mock('@/lib/cache/circuit-breaker', () => ({
-    redisCircuitBreaker: circuitBreakerMock,
-  }));
-
   jest.mock('@/lib/cache/source-cache', () => ({
     sourceCache: sourceCacheMock,
   }));
@@ -160,7 +120,6 @@ export const setupGlobalCacheMocks = () => {
     redisCacheMock,
     redisServiceMock,
     redisClientMock,
-    circuitBreakerMock,
     sourceCacheMock,
   };
 };

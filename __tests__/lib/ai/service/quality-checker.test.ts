@@ -1,5 +1,5 @@
 import { SummaryQualityChecker } from '@/lib/ai/service/quality-checker';
-import type { ContentAnalysis } from '@/lib/ai/types';
+import type { ContentAnalysis } from '@/lib/ai/service/quality-checker.interface';
 
 const VALID_SUMMARY =
   'テスト用の一覧要約テキストを繰り返して十分な長さを確保します。'.repeat(4);

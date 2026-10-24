@@ -71,24 +71,6 @@ export const RATE_LIMIT_POLICIES = {
     telemetryEvent: 'ratelimit.auth.auto-login',
   },
 
-  // AI Generation (Cost Control) - No block, soft throttle only
-  'ai:summary': {
-    points: 10,
-    duration: 60,
-    blockDuration: 0,
-    keyStrategy: 'user',
-    notes: 'Gemini API cost control',
-    telemetryEvent: 'ratelimit.ai.summary',
-  },
-  'ai:tags': {
-    points: 10,
-    duration: 60,
-    blockDuration: 0,
-    keyStrategy: 'user',
-    notes: 'Gemini API cost control',
-    telemetryEvent: 'ratelimit.ai.tags',
-  },
-
   // RAG (Existing Policies) - No block, soft throttle only
   'rag:agent': {
     points: 5,
@@ -384,16 +366,6 @@ export const RATE_LIMIT_POLICIES = {
     keyStrategy: 'user' as const,
     notes: 'Admin AI summary regeneration (5 per minute)',
     telemetryEvent: 'ratelimit.admin.ai-generate',
-  },
-
-  // Cron / Internal Batch Operations
-  'cron:embedding-worker': {
-    points: 10,
-    duration: 60,
-    blockDuration: 0,
-    keyStrategy: 'ip',
-    notes: 'Embedding worker cron endpoint (internal use)',
-    telemetryEvent: 'ratelimit.cron.embedding-worker',
   },
 
   // Default Catch-All - No block

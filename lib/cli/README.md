@@ -1,143 +1,72 @@
 # TechTrend CLI
 
-統合管理ツールのドキュメントです。
+運用のための管理ツール。コマンドの登録は `lib/cli/index.ts`、各コマンドは `lib/cli/commands/` にある。収集・品質スコア・タグの掃除は、定期実行と同じ `scripts/scheduled/` のスクリプトを子プロセスで起動する。
 
 ## 使用方法
 
 ```bash
 # ヘルプの表示
-npx techtrend --help
-
-# または npm scripts経由
 npm run techtrend -- --help
+npm run techtrend -- <コマンド> --help
+
+# ローカルの DB を使うときは env を読み込ませる
+npx dotenv run -- tsx lib/cli/index.ts <コマンド>
 ```
+
+`package.json` に `bin` は無いので、`npx techtrend` では動かない。
 
 ## コマンド一覧
 
-### feed - フィード管理
+### feeds - フィード
 
 ```bash
-# フィード収集
-npx techtrend feed collect "Dev.to" "Qiita"
-
-# ソース一覧表示
-npx techtrend feed list
-
-# 収集状況確認
-npx techtrend feed status
+npm run techtrend -- feeds collect "Dev.to" "Qiita"   # 指定したソースから収集
+npm run techtrend -- feeds collect --all              # すべてのソースから収集
+npm run techtrend -- feeds sources                    # ソース一覧
+npm run techtrend -- feeds stats --days 7             # 収集の統計
 ```
 
-### summary - 要約管理
+### summaries - 要約
 
 ```bash
-# 要約生成
-npx techtrend summary generate
-
-# 特定ソースの要約生成
-npx techtrend summary generate --source "Dev.to"
-
-# 要約再生成
-npx techtrend summary regenerate --force
-
-# 欠損要約の生成
-npx techtrend summary missing --days 7
+npm run techtrend -- summaries generate --source "Dev.to" --limit 100 --batch-size 10
+npm run techtrend -- summaries regenerate --days 7 --force --batch 10
+npm run techtrend -- summaries check
 ```
 
-### quality - 品質スコア管理
+### quality-scores - 品質スコア
 
 ```bash
-# 品質スコア計算
-npx techtrend quality calculate
-
-# 0スコアの修正
-npx techtrend quality fix-zero
-
-# スコア再計算
-npx techtrend quality recalculate --force
+npm run techtrend -- quality-scores calculate --source "Dev.to"   # scripts/scheduled/manage-quality-scores.ts calculate
+npm run techtrend -- quality-scores calculate --recalculate       # 採点済みの記事も計算し直す（同 calculate --force）
+npm run techtrend -- quality-scores fix                           # スコアが 0 の記事を直す（同 fix-zero）
+npm run techtrend -- quality-scores stats
 ```
 
-### article - 記事管理
+### tags - タグ
 
 ```bash
-# 記事検索
-npx techtrend article search "React"
-
-# 低品質記事のクリーンアップ
-npx techtrend article cleanup --dry-run
+npm run techtrend -- tags list --category <カテゴリ> --limit 50
+npm run techtrend -- tags stats
+npm run techtrend -- tags clean --dry-run
+npm run techtrend -- tags categorize --overwrite --dry-run
 ```
 
-### tag - タグ管理
+### cleanup - データの掃除
 
 ```bash
-# タグ一覧
-npx techtrend tag list
-
-# タグ統計
-npx techtrend tag stats
-
-# 未使用タグのクリーンアップ
-npx techtrend tag cleanup
+npm run techtrend -- cleanup tags --dry-run   # 空のタグや重複タグ（scripts/scheduled/clean-tags.ts）
+npm run techtrend -- cleanup stats
 ```
 
-### source - ソース管理
+### db - DB
 
 ```bash
-# ソース一覧
-npx techtrend source list
-
-# ソース有効化/無効化
-npx techtrend source enable "Dev.to"
-npx techtrend source disable "Dev.to"
-
-# ソース統計
-npx techtrend source stats
+npm run techtrend -- db stats   # 主要テーブルの件数と最新記事日時
 ```
 
-## グローバルオプション
+## 新しいコマンドの追加
 
-- `--verbose, -v` - 詳細なログ出力
-- `--quiet, -q` - 最小限のログ出力
-- `--dry-run` - 実行せずに処理内容を表示
-- `--help, -h` - ヘルプの表示
-- `--version` - バージョン表示
-
-## 開発者向け
-
-### 新しいコマンドの追加
-
-1. `lib/cli/commands/`に新しいコマンドファイルを作成
-2. Commanderのサブコマンドとして実装
-3. `lib/cli/index.ts`でコマンドを登録
-
-例：
-```typescript
-// lib/cli/commands/example.ts
-import { Command } from 'commander';
-
-export function createExampleCommand() {
-  const command = new Command('example');
-  
-  command
-    .description('例のコマンド')
-    .action(async () => {
-      console.log('Example command executed');
-    });
-    
-  return command;
-}
-```
-
-### テスト
-
-```bash
-# CLIのテスト実行
-npm test -- cli.test.ts
-
-# 統合テスト
-npm test -- integration/cli
-```
-
-## 移行状況
-
-現在はPhase 1（互換性維持モード）で、既存スクリプトをラップしています。
-詳細は[CLI-MIGRATION-PLAN.md](../../docs/CLI-MIGRATION-PLAN.md)を参照してください。
+1. `lib/cli/commands/` にコマンドのファイルを作る（Commander の `Command` を export する）
+2. `lib/cli/index.ts` で `program.addCommand()` に登録する
+3. テストは `__tests__/unit/lib/cli.test.ts`・`__tests__/lib/cli/commands/` にある

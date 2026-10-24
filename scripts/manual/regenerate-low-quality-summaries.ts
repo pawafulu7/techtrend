@@ -1,6 +1,9 @@
 #!/usr/bin/env tsx
 /**
  * 低品質な要約を検出して一括再生成するスクリプト
+ * - 対象は要約の文面の品質チェック（checkSummaryQuality）が閾値未満か、一覧要約が 100 字未満の記事。
+ *   定期実行の auto-regenerate-low-quality.ts（記事の品質スコアで選ぶ）とは選び方が違う
+ * - 要約は定期実行と同じ要約サービス（lib/ai/service/）で作る
  * 
  * 使用方法:
  * npm run regenerate:low-quality
@@ -14,7 +17,7 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { Article, Source } from '@/lib/prisma-exports';
 import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
-import { UnifiedSummaryService } from '../../lib/ai/unified-summary-service';
+import { getAppDependencies } from '@/lib/di/bootstrap';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { calculateArticleQualityScore } from '../../lib/utils/quality-score';
 import { resolveTags } from '@/lib/services/tag-service';
@@ -40,8 +43,14 @@ interface ArticleWithSource extends Article {
   source: Source | null;
 }
 
+/** 検出の段階では本文を読まない（全記事の本文をメモリに載せないため）。本文は作り直すときに引く */
+interface CandidateArticle {
+  id: string;
+  title: string;
+}
+
 interface LowQualityArticle {
-  article: ArticleWithSource;
+  article: CandidateArticle;
   score: number;
   issues: Array<{
     type: string;
@@ -78,44 +87,38 @@ interface Statistics {
 interface SummaryAndTags {
   summary: string;
   detailedSummary: string;
+  translatedTitle?: string;
   tags: string[];
   articleType: string;
   summaryVersion: number;
 }
 
 /**
- * 要約とタグを生成（UnifiedSummaryServiceを使用）
+ * 要約とタグを生成（定期実行と同じ要約サービス lib/ai/service/ を使用）
  */
 async function generateSummaryAndTags(
   title: string,
   content: string,
   sourceInfo?: { sourceName?: string; url?: string }
 ): Promise<SummaryAndTags> {
-  const summaryService = new UnifiedSummaryService();
-
   try {
-    const result = await summaryService.generate(
+    const result = await getAppDependencies().service.generateSummary({
       title,
       content,
-      {
-        maxRetries: 1,            // 外側の再試行と重複させない
-        minQualityScore: qualityThreshold,
-        retryDelay: 2000
-      },
-      sourceInfo
-    );
+      url: sourceInfo?.url,
+      // --score をサービスの品質の閾値にも渡す（渡さないと既定の閾値で弾かれ、下げる指定が効かない）
+      qualityThreshold,
+    });
 
     return {
       summary: result.summary,
       detailedSummary: result.detailedSummary,
-      tags: result.tags,
-      articleType: result.articleType,
+      translatedTitle: result.translatedTitle,
+      tags: result.tags ?? [],
+      articleType: 'unified',
       summaryVersion: result.summaryVersion
     };
   } catch (error) {
-    if (error instanceof Error && error.message.includes('SKIP_GENERATION')) {
-      throw error;
-    }
     throw new Error(`Failed to generate summary: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
@@ -139,14 +142,19 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
         { summaryComputedAt: { lt: oneDayAgo } }  // 24時間以上前に生成された記事のみ
       ]
     },
-    include: {
-      source: true
+    // 本文は読まず、長さ（DB トリガーが保つ contentLength）だけを使う
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      detailedSummary: true,
+      contentLength: true
     },
     orderBy: {
       publishedAt: 'desc'
     },
     ...(limit !== undefined ? { take: limit } : {})
-  }) as ArticleWithSource[];
+  });
   
   console.error(`   検査対象記事数: ${articles.length}件`);
   
@@ -161,12 +169,13 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
   for (const article of articles) {
     if (!article.summary) continue;
 
+    const contentLength = article.contentLength ?? 0;
     const contentAnalysis = {
-      contentLength: article.content?.length || 0,
-      totalLength: article.content?.length || 0,
-      isThinContent: (article.content?.length || 0) < 1000,
-      recommendedMinLength: (article.content?.length || 0) < 1000 ? 60 : 100,
-      recommendedMaxLength: (article.content?.length || 0) < 1000 ? 100 : 200
+      contentLength,
+      totalLength: contentLength,
+      isThinContent: contentLength < 1000,
+      recommendedMinLength: contentLength < 1000 ? 60 : 100,
+      recommendedMaxLength: contentLength < 1000 ? 100 : 200
     };
 
     const qualityCheck = checkSummaryQuality(
@@ -187,7 +196,7 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
 
     if (qualityCheck.score < qualityThreshold || isTooShort) {
       lowQualityArticles.push({
-        article,
+        article: { id: article.id, title: article.title },
         score: qualityCheck.score,
         issues: qualityCheck.issues
       });
@@ -221,15 +230,15 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
   const startTime = Date.now();
   
   for (let i = 0; i < lowQualityArticles.length; i++) {
-    const { article, score: beforeScore, issues } = lowQualityArticles[i];
+    const { article: candidate, score: beforeScore, issues } = lowQualityArticles[i];
     
-    console.error(`\n[${i + 1}/${lowQualityArticles.length}] 処理中: ${article.title.substring(0, 50)}...`);
+    console.error(`\n[${i + 1}/${lowQualityArticles.length}] 処理中: ${candidate.title.substring(0, 50)}...`);
     console.error(`   現在のスコア: ${beforeScore}点`);
     console.error(`   問題点: ${issues.map(i => i.type).join(', ')}`);
     
     const result: RegenerationResult = {
-      id: article.id,
-      title: article.title,
+      id: candidate.id,
+      title: candidate.title,
       beforeScore,
       afterScore: beforeScore,
       status: 'skipped',
@@ -237,6 +246,16 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
     };
     
     try {
+      const article = (await prisma.article.findUnique({
+        where: { id: candidate.id },
+        include: { source: true }
+      })) as ArticleWithSource | null;
+      if (!article) {
+        console.error('   ⚠️  記事が見つからないためスキップ');
+        result.error = 'NOT_FOUND';
+        results.push(result);
+        continue;
+      }
       const content = article.content || '';
       
       if (content.length < 300) {
@@ -313,6 +332,7 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                   data: {
                     summary: generated.summary,
                     detailedSummary: generated.detailedSummary,
+                    translatedTitle: generated.translatedTitle,
                     articleType: generated.articleType,
                     summaryVersion: generated.summaryVersion,
                     summaryComputedAt: now,

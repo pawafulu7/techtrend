@@ -16,7 +16,7 @@ import {
   enabledSourceWhere,
 } from '@/lib/database/enabled-source-filter';
 
-// 実 DB の PrismaClient は jest.requireActual で取る（__tests__/api/workers/embedding.test.ts と同じ）
+// 実 DB の PrismaClient は jest.requireActual で取る
 const { PrismaClient: RealPrismaClient } = jest.requireActual(
   '@/lib/prisma-exports'
 );

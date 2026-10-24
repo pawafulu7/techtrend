@@ -239,22 +239,10 @@ test.describe('マイルストーン1: 表示と集計の回帰検査', () => {
     const tags = await request
       .get('/api/tags/new?days=1')
       .then((r) => r.json());
-    const trends = await request
-      .get('/api/trends/keywords')
-      .then((r) => r.json());
     expect(
       tags.tags.some(
         (tag: { name: string }) => tag.name === `${prefix}-new-tag`
       )
     ).toBe(true);
-    expect(
-      tags.tags
-        .slice(0, 10)
-        .map((tag: { id: string; name: string; articleCount: number }) => ({
-          id: tag.id,
-          name: tag.name,
-          count: tag.articleCount,
-        }))
-    ).toEqual(trends.newTags);
   });
 });

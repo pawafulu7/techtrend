@@ -11,13 +11,11 @@ const createJestConfig = nextJest({
 // getStats() / recoverStuckJobs() / getPendingJobs() の件数を DB 全体の絶対値で検証する
 // （例: `expect(stats.total).toBe(2)`）。これらのメソッドは絞り込み引数を持たないため、
 // テスト側のフィルタでは分離できず、同テーブルを使う他テストとの排他実行が前提になっている。
-// 一方 workers/embedding.test.ts は自身が作成したジョブの DB 状態を検証するため、
-// 両者を並列実行すると双方向に状態を破壊し合う（確率的な失敗になる）。
+// 並列実行すると、同じテーブルを使う他のテストと状態を壊し合う（確率的な失敗になる）。
 //
 // そこで通常の並列実行からは除外し、`npm run test:node:serial` で --runInBand 実行する。
 // JEST_SERIAL_DB=1 のときのみ本設定の除外を外し、直列側の実行対象にする。
 const SERIAL_DB_TEST_PATHS = [
-  '<rootDir>/__tests__/api/workers/embedding\\.test\\.ts$',
   '<rootDir>/__tests__/unit/services/embedding-scheduler\\.test\\.ts$',
 ];
 const isSerialDbRun = process.env.JEST_SERIAL_DB === '1';

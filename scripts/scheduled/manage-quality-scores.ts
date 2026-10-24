@@ -71,7 +71,7 @@ function printHelp() {
 品質スコア管理の統合ツール
 
 使用方法:
-  npx tsx scripts/core/manage-quality-scores.ts [コマンド] [オプション]
+  npx tsx scripts/scheduled/manage-quality-scores.ts [コマンド] [オプション]
 
 コマンド:
   calculate   全記事の品質スコアを計算 (デフォルト)

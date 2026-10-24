@@ -290,7 +290,6 @@ export class LLMExtractionPipeline {
     const message = error instanceof Error ? error.message : String(error);
     // API の呼び出しは「API request failed: <status> - <本文>」で投げる。本文にはエラーの種類に
     // 関わらず generativelanguage.googleapis.com が入るので、'rate' の部分一致では判定しない
-    // （lib/ai/unified-summary-service.ts と同じ判定）
     return /API request failed: (429|503)\b|RESOURCE_EXHAUSTED/.test(message);
   }
 

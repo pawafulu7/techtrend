@@ -47,7 +47,6 @@ import {
   fetchAnalysisData,
   fetchSourceData,
 } from '@/app/trends/_components/trends-data';
-import { GET as keywordsGet } from '@/app/api/trends/keywords/route';
 import { GET as analysisGet } from '@/app/api/trends/analysis/route';
 import { GET as statsGet } from '@/app/api/stats/route';
 import { GET as newTagsGet } from '@/app/api/tags/new/route';
@@ -89,31 +88,22 @@ beforeEach(() => {
   ]);
 });
 
-it('page fills the complete keywords payload, including period, for the API', async () => {
-  db.$queryRaw
-    .mockResolvedValueOnce([
-      { id: 'r', name: 'React', bucket: 0, count: 5 },
-      { id: 'r', name: 'React', bucket: 3, count: 12 },
-    ])
-    .mockResolvedValueOnce([]);
+it('page fills the keywords payload with series, total and aggregation time', async () => {
+  db.$queryRaw.mockResolvedValueOnce([
+    { id: 'r', name: 'React', bucket: 0, count: 5 },
+    { id: 'r', name: 'React', bucket: 3, count: 12 },
+  ]);
   const page = await fetchKeywordsData();
-  const result = await (await keywordsGet()).json();
-  // トレンド概要は 7 区間の件数（series）つき、API は以前と同じ形（series なし）。ほかは同じ値
-  expect(result.trending).toEqual(
-    page.trending.map(({ series: _series, ...keyword }) => keyword)
-  );
   expect(page.trending[0].series).toEqual([0, 0, 0, 12, 0, 0, 5]);
   expect(page.trendingTotal).toBe(1);
-  // 新着タグは API だけが返す（トレンド概要では使わず、タグ分析に移した。Issue #709）
-  expect(result.newTags).toEqual([]);
+  // 新着タグはタグ分析（/tags）だけが使う（Issue #709）
   expect(page).not.toHaveProperty('newTags');
-  expect(result.period.from).toEqual(expect.any(String));
-  expect(result.period.to).toEqual(expect.any(String));
-  // 画面の集計時刻は API と同じ集計の終点
-  expect(page.aggregatedAt).toBe(result.period.to);
+  // 集計の終点（集計した時刻）の ISO 文字列
+  expect(page.aggregatedAt).toEqual(expect.any(String));
+  expect(new Date(page.aggregatedAt as string).toISOString()).toBe(page.aggregatedAt);
   expect(page.trending.map((tag) => tag.name)).toEqual(['React']);
-  // 区間別の集計と新規タグの2本。ページと API は同じキャッシュの値を使う
-  expect(db.$queryRaw).toHaveBeenCalledTimes(2);
+  // 区間別の集計の1本だけ
+  expect(db.$queryRaw).toHaveBeenCalledTimes(1);
 });
 
 it('page and API share the complete 7-day analysis, with zero-filled dates', async () => {
@@ -197,8 +187,8 @@ it('search keys use trimmed/truncated q, while distinct queries stay separate', 
 
 it.each([
   ['analysis', () => fetchAnalysisData(7), 1],
-  // 区間別の集計と新規タグの2本
-  ['keywords', () => fetchKeywordsData(), 2],
+  // 区間別の集計の1本
+  ['keywords', () => fetchKeywordsData(), 1],
   // 7 日の件数・日別・人気タグの3本
   ['stats', () => fetchSourceData(), 3],
 ] as const)(

@@ -16,10 +16,10 @@
 - **Styling**: Tailwind CSS
 - **Cache**: Redis
 
-## アーキテクチャ図
+## 機能一覧・アーキテクチャ図
 
-システム構成・バッチパイプライン・リクエストフロー・データモデルの図は
-[docs/architecture/](./docs/architecture/README.md) にまとめています。
+- 画面・API・定期実行・CLI などの機能一覧: [docs/architecture/05-features.md](./docs/architecture/05-features.md)
+- システム構成・バッチパイプライン・リクエストフロー・データモデルの図: [docs/architecture/](./docs/architecture/README.md)
 
 ## 環境変数設定
 

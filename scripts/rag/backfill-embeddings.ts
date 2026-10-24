@@ -105,7 +105,7 @@ async function backfillEmbeddings() {
   );
 
   // Calculate estimated completion time
-  const estimatedMinutes = Math.ceil(totalCreated / 300) * 5;
+  const estimatedMinutes = Math.ceil(totalCreated / 500) * 30;
 
   console.log();
   console.log('='.repeat(60));
@@ -115,8 +115,8 @@ async function backfillEmbeddings() {
   console.log(`Jobs created: ${totalCreated}`);
   console.log(`Jobs skipped (already exists): ${totalSkipped}`);
   console.log();
-  console.log('The worker (/api/workers/embedding) will process these jobs automatically.');
-  console.log(`Estimated completion time: ${estimatedMinutes} minutes (300 jobs per 5 min)`);
+  console.log('The embedding worker (scheduler-embedding-worker, every 30 min) will process these jobs automatically.');
+  console.log(`Estimated completion time: ${estimatedMinutes} minutes (500 jobs per 30 min)`);
   console.log();
   console.log('Monitor progress:');
   console.log('1. Vercel Dashboard: https://vercel.com/your-project/logs');

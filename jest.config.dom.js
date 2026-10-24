@@ -17,8 +17,6 @@ const customJestConfig = {
       : []),
   ],
   moduleNameMapper: {
-    // CSS modules
-    '^.+\\.module\\.(css|sass|scss)$': 'identity-obj-proxy',
     '^.+\\.(css|sass|scss)$': '<rootDir>/__mocks__/styleMock.js',
     // Image imports
     '^.+\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/fileMock.js',
