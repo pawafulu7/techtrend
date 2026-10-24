@@ -34,7 +34,7 @@ describe('Readability extraction with Worker Threads', () => {
     }, 30000);
 
     it('should return null for oversized HTML (>500KB)', async () => {
-      // Create HTML larger than 500KB
+      // Body text alone is over 500KB, so it stays oversized after stripping scripts and styles
       const oversizedHtml = '<html><body>' + 'x'.repeat(600_000) + '</body></html>';
 
       const result = await extractWithReadability(oversizedHtml, 'https://example.com/oversized');
@@ -42,6 +42,19 @@ describe('Readability extraction with Worker Threads', () => {
       // Size guard should reject this immediately
       expect(result).toBeNull();
     }, 10000);
+
+    it('should extract content when inline scripts push the raw HTML over 500KB', async () => {
+      // Next.js などのページは、記事が小さくてもインラインの script で HTML が 500KB を超える
+      const html = `<html><head><script>self.__next_f.push(${JSON.stringify('x'.repeat(600_000))})</script></head>
+        <body><article><h1>Release notes</h1>
+        <p>${'This release introduces a new programming model for the router. '.repeat(20)}</p>
+        </article></body></html>`;
+      expect(Buffer.byteLength(html, 'utf8')).toBeGreaterThan(500_000);
+
+      const result = await extractWithReadability(html, 'https://example.com/large-scripts');
+
+      expect(result?.content).toContain('new programming model');
+    }, 15000);
 
     it('should strip scripts and styles from HTML', async () => {
       const htmlWithScripts = `
