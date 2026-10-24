@@ -9,7 +9,6 @@ import { getRedisService } from '@/lib/redis/factory';
 import type { IRedisService } from '@/lib/redis/interfaces';
 import logger from '@/lib/logger';
 import {
-  CACHE_NAMESPACE_PREFIX,
   CACHE_NAMESPACES,
   CACHE_TTL,
   createCachePattern,
@@ -396,29 +395,6 @@ export class CacheInvalidator {
     category: ArticleCategory
   ): Promise<void> {
     await this.redisService.clearPattern(`*:category:${category}:*`);
-  }
-
-  /**
-   * Invalidate all caches (emergency use only)
-   * Completely clears all cache entries across the application
-   * WARNING: This will cause temporary performance degradation
-   */
-  async invalidateAll(): Promise<void> {
-    try {
-      logger.warn('Invalidating ALL caches');
-
-      await this.redisService.clearPattern(
-        createCachePattern(CACHE_NAMESPACE_PREFIX)
-      );
-      await this.redisService.clearPattern(`${CACHE_NAMESPACES.USER}:*`);
-      await this.redisService.clearPattern(
-        `${CACHE_NAMESPACES.RECOMMENDATIONS}:*`
-      );
-
-      logger.info('All caches invalidated successfully');
-    } catch (error) {
-      logger.error({ err: error }, 'Failed to invalidate all caches');
-    }
   }
 }
 

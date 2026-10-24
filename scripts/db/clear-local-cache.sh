@@ -4,10 +4,10 @@ set -euo pipefail
 # 開発用の Redis（techtrend-redis コンテナ）の中身を全部消す。
 # scripts/db/sync-prod.sh が DB の中身を本番のデータに置き換えた後に呼ぶ（古い一覧や件数が残らないように）。
 #
-# この Redis はキャッシュだけを置く（docker-compose.dev.yml の allkeys-lru）ので、名前空間を選ばずに FLUSHDB で消す。
-# アプリの cacheInvalidator.invalidateAll() は personalization などの名前空間を消さず（#827）、NODE_ENV=test では
-# 実物の Redis に繋がない。コンテナの中の redis-cli で消すので、手元のポートや .env の REDIS_URL
-# （本番の値が入っていることがある）も使わない。
+# この Redis はキャッシュだけを置く（docker-compose.dev.yml の allkeys-lru）ので、名前空間を選ばずに FLUSHDB で消す
+# （アプリのキャッシュは @techtrend/cache・personalization・techtrend:digest などの名前空間に分かれている）。
+# アプリのコードは NODE_ENV=test では実物の Redis に繋がないので使わない。コンテナの中の redis-cli で消すので、
+# 手元のポートや .env の REDIS_URL（本番の値が入っていることがある）も使わない。
 # パスワードはコンテナの起動引数（--requirepass）から取る。compose はコンテナを作ったときのシェルの
 # REDIS_PASSWORD（無ければ既定値）を埋め込むため、今のシェルや .env の値と同じとは限らない。
 
