@@ -109,6 +109,10 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+# シグナルで止めたときも、終了コードを 128+番号にして失敗として cleanup に渡す（ログを残す）
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 DUMP_STDERR_LOG="$(umask 077 && mktemp "$TMP_DIR/${TIMESTAMP}-pg_dump-XXXXXX")"
 RESTORE_LOG="$(umask 077 && mktemp "$TMP_DIR/${TIMESTAMP}-restore-XXXXXX")"
 
@@ -200,7 +204,12 @@ fi
 echo "[sync] 最後に、開発用 Redis（techtrend-redis）の中身を消します。"
 echo "[sync] 同期の間に開発サーバーやワーカーが書き込むと、古い値がキャッシュや埋め込みに残ることがあります。止めてから流すと確実です。"
 printf "[sync] 続行しますか？ (y/N): "
-read -r answer
+# 入力が終わっている（Ctrl+D や /dev/null）と read は失敗するが、set -e で止めずに、
+# 読めた分（改行の無い最後の行も入る。何も無ければ空）で判断する
+answer=""
+if ! read -r answer; then
+  echo
+fi
 if [ "$answer" != "y" ] && [ "$answer" != "Y" ]; then
   echo "[sync] 中止しました。"
   exit 0
