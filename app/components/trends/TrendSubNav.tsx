@@ -2,7 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { TrendingUp, Calendar, GitCompare, Grid3X3 } from 'lucide-react';
+import {
+  TrendingUp,
+  Calendar,
+  GitCompare,
+  Grid3X3,
+  Flame,
+  Hash,
+  FileText,
+} from 'lucide-react';
 import {
   isNavActive,
   navAriaCurrent,
@@ -21,6 +29,46 @@ const trendNavItems = [
   },
 ] as const;
 
+// トレンドの分析ではないが、同じ「動向を見る」画面。ヘッダーの主要導線を 4 つに絞ったときにここへ移した（Issue #704）。
+// トレンドの分析と見分けるため、縦の線で区切る
+const relatedNavItems = [
+  { href: '/popular', label: '人気', icon: Flame, exact: false },
+  { href: '/tags', label: 'タグ', icon: Hash, exact: false },
+  {
+    href: '/changelog',
+    label: 'AIエージェント更新情報',
+    icon: FileText,
+    exact: false,
+  },
+] as const;
+
+type TrendNavItem =
+  | (typeof trendNavItems)[number]
+  | (typeof relatedNavItems)[number];
+
+function TrendNavLink({
+  item,
+  pathname,
+}: {
+  item: TrendNavItem;
+  pathname: string;
+}) {
+  const Icon = item.icon;
+  const active = isNavActive(pathname, item.href, { exact: item.exact });
+  return (
+    <Link
+      href={item.href}
+      aria-current={navAriaCurrent(pathname, item.href, {
+        exact: item.exact,
+      })}
+      className={navTabClass(active)}
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" />
+      <span>{item.label}</span>
+    </Link>
+  );
+}
+
 export function TrendSubNav() {
   const pathname = usePathname();
 
@@ -35,24 +83,16 @@ export function TrendSubNav() {
       className="-mx-3 flex h-11 [scrollbar-width:none] items-stretch overflow-x-auto [&::-webkit-scrollbar]:hidden"
       aria-label="トレンドナビゲーション"
     >
-      {trendNavItems.map((item) => {
-        const Icon = item.icon;
-        const active = isNavActive(pathname, item.href, { exact: item.exact });
-
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={navAriaCurrent(pathname, item.href, {
-              exact: item.exact,
-            })}
-            className={navTabClass(active)}
-          >
-            <Icon className="h-4 w-4" aria-hidden="true" />
-            <span>{item.label}</span>
-          </Link>
-        );
-      })}
+      {trendNavItems.map((item) => (
+        <TrendNavLink key={item.href} item={item} pathname={pathname} />
+      ))}
+      <span
+        aria-hidden="true"
+        className="mx-2 my-3 w-px shrink-0 bg-(--tt-color-border)"
+      />
+      {relatedNavItems.map((item) => (
+        <TrendNavLink key={item.href} item={item} pathname={pathname} />
+      ))}
     </nav>
   );
 }

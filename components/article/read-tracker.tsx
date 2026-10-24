@@ -7,11 +7,19 @@ import logger from '@/lib/logger.client';
 
 interface ReadTrackerProps {
   articleId: string;
+  /**
+   * 3 秒たつ前に離れても既読にするか（既定は true）。記事詳細では、開いた記事を離れたら読んだものとする。
+   * リーダーは ↓ で記事を次々に送るので false にし、3 秒開いていた記事だけを既読にする
+   */
+  markOnLeave?: boolean;
 }
 
 const READ_STATUS_STORAGE_KEY = 'techtrend-read-articles';
 
-export function ReadTracker({ articleId }: ReadTrackerProps) {
+export function ReadTracker({
+  articleId,
+  markOnLeave = true,
+}: ReadTrackerProps) {
   const { data: session } = authClient.useSession();
   const queryClient = useQueryClient();
   const hasSentRequest = useRef(false);
@@ -20,6 +28,8 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
   const retryCount = useRef(0);
   const retryTimeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevArticleIdRef = useRef(articleId);
+  // 3 秒たった（読んだとみなした）か。送っている途中で離れたときも、既読を送り切るのに使う
+  const timerFiredRef = useRef(false);
   const maxRetries = 3;
 
   useEffect(() => {
@@ -35,6 +45,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
     if (prevArticleIdRef.current !== articleId) {
       hasSentRequest.current = false;
       isSendingRequest.current = false;
+      timerFiredRef.current = false;
       retryCount.current = 0;
       if (retryTimeoutId.current) {
         clearTimeout(retryTimeoutId.current);
@@ -163,6 +174,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
     // Delay to prioritize initial content rendering over analytics
     const delayId = setTimeout(() => {
       if (isMountedRef.current) {
+        timerFiredRef.current = true;
         void markAsRead();
       }
     }, 3000);
@@ -176,7 +188,12 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
       }
 
       // Send beacon on unmount if read status was never sent
-      if (!hasSentRequest.current && session?.user?.id) {
+      // markOnLeave が false でも、3 秒たって送っている途中（・再試行の待ち）で離れたら送り切る
+      if (
+        (markOnLeave || timerFiredRef.current) &&
+        !hasSentRequest.current &&
+        session?.user?.id
+      ) {
         const payload = JSON.stringify({ articleId });
         let beaconSent = false;
 
@@ -206,7 +223,7 @@ export function ReadTracker({ articleId }: ReadTrackerProps) {
 
       controller.abort();
     };
-  }, [articleId, session?.user?.id, queryClient]);
+  }, [articleId, markOnLeave, session?.user?.id, queryClient]);
 
   return null;
 }

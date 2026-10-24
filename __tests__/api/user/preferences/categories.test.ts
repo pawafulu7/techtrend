@@ -92,6 +92,10 @@ describe('User Category Preferences API', () => {
         { categoryId: 'cat-1' },
         { categoryId: 'cat-2' },
       ]);
+      prismaMock.user.findUnique.mockResolvedValue({
+        personalizationPeriodMonths: 12,
+        homePersonalizationEnabled: true,
+      });
 
       const response = await GET(createGetRequest(), getContext as any);
       const data = await response.json();
@@ -125,73 +129,52 @@ describe('User Category Preferences API', () => {
       expect(data.error).toBe('Failed to retrieve preferences');
     });
 
-    it('should return home preferences when scope=home', async () => {
+    it('should read the categories shared by home and digest', async () => {
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
       ]);
-
-      const response = await GET(createGetRequest({ scope: 'home' }), getContext as any);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.selectedCategories).toEqual(['cat-1']);
-      expect(data.scope).toBe('home');
-      expect(prismaMock.userCategoryPreference.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { userId: 'user-1', scope: 'home' },
-        })
-      );
-    });
-
-    it('should return digest preferences when scope=digest', async () => {
-      prismaMock.userCategoryPreference.findMany.mockResolvedValue([
-        { categoryId: 'cat-3' },
-      ]);
-
-      const response = await GET(createGetRequest({ scope: 'digest' }), getContext as any);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.selectedCategories).toEqual(['cat-3']);
-      expect(data.scope).toBe('digest');
-      expect(prismaMock.userCategoryPreference.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { userId: 'user-1', scope: 'digest' },
-        })
-      );
-    });
-
-    it('should default to home scope when scope is not specified', async () => {
-      prismaMock.userCategoryPreference.findMany.mockResolvedValue([]);
 
       const response = await GET(createGetRequest(), getContext as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.scope).toBe('home');
+      expect(data.selectedCategories).toEqual(['cat-1']);
+      expect(data).not.toHaveProperty('scope');
       expect(prismaMock.userCategoryPreference.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: 'user-1', scope: 'home' },
+          where: { userId: 'user-1' },
         })
       );
     });
 
-    it('should return 400 for invalid scope value', async () => {
+    it('should report the home filter as off when the switch is off, even with categories', async () => {
+      // ダイジェストで分野を選んだだけの人。分野はあっても、ホームの一覧は絞り込まない
+      prismaMock.userCategoryPreference.findMany.mockResolvedValue([
+        { categoryId: 'cat-1' },
+      ]);
+      prismaMock.user.findUnique.mockResolvedValue({
+        personalizationPeriodMonths: 12,
+        homePersonalizationEnabled: false,
+      });
 
-      const response = await GET(createGetRequest({ scope: 'invalid' }), getContext as any);
+      const response = await GET(createGetRequest(), getContext as any);
       const data = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(data.error).toBe('Invalid scope parameter');
+      expect(data.selectedCategories).toEqual(['cat-1']);
+      expect(data.filterEnabled).toBe(false);
     });
 
-    it('should return 400 for empty string scope', async () => {
+    it('should report the home filter as off when no category is selected', async () => {
+      prismaMock.userCategoryPreference.findMany.mockResolvedValue([]);
+      prismaMock.user.findUnique.mockResolvedValue({
+        personalizationPeriodMonths: 12,
+        homePersonalizationEnabled: true,
+      });
 
-      const response = await GET(createGetRequest({ scope: '' }), getContext as any);
+      const response = await GET(createGetRequest(), getContext as any);
       const data = await response.json();
 
-      expect(response.status).toBe(400);
-      expect(data.error).toBe('Invalid scope parameter');
+      expect(data.filterEnabled).toBe(false);
     });
   });
 
@@ -237,16 +220,66 @@ describe('User Category Preferences API', () => {
       expect(data.success).toBe(true);
       expect(data.selectedCategories).toEqual(['cat-1', 'cat-2']);
 
-      // Verify transaction was called with default scope 'home'
+      // The categories are shared by home and digest, so all of the user's rows are replaced
       expect(prismaMock.userCategoryPreference.deleteMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1', scope: 'home' },
+        where: { userId: 'user-1' },
       });
       expect(prismaMock.userCategoryPreference.createMany).toHaveBeenCalledWith({
         data: [
-          { userId: 'user-1', categoryId: 'cat-1', scope: 'home', weight: 1 },
-          { userId: 'user-1', categoryId: 'cat-2', scope: 'home', weight: 1 },
+          { userId: 'user-1', categoryId: 'cat-1', weight: 1 },
+          { userId: 'user-1', categoryId: 'cat-2', weight: 1 },
         ],
       });
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user-1' },
+          data: { homePersonalizationEnabled: true },
+        })
+      );
+    });
+
+    it('should return the saved settings so the client does not guess them', async () => {
+      prismaMock.interestCategory.findMany.mockResolvedValue([{ id: 'cat-1' }]);
+      prismaMock.user.update.mockResolvedValue({
+        homePersonalizationEnabled: true,
+        personalizationPeriodMonths: 6,
+      });
+
+      const response = await callPost({
+        categoryIds: ['cat-1'],
+        filterEnabled: true,
+      });
+
+      expect(await response.json()).toEqual({
+        success: true,
+        selectedCategories: ['cat-1'],
+        filterEnabled: true,
+        periodMonths: 6,
+      });
+    });
+
+    it('should keep the categories when categoryIds is omitted (switch or period only)', async () => {
+      // ホームのスイッチだけを変えたとき。開いていた画面の古い分野で、別の画面で変えた分野を戻さない
+      prismaMock.userCategoryPreference.findMany.mockResolvedValue([
+        { categoryId: 'cat-9' },
+      ]);
+      prismaMock.user.update.mockResolvedValue({
+        homePersonalizationEnabled: false,
+        personalizationPeriodMonths: 12,
+      });
+
+      const response = await callPost({ filterEnabled: false });
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(prismaMock.userCategoryPreference.deleteMany).not.toHaveBeenCalled();
+      expect(prismaMock.userCategoryPreference.createMany).not.toHaveBeenCalled();
+      expect(data.selectedCategories).toEqual(['cat-9']);
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { homePersonalizationEnabled: false },
+        })
+      );
     });
 
     it('should remove duplicates from category IDs', async () => {
@@ -299,7 +332,7 @@ describe('User Category Preferences API', () => {
       expect(data.error).toBe('categoryIds must be an array of strings');
     });
 
-    it('should reject invalid periodMonths for home scope', async () => {
+    it('should reject invalid periodMonths', async () => {
       const response = await callPost({
         categoryIds: ['cat-1'],
         periodMonths: 5,
@@ -310,7 +343,7 @@ describe('User Category Preferences API', () => {
       expect(data.error).toBe('periodMonths must be one of: 0, 3, 6, 12');
     });
 
-    it('should reject non-number periodMonths for home scope', async () => {
+    it('should reject non-number periodMonths', async () => {
       const response = await callPost({
         categoryIds: ['cat-1'],
         periodMonths: 'invalid',
@@ -322,7 +355,7 @@ describe('User Category Preferences API', () => {
     });
 
     it.each([0, 3, 6, 12])(
-      'should accept valid periodMonths %i for home scope',
+      'should accept valid periodMonths %i',
       async (validPeriod) => {
         prismaMock.interestCategory.findMany.mockResolvedValue([
           { id: 'cat-1', name: 'Test' },
@@ -341,10 +374,12 @@ describe('User Category Preferences API', () => {
         expect(response.status).toBe(200);
 
         // Verify user.update was called with the correct periodMonths
-        expect(prismaMock.user.update).toHaveBeenCalledWith({
-          where: { id: 'user-1' },
-          data: { personalizationPeriodMonths: validPeriod },
-        });
+        expect(prismaMock.user.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { id: 'user-1' },
+            data: { personalizationPeriodMonths: validPeriod },
+          })
+        );
       }
     );
 
@@ -359,6 +394,12 @@ describe('User Category Preferences API', () => {
       // Verify deleteMany was called but createMany was not (empty array)
       expect(prismaMock.userCategoryPreference.deleteMany).toHaveBeenCalled();
       expect(prismaMock.userCategoryPreference.createMany).not.toHaveBeenCalled();
+      // 分野が無ければホームの絞り込みはオフ（後でダイジェストから分野を足しても、黙って絞り込みに戻らない）
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { homePersonalizationEnabled: false },
+        })
+      );
     });
 
     it('should handle invalid JSON body', async () => {
@@ -389,103 +430,67 @@ describe('User Category Preferences API', () => {
       expect(data.error).toBe('Failed to save preferences');
     });
 
-    it('should save home scope without affecting digest', async () => {
-      prismaMock.interestCategory.findMany.mockResolvedValue([
-        { id: 'cat-1' },
-      ]);
+    it('should keep the home filter switch when filterEnabled is omitted', async () => {
+      // ダイジェストから分野だけを保存したとき。ホームの絞り込みは変えない
+      prismaMock.interestCategory.findMany.mockResolvedValue([{ id: 'cat-2' }]);
+
+      const response = await callPost({ categoryIds: ['cat-2'] });
+
+      expect(response.status).toBe(200);
+      expect(prismaMock.user.update).not.toHaveBeenCalled();
+      expect(prismaMock.user.findUnique).toHaveBeenCalled();
+    });
+
+    it('should save the home filter switch off', async () => {
+      prismaMock.interestCategory.findMany.mockResolvedValue([{ id: 'cat-1' }]);
 
       const response = await callPost({
         categoryIds: ['cat-1'],
-        scope: 'home',
-      });
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.success).toBe(true);
-
-      // deleteMany should only target home scope
-      expect(prismaMock.userCategoryPreference.deleteMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1', scope: 'home' },
-      });
-      // createMany should include home scope
-      expect(prismaMock.userCategoryPreference.createMany).toHaveBeenCalledWith({
-        data: [
-          { userId: 'user-1', categoryId: 'cat-1', scope: 'home', weight: 1 },
-        ],
-      });
-
-      // digest cache should NOT be invalidated for home scope
-      const { digestService } = require('@/lib/services/digest-service');
-      expect(digestService.invalidateUserCache).not.toHaveBeenCalled();
-    });
-
-    it('should save digest scope without affecting home', async () => {
-      prismaMock.interestCategory.findMany.mockResolvedValue([
-        { id: 'cat-2' },
-      ]);
-
-      const response = await callPost({
-        categoryIds: ['cat-2'],
-        scope: 'digest',
-      });
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.success).toBe(true);
-
-      // deleteMany should only target digest scope
-      expect(prismaMock.userCategoryPreference.deleteMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1', scope: 'digest' },
-      });
-      // createMany should include digest scope
-      expect(prismaMock.userCategoryPreference.createMany).toHaveBeenCalledWith({
-        data: [
-          { userId: 'user-1', categoryId: 'cat-2', scope: 'digest', weight: 1 },
-        ],
-      });
-
-      // digest cache should be invalidated for digest scope
-      const { digestService } = require('@/lib/services/digest-service');
-      expect(digestService.invalidateUserCache).toHaveBeenCalledWith('user-1');
-    });
-
-    it('should not update periodMonths when scope is digest', async () => {
-      prismaMock.interestCategory.findMany.mockResolvedValue([
-        { id: 'cat-1' },
-      ]);
-
-      const response = await callPost({
-        categoryIds: ['cat-1'],
-        scope: 'digest',
+        filterEnabled: false,
         periodMonths: 6,
       });
 
       expect(response.status).toBe(200);
-
-      // user.update should NOT be called for digest scope even if periodMonths is provided
-      expect(prismaMock.user.update).not.toHaveBeenCalled();
+      expect(prismaMock.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'user-1' },
+          data: {
+            homePersonalizationEnabled: false,
+            personalizationPeriodMonths: 6,
+          },
+        })
+      );
     });
 
-    it('should return 400 for invalid scope in POST body', async () => {
+    it('should invalidate the digest cache before responding', async () => {
+      prismaMock.interestCategory.findMany.mockResolvedValue([{ id: 'cat-1' }]);
+      // 応答を受けたクライアントはすぐにダイジェストを取り直すので、消し終わってから応答する
+      const { digestService } = require('@/lib/services/digest-service');
+      let invalidated = false;
+      digestService.invalidateUserCache.mockImplementationOnce(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        invalidated = true;
+      });
+
       const response = await callPost({
         categoryIds: ['cat-1'],
-        scope: 'invalid',
+        filterEnabled: true,
+      });
+
+      expect(response.status).toBe(200);
+      expect(digestService.invalidateUserCache).toHaveBeenCalledWith('user-1');
+      expect(invalidated).toBe(true);
+    });
+
+    it('should return 400 for non-boolean filterEnabled', async () => {
+      const response = await callPost({
+        categoryIds: ['cat-1'],
+        filterEnabled: 'yes',
       });
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toBe('Invalid scope parameter');
-    });
-
-    it('should return 400 for empty string scope in POST body', async () => {
-      const response = await callPost({
-        categoryIds: ['cat-1'],
-        scope: '',
-      });
-      const data = await response.json();
-
-      expect(response.status).toBe(400);
-      expect(data.error).toBe('Invalid scope parameter');
+      expect(data.error).toBe('filterEnabled must be a boolean');
     });
   });
 });

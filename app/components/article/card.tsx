@@ -89,7 +89,7 @@ export function ArticleCard({
   const isNew = useIsNewArticle(article.publishedAt, 24) ?? false;
 
   // 戻り先は「このカードが置かれている一覧」。`/` 固定にすると /papers や
-  // /favorites/feed から開いた記事の「記事一覧に戻る」がホームへ飛んでしまう
+  // /favorites から開いた記事の「記事一覧に戻る」がホームへ飛んでしまう
   const articleHref = useMemo(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('returning', '1');

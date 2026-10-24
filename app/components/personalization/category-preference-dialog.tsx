@@ -3,11 +3,14 @@
  *
  * Modal dialog for selecting interest categories and filtering period.
  * Users can select multiple categories to personalize their article feed.
+ *
+ * 分野はホームとダイジェストで共通（Issue #709）。ホームから開いたときだけ、ホームの一覧を
+ * 絞り込むかどうかのスイッチを出す（ダイジェストから分野だけを変えても、ホームの絞り込みは変わらない）。
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +21,8 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui-v2/button-v2';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { CategoryCard, CategoryCardSkeleton } from './category-card';
 import { PeriodSelector } from './period-selector';
@@ -36,7 +41,13 @@ export interface CategoryPreferenceDialogProps {
   categories: InterestCategoryWithCount[];
   selectedCategories: string[];
   selectedPeriod: PeriodPreset;
-  onSave: (categories: string[], period: PeriodPreset) => Promise<void>;
+  /** ホームから開いたときのスイッチの初期値。省略するとスイッチを出さない（ダイジェスト） */
+  homeFilterEnabled?: boolean;
+  onSave: (
+    categories: string[],
+    period: PeriodPreset,
+    homeFilterEnabled: boolean
+  ) => Promise<void>;
   isLoading?: boolean;
   isSaving?: boolean;
   showPeriodSelector?: boolean;
@@ -52,15 +63,21 @@ export function CategoryPreferenceDialog({
   categories,
   selectedCategories,
   selectedPeriod,
+  homeFilterEnabled,
   onSave,
   isLoading = false,
   isSaving = false,
   showPeriodSelector: showPeriodSelectorProp = true,
 }: CategoryPreferenceDialogProps) {
+  const showHomeFilterSwitch = homeFilterEnabled !== undefined;
+  const homeFilterSwitchId = useId();
   // Local state for editing (committed on save)
   const [tempCategories, setTempCategories] =
     useState<string[]>(selectedCategories);
   const [tempPeriod, setTempPeriod] = useState<PeriodPreset>(selectedPeriod);
+  const [tempHomeFilter, setTempHomeFilter] = useState(
+    homeFilterEnabled ?? false
+  );
   const [hasEdited, setHasEdited] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -78,7 +95,8 @@ export function CategoryPreferenceDialog({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: sync temp state on dialog open
     setTempCategories(selectedCategories);
     setTempPeriod(selectedPeriod);
-  }, [open, selectedCategories, selectedPeriod, hasEdited]);
+    setTempHomeFilter(homeFilterEnabled ?? false);
+  }, [open, selectedCategories, selectedPeriod, homeFilterEnabled, hasEdited]);
 
   // Toggle category selection
   const handleToggle = (categoryId: string) => {
@@ -107,11 +125,16 @@ export function CategoryPreferenceDialog({
     setTempPeriod(period);
   };
 
+  const handleHomeFilterChange = (checked: boolean) => {
+    setHasEdited(true);
+    setTempHomeFilter(checked);
+  };
+
   // Save changes
   const handleSave = async () => {
     setSaveError(null);
     try {
-      await onSave(tempCategories, tempPeriod);
+      await onSave(tempCategories, tempPeriod, tempHomeFilter);
       setHasEdited(false);
       onOpenChange(false);
     } catch {
@@ -123,6 +146,7 @@ export function CategoryPreferenceDialog({
   const handleCancel = () => {
     setTempCategories(selectedCategories);
     setTempPeriod(selectedPeriod);
+    setTempHomeFilter(homeFilterEnabled ?? false);
     setHasEdited(false);
     setSaveError(null);
     onOpenChange(false);
@@ -131,7 +155,8 @@ export function CategoryPreferenceDialog({
   const hasChanges =
     JSON.stringify([...tempCategories].sort()) !==
       JSON.stringify([...selectedCategories].sort()) ||
-    tempPeriod !== selectedPeriod;
+    tempPeriod !== selectedPeriod ||
+    (showHomeFilterSwitch && tempHomeFilter !== homeFilterEnabled);
 
   return (
     <Dialog
@@ -146,7 +171,7 @@ export function CategoryPreferenceDialog({
         <DialogHeader className="p-6 pb-2">
           <DialogTitle>興味のある分野を選択</DialogTitle>
           <DialogDescription>
-            選択した分野の記事を優先的に表示します
+            選んだ分野は、ホームの絞り込みとダイジェストのおすすめの両方で使います
           </DialogDescription>
         </DialogHeader>
 
@@ -196,6 +221,24 @@ export function CategoryPreferenceDialog({
                   ))}
             </div>
           </fieldset>
+
+          {showHomeFilterSwitch && (
+            <div className="flex items-center justify-between gap-4 border-t py-4">
+              <Label
+                htmlFor={homeFilterSwitchId}
+                className="text-sm font-medium"
+              >
+                ホームの一覧をこの分野で絞り込む
+              </Label>
+              {/* 分野が無ければ絞り込めない（保存するとオフになる）ので、選ぶまで操作させない */}
+              <Switch
+                id={homeFilterSwitchId}
+                checked={tempHomeFilter && tempCategories.length > 0}
+                onCheckedChange={handleHomeFilterChange}
+                disabled={isLoading || isSaving || tempCategories.length === 0}
+              />
+            </div>
+          )}
 
           {/* Period Selector */}
           {showPeriodSelectorProp && (

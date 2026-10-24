@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import { Header } from '@/app/components/layout/header';
+import { MobileBottomNav } from '@/app/components/layout/mobile-bottom-nav';
+import { CommandPaletteProvider } from '@/app/components/layout/command-palette';
+import { LegacyFavoriteSourcesAutoMigration } from '@/app/components/favorites/legacy-favorite-sources-auto-migration';
 import { NoTransitions } from '@/app/components/layout/no-transitions';
 import { SITE_NAME, SITE_DESCRIPTION } from '@/lib/constants';
 import { ToastProvider } from '@/providers/toast-provider';
@@ -136,15 +139,20 @@ export default async function RootLayout({
           >
             <QueryProvider>
               {/* <OnboardingProvider> */}
-              <Header />
-              {/* tabIndex={-1}: スキップリンクの遷移先として確実にフォーカスを受け取るため */}
-              <main
-                id="main-content"
-                tabIndex={-1}
-                className="page-canvas flex-1 overflow-y-auto"
-              >
-                {children}
-              </main>
+              <CommandPaletteProvider>
+                <Header />
+                {/* tabIndex={-1}: スキップリンクの遷移先として確実にフォーカスを受け取るため */}
+                <main
+                  id="main-content"
+                  tabIndex={-1}
+                  className="page-canvas flex-1 overflow-y-auto"
+                >
+                  {children}
+                </main>
+                {/* lg 未満の主要導線。main の下に置き、本文に重ねない（Issue #704） */}
+                <MobileBottomNav />
+                <LegacyFavoriteSourcesAutoMigration />
+              </CommandPaletteProvider>
               <ScrollToTopButton />
               <ToastProvider />
               <WebVitalsReporter />

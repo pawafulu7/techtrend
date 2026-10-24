@@ -8,7 +8,7 @@
  * Partial DataLoader statistics
  *
  * Subset of full DataLoader metrics used in batch optimizer.
- * For complete metrics, see app/dashboard/performance/types/dashboard.ts
+ * For complete metrics, see app/admin/performance/types/dashboard.ts
  */
 export interface PartialDataLoaderStats {
   l1Hits?: number;

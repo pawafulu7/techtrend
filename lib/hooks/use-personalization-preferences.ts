@@ -3,6 +3,8 @@
  *
  * React Query hook for managing user category preferences.
  * Handles fetching and updating personalization settings via API.
+ *
+ * 分野の設定はホームとダイジェストで共通（Issue #709）。保存したら両方の一覧を取り直す。
  */
 
 'use client';
@@ -14,7 +16,6 @@ import type {
   UserCategoryPreferences,
   UpdateCategoryPreferencesRequest,
   InterestCategoryWithCount,
-  PreferenceScope,
 } from '@/lib/personalization/types';
 import {
   DEFAULT_PREFERENCES,
@@ -32,8 +33,8 @@ const EMPTY_SELECTED_CATEGORIES: string[] = [];
 export const PERSONALIZATION_QUERY_KEYS = {
   // userId をキーに含める: 含めないとセッション失効や同一 SPA 内でのユーザー
   // 切り替え後に、前のユーザーの設定がキャッシュから返ってしまう
-  preferences: (scope: PreferenceScope = 'home', userId?: string | null) =>
-    ['personalization-preferences', scope, userId ?? 'anonymous'] as const,
+  preferences: (userId?: string | null) =>
+    ['personalization-preferences', userId ?? 'anonymous'] as const,
   categories: ['interest-categories'] as const,
 };
 
@@ -41,13 +42,9 @@ export const PERSONALIZATION_QUERY_KEYS = {
 // API Fetchers
 // =============================================================================
 
-async function fetchPreferences(
-  scope: PreferenceScope = 'home'
-): Promise<UserCategoryPreferences> {
+async function fetchPreferences(): Promise<UserCategoryPreferences> {
   try {
-    const response = await fetch(
-      `/api/user/preferences/categories?scope=${scope}`
-    );
+    const response = await fetch('/api/user/preferences/categories');
 
     if (response.status === 401) {
       // Not authenticated - return default preferences silently
@@ -96,9 +93,17 @@ async function fetchCategories(): Promise<InterestCategoryWithCount[]> {
   }
 }
 
+/** 保存の応答。保存した後の設定（サーバーが確定した値）を返す */
+interface UpdatePreferencesResponse {
+  success: boolean;
+  selectedCategories: string[];
+  filterEnabled?: boolean;
+  periodMonths?: number;
+}
+
 async function updatePreferences(
   request: UpdateCategoryPreferencesRequest
-): Promise<{ success: boolean; selectedCategories: string[] }> {
+): Promise<UpdatePreferencesResponse> {
   const response = await fetch('/api/user/preferences/categories', {
     method: 'POST',
     headers: {
@@ -147,13 +152,13 @@ export function useInterestCategories() {
 /**
  * Hook for fetching user's category preferences
  */
-export function useUserPreferences(scope: PreferenceScope = 'home') {
+export function useUserPreferences() {
   const { data: session, isPending: isSessionPending } =
     authClient.useSession();
 
   return useQuery({
-    queryKey: PERSONALIZATION_QUERY_KEYS.preferences(scope, session?.user?.id),
-    queryFn: () => fetchPreferences(scope),
+    queryKey: PERSONALIZATION_QUERY_KEYS.preferences(session?.user?.id),
+    queryFn: fetchPreferences,
     // 未認証では 401 が確定しているため呼ばない（ゲストのホーム表示で毎回
     // /api/user/preferences/categories が 401 を返していた）。
     // セッション判定中も待ってから有効化する。
@@ -170,49 +175,42 @@ export function useUserPreferences(scope: PreferenceScope = 'home') {
 /**
  * Hook for updating user's category preferences
  */
-export function useUpdatePreferences(scope: PreferenceScope = 'home') {
+export function useUpdatePreferences() {
   const { data: session } = authClient.useSession();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (request: UpdateCategoryPreferencesRequest) =>
-      updatePreferences({ ...request, scope }),
-    onSuccess: (data, variables) => {
-      const selectedCategories =
-        data?.selectedCategories ?? variables.categoryIds ?? [];
-      const nextPeriod = variables.periodMonths;
-
-      // Update cache after successful mutation
-      queryClient.setQueryData<UserCategoryPreferences>(
-        PERSONALIZATION_QUERY_KEYS.preferences(scope, session?.user?.id),
-        (old) => ({
-          ...old,
-          selectedCategories,
-          filterEnabled: selectedCategories.length > 0,
-          periodMonths:
-            scope === 'digest'
-              ? (old?.periodMonths ?? 12)
-              : nextPeriod !== undefined
-                ? nextPeriod
-                : (old?.periodMonths ?? 12),
-          isAuthenticated: true,
-          scope,
-        })
+      updatePreferences(request),
+    onSuccess: (data) => {
+      const queryKey = PERSONALIZATION_QUERY_KEYS.preferences(
+        session?.user?.id
       );
-
-      // Invalidate article queries to refresh with new personalization (home scope only)
-      if (scope === 'home') {
-        queryClient.invalidateQueries({
-          queryKey: ['infinite-articles'],
+      // 応答の確定値でキャッシュを置き換える。ダイジェストから分野だけを保存したときも、ホームのスイッチと
+      // 期間はサーバーの値になる（キャッシュが無いときに既定値で埋めると、ホームが誤った条件で一覧を取るため）。
+      // 確定値が無い応答なら、設定を取り直す
+      if (
+        typeof data?.filterEnabled === 'boolean' &&
+        typeof data?.periodMonths === 'number' &&
+        Array.isArray(data?.selectedCategories)
+      ) {
+        queryClient.setQueryData<UserCategoryPreferences>(queryKey, {
+          selectedCategories: data.selectedCategories,
+          filterEnabled: data.filterEnabled,
+          periodMonths: data.periodMonths,
+          isAuthenticated: true,
         });
+      } else {
+        queryClient.invalidateQueries({ queryKey });
       }
 
-      // Invalidate digest queries to refresh with new category preferences (digest scope only)
-      if (scope === 'digest') {
-        queryClient.invalidateQueries({
-          queryKey: ['digest'],
-        });
-      }
+      // ホームとダイジェストは同じ分野を読むので、両方を取り直す
+      queryClient.invalidateQueries({
+        queryKey: ['infinite-articles'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['digest'],
+      });
     },
   });
 }
@@ -220,10 +218,10 @@ export function useUpdatePreferences(scope: PreferenceScope = 'home') {
 /**
  * Combined hook for personalization preferences management
  */
-export function usePersonalizationPreferences(scope: PreferenceScope = 'home') {
+export function usePersonalizationPreferences() {
   const categoriesQuery = useInterestCategories();
-  const preferencesQuery = useUserPreferences(scope);
-  const updateMutation = useUpdatePreferences(scope);
+  const preferencesQuery = useUserPreferences();
+  const updateMutation = useUpdatePreferences();
 
   // セッション判定中は preferences クエリが enabled: false のため isLoading が
   // false になる。そのまま公開すると認証済みユーザーで記事クエリが先に走り、
@@ -242,7 +240,7 @@ export function usePersonalizationPreferences(scope: PreferenceScope = 'home') {
   // フックインスタンス単位で持つと、記事詳細 → ホームのような再マウント経路で
   // 新インスタンスが「未解決」から始まりラッチが効かない。ラッチしているのは
   // isSessionPending の項だけで、これはセッション全体のグローバルな事実であり
-  // scope 固有ではない（scope 固有なのは preferencesQuery.isLoading の側）。
+  // このフック固有ではない（フック固有なのは preferencesQuery.isLoading の側）。
   const isSessionPendingLatched = useIsSessionPendingLatched();
 
   const isLoadingPreferences =

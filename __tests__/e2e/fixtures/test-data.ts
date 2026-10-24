@@ -39,6 +39,6 @@ export const testData = {
     tags: '/tags',
     search: '/search',
     popular: '/popular',
-    stats: '/stats',
+    stats: '/admin/stats',
   },
 };

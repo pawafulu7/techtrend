@@ -15,7 +15,6 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { FavoriteButton } from './FavoriteButton';
 import type { SourceWithStats } from '@/types/source';
 
 interface SourceCardProps {
@@ -143,15 +142,6 @@ export function SourceCard({ source }: SourceCardProps) {
             <p className="text-muted-foreground text-[10px]">品質</p>
           </div>
 
-          {/* Favorite button - visible on hover */}
-          <div
-            className={cn(
-              'relative z-10 transition-opacity duration-200',
-              'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100'
-            )}
-          >
-            <FavoriteButton sourceId={source.id} size="sm" />
-          </div>
         </div>
       </div>
 

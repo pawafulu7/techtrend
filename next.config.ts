@@ -44,6 +44,34 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // 画面をまとめて URL が変わったページ（Issue #709）。ブックマークや履歴から来ても開けるよう、
+  // 新しい場所へ移す。行き先は今後も変えうるので、ブラウザに覚えさせない 307 にする
+  redirects() {
+    return [
+      {
+        source: '/analytics',
+        destination: '/history?tab=analytics',
+        permanent: false,
+      },
+      { source: '/stats', destination: '/admin/stats', permanent: false },
+      {
+        source: '/dashboard/jobs',
+        destination: '/admin/jobs',
+        permanent: false,
+      },
+      {
+        source: '/dashboard/performance',
+        destination: '/admin/performance',
+        permanent: false,
+      },
+      {
+        source: '/dashboard/social-posts/:path*',
+        destination: '/admin/social-posts/:path*',
+        permanent: false,
+      },
+    ];
+  },
+
   // セキュリティヘッダはproxy.tsで管理
   // Phase 3: Complete migration to proxy.ts
   // See: proxy.ts, config/security-headers.ts

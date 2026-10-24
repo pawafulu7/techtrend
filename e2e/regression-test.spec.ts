@@ -173,21 +173,10 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
     test('人気順ソートが動作する', async ({ page }) => {
       await page.goto('/');
       await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
-      
-      // 人気ボタンをクリック（ナビゲーションリンクの可能性）
-      const popularLink = page.locator('[data-testid="nav-link-人気"], a:has-text("人気")');
-      if (await popularLink.count() > 0) {
-        await popularLink.first().click();
-        await page.waitForTimeout(1000);
-        
-        // URLが/popularに遷移するか、ソートパラメータが含まれることを確認（実装に依存）
-        const url = page.url();
-        if (!url.includes('/popular') && !url.includes('sortBy=bookmarks')) {
-          console.log('Popular sort might be handled differently');
-        }
-      } else {
-        console.log('Popular link not found, skipping test');
-      }
+
+      // 並び順の「人気」ボタン（ヘッダーの「人気」はトレンドのサブナビへ移した。Issue #704）
+      await page.getByRole('button', { name: '人気' }).first().click();
+      await expect(page).toHaveURL(/sortBy=bookmarks/);
     });
   });
 
@@ -230,27 +219,18 @@ test.describe('回帰テスト - 既存機能の動作確認', () => {
   });
 
   test.describe('モバイル対応', () => {
-    test('モバイルビューでハンバーガーメニューが表示される', async ({ page }) => {
-      // モバイルビューポートに設定
+    test('モバイルビューでは画面の下のボトムナビから主要な画面へ移れる', async ({ page }) => {
       await page.setViewportSize(MOBILE_VIEWPORT);
-      
+
       await page.goto('/');
       await page.waitForSelector('[data-testid="article-card"]', { timeout: 30000 });
-      
-      // モバイルメニューボタンを探す（ハンバーガーメニュー）
-      const mobileMenuButton = page.locator('[data-testid="mobile-menu-toggle"], button:has(svg.lucide-menu), button[aria-label*="メニュー"]');
-      const buttonCount = await mobileMenuButton.count();
-      expect(buttonCount).toBeGreaterThan(0);
-      
-      if (buttonCount > 0) {
-        // クリックでメニューが開く
-        await mobileMenuButton.first().click();
-        await page.waitForTimeout(500);
-        
-        // モバイルナビゲーションが表示されることを確認
-        const mobileNav = page.locator(`nav[data-testid="mobile-nav"], ${SELECTORS.MOBILE_MENU}`);
-        expect(await mobileNav.count()).toBeGreaterThan(0);
-      }
+
+      // ハンバーガーのメニューはやめ、主要導線を常に出す（Issue #704）
+      await expect(page.locator('[data-testid="mobile-menu-toggle"]')).toHaveCount(0);
+      const bottomNav = page.getByTestId('mobile-bottom-nav');
+      await expect(bottomNav).toBeVisible();
+      await bottomNav.getByRole('link', { name: 'トレンド' }).click();
+      await expect(page).toHaveURL(/\/trends$/);
     });
   });
 

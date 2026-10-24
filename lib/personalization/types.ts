@@ -5,17 +5,6 @@
  */
 
 // =============================================================================
-// Scope Types
-// =============================================================================
-
-/**
- * Preference scope determines where category preferences apply.
- * - 'home': Home page article filtering
- * - 'digest': Digest page article filtering
- */
-export type PreferenceScope = 'home' | 'digest';
-
-// =============================================================================
 // Interest Category Types
 // =============================================================================
 
@@ -62,23 +51,27 @@ export interface InterestCategoryWithCount {
 
 /**
  * User category preferences (API response)
+ *
+ * 分野の設定はホームとダイジェストで共通（Issue #709）。ホームの一覧を絞り込むかどうかは
+ * filterEnabled で別に持ち、ダイジェストは filterEnabled に関係なく分野を使う。
  */
 export interface UserCategoryPreferences {
   selectedCategories: string[];
+  /** ホームの一覧を分野で絞り込むか（分野が 0 件なら常に false） */
   filterEnabled: boolean;
   periodMonths: number;
   isAuthenticated?: boolean;
-  scope?: PreferenceScope;
 }
 
 /**
  * User category preference update request
  */
 export interface UpdateCategoryPreferencesRequest {
-  categoryIds: string[];
+  /** 分野。省略すると今の分野のまま（ホームのスイッチ・期間だけを変えるとき） */
+  categoryIds?: string[];
+  /** ホームの一覧を絞り込むか。省略すると今の値のまま（ダイジェストから分野だけを保存するとき） */
   filterEnabled?: boolean;
   periodMonths?: number;
-  scope?: PreferenceScope;
 }
 
 // =============================================================================

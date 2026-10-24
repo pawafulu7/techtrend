@@ -1,20 +1,17 @@
 /**
  * トレンド概要の「いま伸びている話題」の順位表（app/trends/_components/keyword-sections.tsx の
- * TrendingKeywordsSection と app/components/trends/overview/TrendingTopicRow.tsx）と、件数の読み出し
- * （TrendStatsBar）。
+ * TrendingKeywordsSection と app/components/trends/overview/TrendingTopicRow.tsx）。
  *
  * - 順位表は1つの ol（role="list"）。2 列のときは縦に流す（行の数 = 件数の半分の切り上げ）
  * - 各行: 話題名のリンク（ホームをそのタグで絞り込む）・直近 24 時間の件数・成長率・前の 6 日の1日平均。
  *   折れ線は読み上げから隠し、7 区間の件数を文字で伝える。成長率の色は熱の段
  * - 総数が一覧より多いときは「全 N 件のうち上位 M 件」と出す
- * - 統計バーの「伸びている話題」は総数（一覧を打ち切った数ではない）
  */
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import type { TrendingKeywordWithSeries } from '@/lib/services/trending-series';
 import { TrendingKeywordsSection } from '@/app/trends/_components/keyword-sections';
-import { TrendStatsBar } from '@/app/components/trends/overview/TrendStatsBar';
 import { heatLevel } from '@/app/components/trends/trend-heat';
 
 function topic(
@@ -163,24 +160,5 @@ describe('heatLevel（成長率 → 熱 1〜4）', () => {
     [999, 4],
   ])('%i%% → 熱 %i', (growthRate, level) => {
     expect(heatLevel(growthRate)).toBe(level);
-  });
-});
-
-describe('TrendStatsBar（件数の読み出し）', () => {
-  it('数を、何の数かと組にして読ませる。取得の失敗は「—」', () => {
-    render(
-      <TrendStatsBar trendingCount={46} newTagCount={10} topTagCount={null} />
-    );
-    const bar = screen.getByTestId('trend-stats-bar');
-    const terms = within(bar).getAllByRole('term');
-    const definitions = within(bar).getAllByRole('definition');
-    expect(terms.map((t) => t.textContent)).toEqual([
-      '伸びている話題',
-      '新着タグ',
-      '人気タグ',
-    ]);
-    expect(definitions[0]).toHaveTextContent('46');
-    expect(definitions[1]).toHaveTextContent('10');
-    expect(definitions[2]).toHaveTextContent('取得できませんでした');
   });
 });

@@ -178,11 +178,12 @@ test.describe('リーダーのキーボード操作（デスクトップ）', ()
     await page.keyboard.press('ArrowDown');
     await expect.poll(() => articleParam(page)).toBe(thirdId);
 
-    // Next の router 遷移（URL は commit のときに書かれる）
-    await page
-      .locator('header')
-      .getByRole('link', { name: 'リーダー', exact: true })
-      .click();
+    // Next の router 遷移（URL は commit のときに書かれる）。ヘッダーの主要導線からリーダーを外したので
+    // （Issue #704）、コマンドパレットからリーダーを開く（router.push('/reader')）
+    await page.keyboard.press('Control+k');
+    await page.getByRole('dialog', { name: 'ページを開く・記事を検索' }).waitFor();
+    await page.keyboard.type('リーダー');
+    await page.keyboard.press('Enter');
     await expect.poll(() => articleParam(page)).toBeNull();
     await expect(box).toHaveAttribute(
       'aria-activedescendant',

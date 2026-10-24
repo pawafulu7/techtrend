@@ -4,7 +4,7 @@
  * 押すと分野の設定のダイアログが開く普通のボタンで、絞り込みの状態は見た目と読み上げの文字で伝える。
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { PersonalizationToggle } from '@/app/components/personalization/personalization-toggle';
@@ -14,14 +14,28 @@ jest.mock('@/lib/hooks/use-personalization-preferences', () => ({
   usePersonalizationPreferences: jest.fn(),
 }));
 
-// ダイアログの中身はこのテストの対象外。開いているかだけを見る
+// ダイアログの中身はこのテストの対象外。開いているかと、渡した props だけを見る
+const mockDialogProps = jest.fn();
 jest.mock(
   '@/app/components/personalization/category-preference-dialog',
   () => ({
-    CategoryPreferenceDialog: ({ open }: { open: boolean }) =>
-      open ? <div role="dialog">分野の設定</div> : null,
+    CategoryPreferenceDialog: (props: { open: boolean }) => {
+      mockDialogProps(props);
+      return props.open ? <div role="dialog">分野の設定</div> : null;
+    },
   })
 );
+
+type DialogProps = {
+  homeFilterEnabled?: boolean;
+  onSave: (
+    categories: string[],
+    period: number,
+    homeFilterEnabled: boolean
+  ) => Promise<void>;
+};
+const lastDialogProps = (): DialogProps =>
+  mockDialogProps.mock.calls.at(-1)?.[0] as DialogProps;
 
 const mockedUsePreferences = usePersonalizationPreferences as jest.Mock;
 
@@ -38,11 +52,12 @@ function mockPreferences({
     filterEnabled,
     periodMonths: 3,
     isLoading: false,
-    updatePreferencesAsync: jest.fn(),
+    updatePreferencesAsync,
     isUpdating: false,
     hasPreferences: selected.length > 0,
   });
 }
+const updatePreferencesAsync = jest.fn();
 
 describe('PersonalizationToggle', () => {
   beforeEach(() => {
@@ -94,5 +109,51 @@ describe('PersonalizationToggle', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await user.click(button);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  describe('ホームの絞り込みのスイッチ（分野はダイジェストと共通、Issue #709）', () => {
+    it('まだ分野を選んでいないときは、オンから始める', () => {
+      mockPreferences({ selected: [], filterEnabled: false });
+      render(<PersonalizationToggle />);
+
+      expect(lastDialogProps().homeFilterEnabled).toBe(true);
+    });
+
+    it('ダイジェストで分野を選んだだけ（絞り込みオフ）なら、オフから始める', () => {
+      mockPreferences({ selected: ['a'], filterEnabled: false });
+      render(<PersonalizationToggle />);
+
+      expect(lastDialogProps().homeFilterEnabled).toBe(false);
+    });
+
+    it('保存すると、スイッチの値で絞り込みを保存する。分野が 0 件ならオフにする', async () => {
+      mockPreferences({ selected: ['a'], filterEnabled: false });
+      render(<PersonalizationToggle />);
+
+      await act(() => lastDialogProps().onSave(['a', 'b'], 6, true));
+      expect(updatePreferencesAsync).toHaveBeenLastCalledWith({
+        categoryIds: ['a', 'b'],
+        filterEnabled: true,
+        periodMonths: 6,
+      });
+
+      await act(() => lastDialogProps().onSave([], 6, true));
+      expect(updatePreferencesAsync).toHaveBeenLastCalledWith({
+        categoryIds: [],
+        filterEnabled: false,
+        periodMonths: 6,
+      });
+    });
+
+    it('分野を変えずにスイッチだけを変えたときは、分野を送らない（別の画面で変えた分野を戻さない）', async () => {
+      mockPreferences({ selected: ['a', 'b'], filterEnabled: false });
+      render(<PersonalizationToggle />);
+
+      await act(() => lastDialogProps().onSave(['b', 'a'], 3, true));
+      expect(updatePreferencesAsync).toHaveBeenLastCalledWith({
+        filterEnabled: true,
+        periodMonths: 3,
+      });
+    });
   });
 });

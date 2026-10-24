@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { BookOpen } from 'lucide-react';
 import {
@@ -8,11 +8,14 @@ import {
   useQuery,
   keepPreviousData,
 } from '@tanstack/react-query';
+import { PAPER_SOURCE_IDS_PARAM } from '@/lib/utils/source/paper-source';
 import {
-  PAPER_SOURCE_IDS_PARAM,
-  isPaperSourceId,
-  withoutPaperSourceIds,
-} from '@/lib/utils/source/paper-source';
+  buildArticlesRequest,
+  buildHomeArticleFilters,
+  normalizeArticleFilters,
+} from '@/lib/articles/home-articles-query';
+import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
+import { ReadTracker } from '@/components/article/read-tracker';
 import { FilterSidebarToggle } from '@/app/components/home/filter-sidebar';
 import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle';
 import { SearchBox } from '@/app/components/common/search-box';
@@ -34,10 +37,18 @@ import type {
 /** md: Tailwindブレークポイント (768px) と揃える */
 const DESKTOP_MEDIA_QUERY = '(min-width: 768px)';
 
-const READER_ARTICLES_PER_PAGE = 20;
+// リーダーには既読・未読の絞り込みの操作が無い。ホームの URL から引き継いでも条件にしない
+// （付けると一覧がユーザーごとの結果になり、ユーザーを区別しないキャッシュに載る）
+const READER_IGNORED_FILTERS = ['readFilter', 'includeUserData'];
 
 interface ReaderClientProps {
   tags: Array<{ id: string; name: string; count: number }>;
+  /** URL に sortBy が無いときの並び順（ホームと同じ Cookie から） */
+  initialSortBy?: string;
+  /** URL に sources/sourceId が無いときのソース（ホームと同じ Cookie から） */
+  initialSourceIds?: string[];
+  /** lg 未満のフィルターの入口（サーバーのデータを使うので、ページから渡す） */
+  mobileFilters?: ReactNode;
 }
 
 async function parseApiJson(res: Response): Promise<Record<string, unknown>> {
@@ -63,17 +74,17 @@ async function fetchArticleList(
   page: number,
   filterParams: Record<string, string>
 ): Promise<Extract<ArticleListResponse, { success: true }>> {
-  const params = new URLSearchParams({
-    page: String(page),
-    limit: String(READER_ARTICLES_PER_PAGE),
-    sortBy: 'publishedAt',
-    sortOrder: 'desc',
-    ...filterParams,
-  });
-  // 論文のソースを除外（ホームと同じ。専用の/papersページで表示するため）
-  params.set('excludeSources', PAPER_SOURCE_IDS_PARAM);
-  params.set('excludeUnprocessed', 'true');
-  const res = await fetch(`/api/articles/list?${params}`);
+  // 要求先と検索条件もホームと同じ関数で作る。パーソナライズしているときは /api/articles（関連つき）、
+  // それ以外は軽量版の /api/articles/list。どちらも { success, data: { items, page, totalPages } } を返す
+  const { endpoint, searchParams } = buildArticlesRequest(
+    normalizeArticleFilters({
+      sortBy: 'publishedAt',
+      sortOrder: 'desc',
+      ...filterParams,
+    }),
+    { page }
+  );
+  const res = await fetch(`${endpoint}?${searchParams}`);
   const json = await parseApiJson(res);
   if (!res.ok || !json.success)
     throw new Error(getApiErrorMessage(json, '記事の読み込みに失敗しました'));
@@ -90,47 +101,43 @@ async function fetchArticleDetail(
   return json as unknown as Extract<ArticleDetailResponse, { success: true }>;
 }
 
-export function ReaderClient({ tags }: ReaderClientProps) {
+export function ReaderClient({
+  tags,
+  initialSortBy,
+  initialSourceIds,
+  mobileFilters,
+}: ReaderClientProps) {
   const searchParams = useSearchParams();
+  // パーソナライズはホームと同じ設定（分野・期間・ホームの絞り込みのオン/オフ）を使う。
+  // 設定が分かるまでは一覧を取らない（取ってから条件が変わると、一覧を取り直すことになる）
+  const {
+    selectedCategories,
+    filterEnabled,
+    periodMonths,
+    isLoadingPreferences,
+  } = usePersonalizationPreferences();
 
-  // Extract filter params from URL
+  // 一覧の条件はホームと同じ関数で組み立てる（Issue #709）。URL に無いソース・並び順は Cookie の値、
+  // 論文のソースと要約の無い記事は除く。選んでいる記事（article）は条件に入れない
   const filterParams = useMemo(() => {
-    const params: Record<string, string> = {};
-    const sortBy = searchParams.get('sortBy');
-    const sortOrder = searchParams.get('sortOrder');
-    const sourcesParam = searchParams.get('sources');
-    const sourceId = searchParams.get('sourceId');
-    const tagsParam = searchParams.get('tags');
-    const tagMode = searchParams.get('tagMode');
-    const searchParam = searchParams.get('search');
-    const dateFrom = searchParams.get('dateFrom');
-    const dateTo = searchParams.get('dateTo');
-    const dateRange = searchParams.get('dateRange');
-    const category = searchParams.get('category');
-    const includeOffTopic = searchParams.get('includeOffTopic');
-
-    if (sortBy) params.sortBy = sortBy;
-    if (sortOrder) params.sortOrder = sortOrder;
-    // 論文のソースは除く（残りが無ければ全選択。withoutPaperSourceIds）
-    const sources = sourcesParam
-      ? withoutPaperSourceIds(sourcesParam)
-      : undefined;
-    if (sources) params.sources = sources;
-    if (sourceId && !isPaperSourceId(sourceId)) params.sourceId = sourceId;
-    if (tagsParam) params.tags = tagsParam;
-    if (tagMode) params.tagMode = tagMode;
-    if (searchParam) params.search = searchParam;
-    if (dateFrom) params.dateFrom = dateFrom;
-    if (dateTo) params.dateTo = dateTo;
-    if (dateRange) params.dateRange = dateRange;
-    // category を拾わないと、フィルタパネルでカテゴリを選んでも URL だけ変わって
-    // 一覧が変化しない（API 側は category を受け付ける）
-    if (category) params.category = category;
-    // 技術者向けでない記事を含める指定（issue #722）。ホームから URL ごと引き継ぐ
-    if (includeOffTopic === 'true') params.includeOffTopic = includeOffTopic;
-
+    const params = buildHomeArticleFilters({
+      searchParams,
+      initialSortBy,
+      initialSourceIds,
+      personalization: { filterEnabled, selectedCategories, periodMonths },
+      // 論文のソースを除外（ホームと同じ。専用の/papersページで表示するため）
+      excludeSources: PAPER_SOURCE_IDS_PARAM,
+    });
+    READER_IGNORED_FILTERS.forEach((key) => delete params[key]);
     return params;
-  }, [searchParams]);
+  }, [
+    searchParams,
+    initialSortBy,
+    initialSourceIds,
+    filterEnabled,
+    selectedCategories,
+    periodMonths,
+  ]);
 
   // key forces remount (and selectedId reset) when filters change.
   // `article` は含めない（記事選択のたびに Inner が再マウントされ、選択状態や
@@ -140,21 +147,42 @@ export function ReaderClient({ tags }: ReaderClientProps) {
     [filterParams]
   );
 
+  // ツールバーは key の付いた Inner の外に置く。中に置くと、フィルターを1つ変えるたびに作り直され、
+  // 開いているフィルターの Sheet やタグの選択が閉じる
   return (
-    <ReaderClientInner
-      key={filterKey}
-      tags={tags}
-      filterParams={filterParams}
-    />
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-[var(--tt-color-border)] px-4 py-2">
+        {/* Issue #700: 作業型の画面なのでレイアウトは保ち、h1 はツールバーの左端に置く。
+            記事タイトルを h1 にすると、狭い画面で一覧だけを出すときに h1 が消えるため */}
+        <h1 className="font-heading text-foreground text-h1 mr-2 flex items-center gap-2">
+          <BookOpen className="text-primary h-5 w-5" aria-hidden="true" />
+          リーダー
+        </h1>
+        <FilterSidebarToggle />
+        {mobileFilters}
+        <MobileSearchToggle />
+        <div className="hidden lg:block">
+          <SearchBox />
+        </div>
+        <TagFilterDropdown tags={tags} />
+        <SortButtons initialSortBy={initialSortBy} />
+      </div>
+      <ReaderClientInner
+        key={filterKey}
+        filterParams={filterParams}
+        listEnabled={!isLoadingPreferences}
+      />
+    </div>
   );
 }
 
 function ReaderClientInner({
-  tags,
   filterParams,
+  listEnabled,
 }: {
-  tags: ReaderClientProps['tags'];
   filterParams: Record<string, string>;
+  /** パーソナライズの設定が分かったか（分かるまで一覧を取らない） */
+  listEnabled: boolean;
 }) {
   const searchParams = useSearchParams();
   const articleParam = searchParams.get('article');
@@ -188,6 +216,7 @@ function ReaderClientInner({
   } = useInfiniteQuery({
     queryKey: ['reader-articles', filterParams],
     queryFn: ({ pageParam }) => fetchArticleList(pageParam, filterParams),
+    enabled: listEnabled,
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
       const { page, totalPages } = lastPage.data;
@@ -311,23 +340,7 @@ function ReaderClientInner({
   });
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-2 border-b border-[var(--tt-color-border)] px-4 py-2">
-        {/* Issue #700: 作業型の画面なのでレイアウトは保ち、h1 はツールバーの左端に置く。
-            記事タイトルを h1 にすると、狭い画面で一覧だけを出すときに h1 が消えるため */}
-        <h1 className="font-heading text-foreground text-h1 mr-2 flex items-center gap-2">
-          <BookOpen className="text-primary h-5 w-5" aria-hidden="true" />
-          リーダー
-        </h1>
-        <FilterSidebarToggle />
-        <MobileSearchToggle />
-        <div className="hidden lg:block">
-          <SearchBox />
-        </div>
-        <TagFilterDropdown tags={tags} />
-        <SortButtons />
-      </div>
+    <>
       {/* Two-panel layout: md未満は article パラメータの有無で1ペイン切替、md以上は常に2ペイン */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Left panel: Article list */}
@@ -344,7 +357,7 @@ function ReaderClientInner({
           <ReaderArticleList
             articles={articles}
             selectedId={listActiveId}
-            isLoading={isLoadingList}
+            isLoading={isLoadingList || !listEnabled}
             error={listError instanceof Error ? listError.message : null}
             onSelectArticle={handleSelectArticle}
             onKeyDown={handleKeyDown}
@@ -368,6 +381,18 @@ function ReaderClientInner({
           role="region"
           aria-label="記事詳細"
         >
+          {/* 本文が見えている記事を、3 秒開いていたら既読にする。md 未満で一覧だけを出しているときは、
+              先頭の記事を選んでいても本文は見えていないので既読にしない。次の記事を読み込む間は前の記事を
+              出したままにするので（keepPreviousData）、選んでいる記事の本文が届いてから数える */}
+          {selectedArticle &&
+            selectedArticle.id === effectiveSelectedId &&
+            (isDesktop || articleParam) && (
+              <ReadTracker
+                key={selectedArticle.id}
+                articleId={selectedArticle.id}
+                markOnLeave={false}
+              />
+            )}
           <ReaderArticleDetail
             article={selectedArticle}
             isLoading={!detailData && isFetchingDetail}
@@ -380,6 +405,6 @@ function ReaderClientInner({
           />
         </div>
       </div>
-    </div>
+    </>
   );
 }

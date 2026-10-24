@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Job Management Dashboard', () => {
   test.describe('Unauthenticated access', () => {
     test('should redirect to login when not authenticated', async ({ page }) => {
-      await page.goto('/dashboard/jobs');
+      await page.goto('/admin/jobs');
 
       // Should redirect to login page
       await expect(page).toHaveURL(/\/auth\/login/);
@@ -30,7 +30,7 @@ test.describe('Job Management Dashboard', () => {
       // This test verifies the dashboard page structure without requiring login
       // by checking the page renders correctly even if it redirects
 
-      const response = await page.goto('/dashboard/jobs');
+      const response = await page.goto('/admin/jobs');
 
       // Page should load without 500 errors
       expect(response?.status()).not.toBe(500);

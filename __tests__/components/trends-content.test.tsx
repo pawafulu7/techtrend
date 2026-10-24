@@ -52,6 +52,25 @@ function getSection(heading: string): HTMLElement {
   return section;
 }
 
+const ANALYSIS_ERROR = 'タグトレンドの推移を読み込めませんでした';
+
+// 分析の推移のカード（失敗と再試行はここに出る）
+function lineChartCard(): HTMLElement {
+  const card = screen
+    .getByRole('heading', { name: 'タグトレンドの推移' })
+    .closest('div.border');
+  if (!card) throw new Error('line chart card not found');
+  return card as HTMLElement;
+}
+
+// 表示している分析の期間（集計の表示「直近N日の記事を…に集計」から読む）。
+// 7日と30日の応答を取り違えていないかを、この値で見分ける
+function shownPeriodDays(): string | undefined {
+  return screen
+    .queryByText(/^直近\d+日の記事を/)
+    ?.textContent?.match(/直近(\d+)日/)?.[1];
+}
+
 describe('TrendsContent: 取得の失敗（issue #701）', () => {
   const originalFetch = global.fetch;
 
@@ -69,7 +88,6 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       <TrendsContent
         initialKeywords={null}
         trendingTotal={null}
-        initialNewTags={null}
         initialAnalysis={emptyAnalysis}
         initialSourceData={null}
       />
@@ -82,15 +100,8 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       screen.queryByText('いま伸びている話題はありません')
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText('新着タグを読み込めませんでした')
-    ).toBeInTheDocument();
-    expect(screen.queryByText('新着タグはありません')).not.toBeInTheDocument();
-    expect(
       screen.getByText('ソース別記事分布を読み込めませんでした')
     ).toBeInTheDocument();
-
-    // 件数バーも 0 ではなく「取得できませんでした」
-    expect(screen.getAllByText('取得できませんでした')).toHaveLength(2);
 
     await userEvent.click(
       within(getSection('いま伸びている話題')).getByRole('button', {
@@ -105,28 +116,39 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       <TrendsContent
         initialKeywords={[]}
         trendingTotal={0}
-        initialNewTags={[]}
         initialAnalysis={emptyAnalysis}
         initialSourceData={[]}
       />
     );
 
     // 空の表示は、ページの下地ではなく見出しと同じカード（枠と背景）の中に出す（issue #763）
-    for (const [heading, empty] of [
-      ['いま伸びている話題', 'いま伸びている話題はありません'],
-      ['新着タグ (0)', '新着タグはありません'],
-    ]) {
-      const section = getSection(heading);
-      expect(section).toHaveClass('bg-background', 'border', 'rounded-lg');
-      expect(
-        within(within(section).getByTestId('empty-state')).getByText(empty)
-      ).toBeInTheDocument();
-    }
+    const section = getSection('いま伸びている話題');
+    expect(section).toHaveClass('bg-background', 'border', 'rounded-lg');
+    expect(
+      within(within(section).getByTestId('empty-state')).getByText(
+        'いま伸びている話題はありません'
+      )
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('error-message')).not.toBeInTheDocument();
     expect(screen.queryByText('取得できませんでした')).not.toBeInTheDocument();
   });
 
-  it('分析の取得に失敗したら、推移と人気タグに失敗を出し、再試行で取り直す', async () => {
+  it('人気タグと新着タグは出さない（タグ分析にまとめた、Issue #709）', () => {
+    render(
+      <TrendsContent
+        initialKeywords={[]}
+        trendingTotal={0}
+        initialAnalysis={analysisWithTag}
+        initialSourceData={[]}
+      />
+    );
+
+    expect(screen.queryByText('人気タグ TOP10')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^新着タグ/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('trend-stats-bar')).not.toBeInTheDocument();
+  });
+
+  it('分析の取得に失敗したら、推移に失敗を出し、再試行で取り直す', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => analysisWithTag,
@@ -136,38 +158,27 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       <TrendsContent
         initialKeywords={[]}
         trendingTotal={0}
-        initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
       />
     );
 
-    expect(
-      screen.getByText('タグトレンドの推移を読み込めませんでした')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('人気タグを読み込めませんでした')
-    ).toBeInTheDocument();
-    // 件数バーの人気タグは 0 ではなく「取得できませんでした」
-    expect(screen.getAllByText('取得できませんでした')).toHaveLength(1);
+    expect(screen.getByText(ANALYSIS_ERROR)).toBeInTheDocument();
     // 「データがありません」はソース分布（空配列 = 該当なし）の1箇所だけ
     expect(screen.getAllByText('データがありません')).toHaveLength(1);
 
-    const topTags = screen.getByText('人気タグ TOP10').closest('div.border');
     await userEvent.click(
-      within(topTags as HTMLElement).getByRole('button', { name: '再試行' })
+      within(lineChartCard()).getByRole('button', { name: '再試行' })
     );
 
-    await waitFor(() => expect(screen.getByText('React')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByText(ANALYSIS_ERROR)).not.toBeInTheDocument()
+    );
+    expect(shownPeriodDays()).toBe('7');
     expect(global.fetch).toHaveBeenCalledWith(
       '/api/trends/analysis?days=7',
       expect.objectContaining({ cache: 'no-store' })
     );
-    // 件数バーの人気タグも取り直した値になる
-    expect(screen.queryByText('取得できませんでした')).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('人気タグを読み込めませんでした')
-    ).not.toBeInTheDocument();
   });
 
   it('期間を切り替えた取得が 500 を返したら、空ではなく失敗を出す', async () => {
@@ -178,7 +189,6 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       <TrendsContent
         initialKeywords={[]}
         trendingTotal={0}
-        initialNewTags={[]}
         initialAnalysis={analysisWithTag}
         initialSourceData={[]}
       />
@@ -187,9 +197,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     await userEvent.click(screen.getByRole('button', { name: '30日間' }));
 
     await waitFor(() =>
-      expect(
-        screen.getByText('人気タグを読み込めませんでした')
-      ).toBeInTheDocument()
+      expect(screen.getByText(ANALYSIS_ERROR)).toBeInTheDocument()
     );
     expect(global.fetch).toHaveBeenCalledWith(
       '/api/trends/analysis?days=30',
@@ -209,7 +217,6 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       <TrendsContent
         initialKeywords={null}
         trendingTotal={null}
-        initialNewTags={[]}
         initialAnalysis={analysisWithTag}
         initialSourceData={[]}
       />
@@ -223,7 +230,6 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       <TrendsContent
         initialKeywords={[]}
         trendingTotal={0}
-        initialNewTags={[]}
         initialAnalysis={{ ...analysisWithTag }}
         initialSourceData={[]}
       />
@@ -233,8 +239,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     // 30日の分析のまま（7日のサーバーの値で上書きしない）
-    expect(screen.getByText('Go')).toBeInTheDocument();
-    expect(screen.queryByText('React')).not.toBeInTheDocument();
+    expect(shownPeriodDays()).toBe('30');
   });
 
   it('7日表示中に router.refresh で新しい分析が届いたら反映する', () => {
@@ -242,29 +247,23 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       <TrendsContent
         initialKeywords={null}
         trendingTotal={null}
-        initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
       />
     );
-    expect(
-      screen.getByText('人気タグを読み込めませんでした')
-    ).toBeInTheDocument();
+    expect(screen.getByText(ANALYSIS_ERROR)).toBeInTheDocument();
 
     rerender(
       <TrendsContent
         initialKeywords={[]}
         trendingTotal={0}
-        initialNewTags={[]}
         initialAnalysis={analysisWithTag}
         initialSourceData={[]}
       />
     );
 
-    expect(screen.getByText('React')).toBeInTheDocument();
-    expect(
-      screen.queryByText('人気タグを読み込めませんでした')
-    ).not.toBeInTheDocument();
+    expect(shownPeriodDays()).toBe('7');
+    expect(screen.queryByText(ANALYSIS_ERROR)).not.toBeInTheDocument();
   });
 
   it('分析の再試行中も、スケルトンに戻さず失敗表示を残す', async () => {
@@ -280,28 +279,24 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       <TrendsContent
         initialKeywords={[]}
         trendingTotal={0}
-        initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
       />
     );
-    const topTags = screen.getByText('人気タグ TOP10').closest('div.border');
     await userEvent.click(
-      within(topTags as HTMLElement).getByRole('button', { name: '再試行' })
+      within(lineChartCard()).getByRole('button', { name: '再試行' })
     );
 
     // 再試行中は aria-disabled で押せない状態にする（disabled だとフォーカスが外れるため。Issue #700）
     expect(
-      within(topTags as HTMLElement).getByRole('button', { name: '再試行中…' })
+      within(lineChartCard()).getByRole('button', { name: '再試行中…' })
     ).toHaveAttribute('aria-disabled', 'true');
-    expect(
-      screen.getByText('タグトレンドの推移を読み込めませんでした')
-    ).toBeInTheDocument();
+    expect(screen.getByText(ANALYSIS_ERROR)).toBeInTheDocument();
 
     await act(async () => {
       resolveRetry({ ok: true, json: async () => analysisWithTag });
     });
-    expect(await screen.findByText('React')).toBeInTheDocument();
+    await waitFor(() => expect(shownPeriodDays()).toBe('7'));
   });
 
   it('7日で取り直して成功した分析は、30日に切り替えて7日に戻しても残る', async () => {
@@ -317,25 +312,21 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       <TrendsContent
         initialKeywords={[]}
         trendingTotal={0}
-        initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
       />
     );
-    const topTags = screen.getByText('人気タグ TOP10').closest('div.border');
     await userEvent.click(
-      within(topTags as HTMLElement).getByRole('button', { name: '再試行' })
+      within(lineChartCard()).getByRole('button', { name: '再試行' })
     );
-    await waitFor(() => expect(screen.getByText('React')).toBeInTheDocument());
+    await waitFor(() => expect(shownPeriodDays()).toBe('7'));
 
     await userEvent.click(screen.getByRole('button', { name: '30日間' }));
-    await waitFor(() => expect(screen.getByText('Go')).toBeInTheDocument());
+    await waitFor(() => expect(shownPeriodDays()).toBe('30'));
     await userEvent.click(screen.getByRole('button', { name: '7日間' }));
 
-    expect(screen.getByText('React')).toBeInTheDocument();
-    expect(
-      screen.queryByText('人気タグを読み込めませんでした')
-    ).not.toBeInTheDocument();
+    expect(shownPeriodDays()).toBe('7');
+    expect(screen.queryByText(ANALYSIS_ERROR)).not.toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
@@ -352,21 +343,16 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       <TrendsContent
         initialKeywords={[]}
         trendingTotal={0}
-        initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
       />
     );
-    expect(
-      screen.getByText('人気タグを読み込めませんでした')
-    ).toBeInTheDocument();
+    expect(screen.getByText(ANALYSIS_ERROR)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: '30日間' }));
 
     // デバウンス中も取得中も、7日の失敗や「再試行中…」、空表示ではなくスケルトン
-    expect(
-      screen.queryByText('人気タグを読み込めませんでした')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(ANALYSIS_ERROR)).not.toBeInTheDocument();
     // 「データがありません」はソース分布（空配列 = 該当なし）の1箇所だけ
     expect(screen.getAllByText('データがありません')).toHaveLength(1);
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
@@ -377,7 +363,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     await act(async () => {
       resolve30({ ok: true, json: async () => analysis30 });
     });
-    expect(await screen.findByText('Go')).toBeInTheDocument();
+    await waitFor(() => expect(shownPeriodDays()).toBe('30'));
   });
 
   it('router.refresh でサーバーの分析がまだ失敗（null）でも、取り直した分析を残す', async () => {
@@ -390,22 +376,19 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
       <TrendsContent
         initialKeywords={null}
         trendingTotal={null}
-        initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
       />
     );
-    const topTags = screen.getByText('人気タグ TOP10').closest('div.border');
     await userEvent.click(
-      within(topTags as HTMLElement).getByRole('button', { name: '再試行' })
+      within(lineChartCard()).getByRole('button', { name: '再試行' })
     );
-    await waitFor(() => expect(screen.getByText('React')).toBeInTheDocument());
+    await waitFor(() => expect(shownPeriodDays()).toBe('7'));
 
     rerender(
       <TrendsContent
         initialKeywords={[]}
         trendingTotal={0}
-        initialNewTags={[]}
         initialAnalysis={null}
         initialSourceData={[]}
       />
@@ -414,9 +397,7 @@ describe('TrendsContent: 取得の失敗（issue #701）', () => {
     await userEvent.click(screen.getByRole('button', { name: '30日間' }));
     await userEvent.click(screen.getByRole('button', { name: '7日間' }));
 
-    expect(screen.getByText('React')).toBeInTheDocument();
-    expect(
-      screen.queryByText('人気タグを読み込めませんでした')
-    ).not.toBeInTheDocument();
+    expect(shownPeriodDays()).toBe('7');
+    expect(screen.queryByText(ANALYSIS_ERROR)).not.toBeInTheDocument();
   });
 });

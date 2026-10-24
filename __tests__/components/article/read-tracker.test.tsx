@@ -46,12 +46,15 @@ function createQueryClient() {
 
 function renderReadTracker(
   queryClient: QueryClient,
-  articleId: string = ARTICLE_ID
+  articleId: string = ARTICLE_ID,
+  props: { markOnLeave?: boolean } = {}
 ) {
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
-  return render(<ReadTracker articleId={articleId} />, { wrapper: Wrapper });
+  return render(<ReadTracker articleId={articleId} {...props} />, {
+    wrapper: Wrapper,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -182,6 +185,23 @@ describe('ReadTracker', () => {
     expect(localStorage.setItem).toHaveBeenCalledWith(
       READ_STATUS_STORAGE_KEY,
       expect.stringContaining(ARTICLE_ID)
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // 2b. markOnLeave=false（リーダー）: 3 秒たつ前に離れたら既読にしない
+  // -------------------------------------------------------------------------
+  it('does not mark as read on unmount before 3 seconds when markOnLeave is false', () => {
+    const { unmount } = renderReadTracker(queryClient, ARTICLE_ID, {
+      markOnLeave: false,
+    });
+
+    unmount();
+
+    expect(navigator.sendBeacon).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(dispatchEventSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'article-read-status-changed' })
     );
   });
 

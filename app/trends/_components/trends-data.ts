@@ -3,10 +3,7 @@ import { getTrendingSeries } from '@/lib/services/trending-keywords';
 import { getDashboardStats } from '@/lib/services/dashboard-stats';
 import logger from '@/lib/logger';
 
-export type {
-  TrendingKeywordWithSeries as TrendingKeyword,
-  NewTag,
-} from '@/lib/services/trending-keywords';
+export type { TrendingKeywordWithSeries as TrendingKeyword } from '@/lib/services/trending-keywords';
 export type { TrendAnalysis } from '@/lib/services/trend-analysis';
 export interface SourceDataItem {
   name: string;
@@ -17,14 +14,13 @@ export interface SourceDataItem {
 
 export async function fetchKeywordsData() {
   try {
-    // 急上昇の一覧・7 区間の件数・総数・新着タグ・集計の時刻を、すべて同じ値（1 つのキャッシュ）から取る
-    const { trending, trendingTotal, newTags, period } =
-      await getTrendingSeries();
+    // 急上昇の一覧・7 区間の件数・総数・集計の時刻を、すべて同じ値（1 つのキャッシュ）から取る。
+    // 新着タグはタグ分析（/tags）にまとめたので、トレンド概要では使わない（Issue #709）
+    const { trending, trendingTotal, period } = await getTrendingSeries();
     // 集計の終点（= 集計した時刻）。画面に集計時刻として出す（issue #707）
     return {
       trending,
       trendingTotal,
-      newTags,
       aggregatedAt: period?.to ?? null,
     };
   } catch (error) {

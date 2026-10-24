@@ -229,6 +229,21 @@ describe('middleware - security headers', () => {
       expect(response.status).toBe(307);
       expect(response.headers.get('location')).toContain('/auth/login');
     });
+
+    it('ログインした後に同じ表示へ戻すため、callbackUrl に検索条件も入れる', async () => {
+      // 読書分析は閲覧履歴のタブ（/history?tab=analytics。Issue #709）
+      const request = new NextRequest(
+        new URL('http://localhost:3000/history?tab=analytics')
+      );
+      const response = await proxy(request);
+
+      expect(response.status).toBe(307);
+      const location = new URL(response.headers.get('location')!);
+      expect(location.pathname).toBe('/auth/login');
+      expect(location.searchParams.get('callbackUrl')).toBe(
+        '/history?tab=analytics'
+      );
+    });
   });
 
   describe('セキュリティヘッダの順序', () => {

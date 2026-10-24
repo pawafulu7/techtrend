@@ -154,7 +154,7 @@ export function SocialPostsDashboard() {
       if (updated.page > 1) params.set('page', String(updated.page));
 
       const queryString = params.toString();
-      router.push(queryString ? `?${queryString}` : '/dashboard/social-posts', {
+      router.push(queryString ? `?${queryString}` : '/admin/social-posts', {
         scroll: false,
       });
     },
@@ -274,7 +274,7 @@ export function SocialPostsDashboard() {
   // Navigation
   const handleEdit = useCallback(
     (id: string) => {
-      router.push(`/dashboard/social-posts/${id}`);
+      router.push(`/admin/social-posts/${id}`);
     },
     [router]
   );

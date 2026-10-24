@@ -42,11 +42,6 @@ enum CommentVisibility {
   PRIVATE
 }
 
-enum PreferenceScope {
-  home
-  digest
-}
-
 model Article {
   id                     String             @id @default(cuid())
   title                  String
@@ -55,7 +50,7 @@ model Article {
   summary                String?
   thumbnail              String?
   content                String?
-  contentLength          Int?               // DB trigger maintained: CHAR_LENGTH(content)
+  contentLength          Int? // DB trigger maintained: CHAR_LENGTH(content)
   publishedAt            DateTime           @db.Timestamptz(6)
   sourceId               String
   bookmarks              Int                @default(0)
@@ -72,7 +67,7 @@ model Article {
   qualityScoreComputedAt DateTime?          @db.Timestamptz(6)
   summaryComputedAt      DateTime?          @db.Timestamptz(6)
   skipReason             SkipReason? // スキップ理由（NULL = 正常生成）
-  isHidden               Boolean     @default(false)
+  isHidden               Boolean            @default(false)
   summaryError           String? // エラーメッセージ（NULL = エラーなし）
   storyId                String? // 同じ出来事をまとめたストーリーの代表記事ID（NULL = まとめていない）。scripts/scheduled/assign-stories.ts が設定
   storySize              Int? // 同じストーリーの記事数（2以上。storyId が NULL なら NULL）
@@ -130,7 +125,6 @@ model Tag {
   category         String?
   articles         Article[]            @relation("ArticleToTag")
   categoryMappings TagCategoryMapping[]
-
 }
 
 model User {
@@ -145,6 +139,7 @@ model User {
   banExpires                  DateTime?                @db.Timestamptz(6)
   deletedAt                   DateTime?                @db.Timestamptz(6)
   personalizationPeriodMonths Int                      @default(12) // Time period for personalized filtering (0 = all time)
+  homePersonalizationEnabled  Boolean                  @default(false) // ホームの一覧を興味の分野で絞り込むか（分野の設定はダイジェストと共通）
   createdAt                   DateTime                 @default(now())
   updatedAt                   DateTime                 @updatedAt
   accounts                    Account[]
@@ -437,17 +432,15 @@ model UserCategoryPreference {
   id         String           @id @default(cuid())
   userId     String
   categoryId String
-  scope      PreferenceScope  @default(home)
   weight     Int              @default(1)
   createdAt  DateTime         @default(now()) @db.Timestamptz(6)
   updatedAt  DateTime         @updatedAt @db.Timestamptz(6)
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   category   InterestCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, categoryId, scope], map: "uq_user_category_preference")
+  @@unique([userId, categoryId], map: "uq_user_category_preference")
   @@index([userId], map: "idx_user_category_preference_user")
   @@index([categoryId], map: "idx_user_category_preference_category")
-  @@index([userId, scope], map: "idx_user_category_preference_user_scope")
 }
 
 // =============================================================================
@@ -569,10 +562,10 @@ enum SocialPostSource {
 }
 
 model SocialPost {
-  id              String           @id @default(cuid())
+  id              String               @id @default(cuid())
   // Content
-  content         String           @db.Text // Post body (~100 chars)
-  originalContent String?          @db.Text // Pre-edit content (for audit)
+  content         String               @db.Text // Post body (~100 chars)
+  originalContent String?              @db.Text // Pre-edit content (for audit)
   hashtags        String[] // Multiple hashtags support
   sourceUrls      String[] // Source URLs (multiple support)
   // Source info
@@ -581,22 +574,22 @@ model SocialPost {
   // Duplicate prevention
   contentHash     String? // Content hash for duplicate detection
   // Status
-  status          SocialPostStatus @default(DRAFT)
+  status          SocialPostStatus     @default(DRAFT)
   // AI generation metadata
   modelVersion    String?
   promptVersion   String?
-  contextSummary  String?          @db.Text // Context summary at generation (safe format)
+  contextSummary  String?              @db.Text // Context summary at generation (safe format)
   // Schedule & posting
-  scheduledAt     DateTime?        @db.Timestamptz(6)
-  postedAt        DateTime?        @db.Timestamptz(6)
+  scheduledAt     DateTime?            @db.Timestamptz(6)
+  postedAt        DateTime?            @db.Timestamptz(6)
   externalPostId  String? // X post ID
-  postError       String?          @db.Text // Posting error details
+  postError       String?              @db.Text // Posting error details
   // Audit info
   createdBy       String? // Creator ID
   reviewedBy      String? // Reviewer ID
-  reviewedAt      DateTime?        @db.Timestamptz(6)
-  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime         @default(now()) @updatedAt @db.Timestamptz(6)
+  reviewedAt      DateTime?            @db.Timestamptz(6)
+  createdAt       DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
   // Relations
   auditLogs       SocialPostAuditLog[]
 
@@ -610,7 +603,7 @@ model SocialPost {
 
 // Audit log for social posts
 model SocialPostAuditLog {
-  id           String     @id @default(cuid())
+  id           String   @id @default(cuid())
   socialPostId String? // Nullable to preserve audit logs after post deletion
   action       String // CREATE, UPDATE, DELETE, GENERATE, PUBLISH, REVIEW
   userId       String? // Operator ID
@@ -619,7 +612,7 @@ model SocialPostAuditLog {
   ipAddress    String? // Client IP (Note: Consider anonymization for GDPR/CCPA compliance)
   userAgent    String? // Browser info (Note: Consider retention policy for PII)
   metadata     Json? // Additional info
-  createdAt    DateTime   @default(now()) @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
 
   socialPost SocialPost? @relation(fields: [socialPostId], references: [id], onDelete: SetNull)
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Calendar, GitCompare } from 'lucide-react';
+import { Calendar, GitCompare, Hash } from 'lucide-react';
 
 const navigationItems = [
   {
@@ -14,11 +14,17 @@ const navigationItems = [
     title: '週間変化',
     description: 'トピックの新規・急上昇・下火を追跡',
   },
+  {
+    href: '/tags',
+    icon: Hash,
+    title: 'タグ分析',
+    description: '人気タグ・新着タグ・急成長のタグ',
+  },
 ] as const;
 
 export function TrendNavigationCards() {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {navigationItems.map((item) => {
         const Icon = item.icon;
         return (

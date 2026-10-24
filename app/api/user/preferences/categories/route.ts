@@ -5,6 +5,9 @@
  * POST /api/user/preferences/categories - Save user's category preferences
  *
  * Both endpoints require authentication.
+ *
+ * 分野の設定はホームとダイジェストで共通（Issue #709）。ホームの一覧を絞り込むかどうかは
+ * User.homePersonalizationEnabled に別に持つ。ダイジェストは絞り込みのオン/オフに関係なく分野を使う。
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,7 +16,6 @@ import { logger, sanitizeError } from '@/lib/logger';
 import type {
   UserCategoryPreferences,
   UpdateCategoryPreferencesRequest,
-  PreferenceScope,
   PeriodPreset,
 } from '@/lib/personalization/types';
 import {
@@ -34,9 +36,6 @@ const MAX_CATEGORY_SELECTIONS = 20;
 
 /** Default period in months for filtering */
 const DEFAULT_PERIOD_MONTHS = 12;
-
-/** Valid preference scopes */
-const validScopes: PreferenceScope[] = ['home', 'digest'];
 
 // =============================================================================
 // Errors
@@ -61,7 +60,10 @@ interface PreferencesResponse extends UserCategoryPreferences {
 
 interface SaveResponse {
   success: boolean;
+  /** 保存した後の設定（クライアントはこの値でキャッシュを置き換え、推測しない） */
   selectedCategories: string[];
+  filterEnabled: boolean;
+  periodMonths: number;
 }
 
 interface ErrorResponse {
@@ -80,30 +82,16 @@ interface ErrorResponse {
  * Returns empty array with default settings if user has no preferences set.
  */
 async function getHandler(
-  request: NextRequest,
+  _request: NextRequest,
   context: WithUserValidationContext
 ): Promise<NextResponse<PreferencesResponse | ErrorResponse>> {
   try {
     const userId = context.validatedUser.id;
 
-    // Parse and validate scope query parameter
-    const scopeParam = request.nextUrl.searchParams.get('scope');
-    if (
-      scopeParam !== null &&
-      !validScopes.includes(scopeParam as PreferenceScope)
-    ) {
-      return NextResponse.json(
-        { error: 'Invalid scope parameter' },
-        { status: 400 }
-      );
-    }
-    const scope: PreferenceScope =
-      scopeParam === null ? 'home' : (scopeParam as PreferenceScope);
-
-    // Get user's category preferences and period setting
+    // Get user's category preferences, period setting and home filter switch
     const [preferences, user] = await Promise.all([
       prisma.userCategoryPreference.findMany({
-        where: { userId, scope },
+        where: { userId },
         select: {
           categoryId: true,
         },
@@ -112,6 +100,7 @@ async function getHandler(
         where: { id: userId },
         select: {
           personalizationPeriodMonths: true,
+          homePersonalizationEnabled: true,
         },
       }),
     ]);
@@ -120,13 +109,13 @@ async function getHandler(
 
     const response: PreferencesResponse = {
       selectedCategories: preferences.map((p) => p.categoryId),
-      filterEnabled: hasPreferences, // Default to enabled if user has selections
+      // 分野が無ければ、オンでも絞り込めない
+      filterEnabled: hasPreferences && (user?.homePersonalizationEnabled ?? false),
       periodMonths: user?.personalizationPeriodMonths ?? DEFAULT_PERIOD_MONTHS,
-      scope,
     };
 
     logger.info(
-      { userId, categoryCount: preferences.length, scope },
+      { userId, categoryCount: preferences.length },
       'User category preferences retrieved'
     );
 
@@ -155,6 +144,10 @@ async function getHandler(
  * 1. All category IDs exist in the database
  * 2. Number of selections does not exceed maximum
  * 3. Duplicate IDs are removed
+ *
+ * categoryIds・filterEnabled・periodMonths は、送られたものだけを変える。ホームのスイッチだけを変えたときに、
+ * 開いていた画面の古い分野で、別の画面（ダイジェスト）で変えた分野を戻さないため。
+ * 分野が 0 件になったら、ホームの絞り込みはオフにする（後でダイジェストから分野を足したときに、黙って絞り込みに戻らない）
  */
 async function postHandler(
   request: NextRequest,
@@ -179,28 +172,22 @@ async function postHandler(
     }
     const body = parsedBody as UpdateCategoryPreferencesRequest;
 
-    const { categoryIds, filterEnabled, periodMonths, scope: bodyScope } = body;
+    const { categoryIds, filterEnabled, periodMonths } = body;
 
-    // Validate scope if provided (must be a string and one of the valid scopes)
-    if (
-      bodyScope !== undefined &&
-      (typeof bodyScope !== 'string' ||
-        !validScopes.includes(bodyScope as PreferenceScope))
-    ) {
+    // filterEnabled is optional: omitted means "keep the current home filter switch"
+    if (filterEnabled !== undefined && typeof filterEnabled !== 'boolean') {
       return NextResponse.json(
-        { error: 'Invalid scope parameter' },
+        { error: 'filterEnabled must be a boolean' },
         { status: 400 }
       );
     }
-    const scope: PreferenceScope = (bodyScope as PreferenceScope) || 'home';
 
-    // Validate periodMonths if provided (only relevant for home scope)
+    // Validate periodMonths if provided (used by the home filter only)
     const validPeriodMonths = [
       0, 3, 6, 12,
     ] as const satisfies readonly PeriodPreset[];
     if (
       periodMonths !== undefined &&
-      scope !== 'digest' &&
       (typeof periodMonths !== 'number' ||
         !(validPeriodMonths as readonly number[]).includes(periodMonths))
     ) {
@@ -210,10 +197,11 @@ async function postHandler(
       );
     }
 
-    // Validate categoryIds is an array of strings
+    // Validate categoryIds is an array of strings (optional: omitted means "keep the current categories")
     if (
-      !Array.isArray(categoryIds) ||
-      !categoryIds.every((id: unknown) => typeof id === 'string')
+      categoryIds !== undefined &&
+      (!Array.isArray(categoryIds) ||
+        !categoryIds.every((id: unknown) => typeof id === 'string'))
     ) {
       return NextResponse.json(
         { error: 'categoryIds must be an array of strings' },
@@ -222,10 +210,14 @@ async function postHandler(
     }
 
     // Remove duplicates
-    const uniqueCategoryIds = [...new Set(categoryIds)];
+    const uniqueCategoryIds =
+      categoryIds === undefined ? undefined : [...new Set(categoryIds)];
 
     // Check selection limit
-    if (uniqueCategoryIds.length > MAX_CATEGORY_SELECTIONS) {
+    if (
+      uniqueCategoryIds &&
+      uniqueCategoryIds.length > MAX_CATEGORY_SELECTIONS
+    ) {
       return NextResponse.json(
         {
           error: `Maximum ${MAX_CATEGORY_SELECTIONS} categories allowed`,
@@ -236,83 +228,106 @@ async function postHandler(
     }
 
     // Update preferences in a transaction (includes validation to avoid race conditions)
-    await prisma.$transaction(async (tx) => {
-      // Validate all category IDs exist (if any provided)
-      if (uniqueCategoryIds.length > 0) {
-        const existingCategories = await tx.interestCategory.findMany({
-          where: {
-            id: { in: uniqueCategoryIds },
-            isActive: true,
-          },
-          select: { id: true },
+    const saved = await prisma.$transaction(async (tx) => {
+      if (uniqueCategoryIds) {
+        // Validate all category IDs exist (if any provided)
+        if (uniqueCategoryIds.length > 0) {
+          const existingCategories = await tx.interestCategory.findMany({
+            where: {
+              id: { in: uniqueCategoryIds },
+              isActive: true,
+            },
+            select: { id: true },
+          });
+
+          const existingIds = new Set(existingCategories.map((c) => c.id));
+          const invalidIds = uniqueCategoryIds.filter(
+            (id) => !existingIds.has(id)
+          );
+
+          if (invalidIds.length > 0) {
+            throw new InvalidCategoryError(invalidIds);
+          }
+        }
+
+        // Replace the user's categories (shared by home and digest)
+        await tx.userCategoryPreference.deleteMany({
+          where: { userId },
         });
 
-        const existingIds = new Set(existingCategories.map((c) => c.id));
-        const invalidIds = uniqueCategoryIds.filter(
-          (id) => !existingIds.has(id)
-        );
-
-        if (invalidIds.length > 0) {
-          throw new InvalidCategoryError(invalidIds);
+        if (uniqueCategoryIds.length > 0) {
+          await tx.userCategoryPreference.createMany({
+            data: uniqueCategoryIds.map((categoryId) => ({
+              userId,
+              categoryId,
+              weight: 1, // Default weight for now
+            })),
+          });
         }
       }
 
-      // Delete existing preferences for this scope only
-      await tx.userCategoryPreference.deleteMany({
-        where: { userId, scope },
-      });
+      const categories =
+        uniqueCategoryIds ??
+        (
+          await tx.userCategoryPreference.findMany({
+            where: { userId },
+            select: { categoryId: true },
+          })
+        ).map((p) => p.categoryId);
 
-      // Insert new preferences with scope
-      if (uniqueCategoryIds.length > 0) {
-        await tx.userCategoryPreference.createMany({
-          data: uniqueCategoryIds.map((categoryId) => ({
-            userId,
-            categoryId,
-            scope,
-            weight: 1, // Default weight for now
-          })),
-        });
-      }
+      // 分野が無ければ、ホームの絞り込みはオフにする
+      const nextFilterEnabled =
+        categories.length === 0 ? false : filterEnabled;
+      const userData = {
+        ...(nextFilterEnabled !== undefined && {
+          homePersonalizationEnabled: nextFilterEnabled,
+        }),
+        ...(periodMonths !== undefined && {
+          personalizationPeriodMonths: periodMonths,
+        }),
+      };
+      const userSelect = {
+        homePersonalizationEnabled: true,
+        personalizationPeriodMonths: true,
+      } as const;
+      // 変えるものが無いときは update しない（updatedAt を動かさない）
+      const user =
+        Object.keys(userData).length > 0
+          ? await tx.user.update({
+              where: { id: userId },
+              data: userData,
+              select: userSelect,
+            })
+          : await tx.user.findUnique({
+              where: { id: userId },
+              select: userSelect,
+            });
 
-      // Update period months if provided (skip for digest scope)
-      if (periodMonths !== undefined && scope !== 'digest') {
-        await tx.user.update({
-          where: { id: userId },
-          data: { personalizationPeriodMonths: periodMonths },
-        });
-      }
-
-      // Warn if periodMonths is sent for digest scope (silently ignored)
-      if (periodMonths !== undefined && scope === 'digest') {
-        logger.warn(
-          { userId, scope, periodMonths },
-          'periodMonths ignored for digest scope'
-        );
-      }
+      return {
+        selectedCategories: categories,
+        filterEnabled:
+          categories.length > 0 && (user?.homePersonalizationEnabled ?? false),
+        periodMonths:
+          user?.personalizationPeriodMonths ?? DEFAULT_PERIOD_MONTHS,
+      };
     });
 
-    // Invalidate digest cache only when digest scope changes (fire-and-forget)
-    if (scope === 'digest') {
-      digestService.invalidateUserCache(userId).catch((error) => {
-        logger.warn({ err: error, userId }, 'Failed to invalidate digest cache');
-      });
-    }
+    // ダイジェストは同じ分野を読むので、保存のたびに消す。消してから応答する（応答を受けたクライアントが
+    // すぐにダイジェストを取り直すので、先に応答すると消す前の古いキャッシュを読む）。
+    // 消すのに失敗しても保存は済んでいるので、invalidateUserCache はログだけ出して例外を投げない
+    await digestService.invalidateUserCache(userId);
 
     logger.info(
       {
         userId,
-        categoryCount: uniqueCategoryIds.length,
-        filterEnabled,
-        periodMonths,
-        scope,
+        categoryCount: saved.selectedCategories.length,
+        filterEnabled: saved.filterEnabled,
+        periodMonths: saved.periodMonths,
       },
       'User category preferences saved'
     );
 
-    return NextResponse.json({
-      success: true,
-      selectedCategories: uniqueCategoryIds,
-    });
+    return NextResponse.json({ success: true, ...saved });
   } catch (error) {
     // Handle invalid category IDs thrown from within the transaction
     if (error instanceof InvalidCategoryError) {

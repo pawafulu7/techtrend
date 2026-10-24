@@ -1,6 +1,8 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { Filters } from '@/app/components/common/filters';
+import { MobileFilters } from '@/app/components/common/mobile-filters';
 import {
   FilterSidebarProvider,
   FilterSidebarPanel,
@@ -14,6 +16,7 @@ import {
   withoutPaperSources,
 } from '@/lib/utils/source/paper-source';
 import { getSession } from '@/lib/auth/get-session';
+import { resolveHomeFilterDefaults } from '@/lib/articles/home-filter-defaults';
 import { ReaderClient } from './reader-client';
 
 export const dynamic = 'force-dynamic';
@@ -41,8 +44,18 @@ async function getPopularTags() {
   }));
 }
 
-export default async function ReaderPage() {
-  const [sourceData, tags, session] = await Promise.all([
+function firstValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function ReaderPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [query, cookieStore, sourceData, tags, session] = await Promise.all([
+    searchParams,
+    cookies(),
     getSources(),
     getPopularTags(),
     getSession(),
@@ -53,6 +66,17 @@ export default async function ReaderPage() {
   const filteredSources = withoutPaperSources(sources);
   const filteredGroupedSources = withoutPaperSourceGroups(groupedSources);
 
+  // URL に無いソース・並び順は、ホームと同じ Cookie から補う（Issue #709）
+  const { initialSourceIds, initialSortBy } = resolveHomeFilterDefaults({
+    params: {
+      sources: firstValue(query.sources),
+      sourceId: firstValue(query.sourceId),
+      sortBy: firstValue(query.sortBy),
+    },
+    cookieStore,
+    validSourceIds: new Set(filteredSources.map((s) => s.id)),
+  });
+
   return (
     <FilterSidebarProvider>
       <div className="flex h-full flex-col overflow-hidden">
@@ -62,6 +86,7 @@ export default async function ReaderPage() {
               sources={filteredSources}
               groupedSources={filteredGroupedSources}
               tags={tags}
+              initialSourceIds={initialSourceIds}
               initialIsAuthenticated={!!session?.user}
             />
           </FilterSidebarPanel>
@@ -77,7 +102,21 @@ export default async function ReaderPage() {
               </div>
             }
           >
-            <ReaderClient tags={tags} />
+            <ReaderClient
+              tags={tags}
+              initialSortBy={initialSortBy}
+              initialSourceIds={initialSourceIds}
+              mobileFilters={
+                // lg 未満はフィルターのサイドバーを開けないので、ホームと同じ Sheet を出す
+                <MobileFilters
+                  sources={filteredSources}
+                  groupedSources={filteredGroupedSources}
+                  tags={tags}
+                  initialSourceIds={initialSourceIds}
+                  initialIsAuthenticated={!!session?.user}
+                />
+              }
+            />
           </Suspense>
         </div>
       </div>

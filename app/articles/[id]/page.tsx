@@ -8,7 +8,6 @@ import {
   Calendar,
   Clock,
   Download,
-  MessageSquare,
 } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { getSourceColor } from '@/lib/utils/source/source-colors';
@@ -23,7 +22,7 @@ import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summar
 import { OptimizedImage } from '@/app/components/common/optimized-image';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
-import { ArticleQADialog } from '@/app/articles/_components/article-qa-dialog';
+import { ArticleQAPanel } from '@/app/articles/_components/article-qa-panel';
 import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import { CommentSection } from '@/app/components/comment';
 import { ReadOriginalLink } from '@/app/components/article/read-original-link';
@@ -356,17 +355,12 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
               </CardContent>
             </Card>
 
-            <ArticleQADialog
+            <ArticleQAPanel
               articleId={article.id}
               articleTitle={article.translatedTitle || article.title}
               articleSummary={qaSummary}
               articleTopics={qaTopics}
-            >
-              <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                <MessageSquare className="mr-2 h-5 w-5" />
-                記事について質問する
-              </Button>
-            </ArticleQADialog>
+            />
 
             {/* 個人メモ（コメント）セクション */}
             <CommentSection articleId={article.id} />

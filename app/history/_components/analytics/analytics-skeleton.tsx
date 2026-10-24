@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/ui-v2/page-header';
 
 export function AnalyticsSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pt-3 pb-6">
+    <div className="px-4 pt-3 pb-6 lg:px-6">
       {/* 見出しは読み込み中も出す（h1 を常に1つ置く。Issue #700） */}
       <PageHeader
         icon={LineChart}

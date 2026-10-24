@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { Header } from '@/app/components/layout/header';
+import { CommandPaletteProvider } from '@/app/components/layout/command-palette';
 import { useSession } from '@/lib/auth/auth-client';
 import { useRouter, usePathname } from 'next/navigation';
 import { renderWithProviders } from '../helpers/test-providers';
@@ -37,6 +38,14 @@ jest.mock('@/components/auth/UserMenu', () => ({
   UserMenu: () => <div data-testid="user-menu">User Menu</div>,
 }));
 
+// ヘッダーのコマンドパレットの入口は、ルートの layout が置く Provider の中で使う
+const renderHeader = () =>
+  renderWithProviders(
+    <CommandPaletteProvider>
+      <Header />
+    </CommandPaletteProvider>
+  );
+
 const mockedUseRouter = jest.mocked(useRouter);
 const mockedUsePathname = jest.mocked(usePathname);
 const mockedUseSession = useSession as jest.Mock;
@@ -56,7 +65,7 @@ describe('Header', () => {
   });
 
   it('renders the header with logo and navigation', () => {
-    renderWithProviders(<Header />);
+    renderHeader();
 
     // ロゴが表示される
     const logo = screen.getByText(/TechTrend/i);
@@ -74,7 +83,7 @@ describe('Header', () => {
       isPending: false,
     });
 
-    renderWithProviders(<Header />);
+    renderHeader();
 
     // 認証済みユーザー用のメニューが表示される（UserMenuコンポーネントがモックされている）
     const userMenus = screen.queryAllByTestId('user-menu');
@@ -82,32 +91,16 @@ describe('Header', () => {
     expect(userMenus.length).toBeGreaterThan(0);
   });
 
-  it('handles mobile menu toggle', async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<Header />);
+  it('モバイルのメニューボタンは無い（主要導線は画面の下のボトムナビ、Issue #704）', () => {
+    renderHeader();
 
-    // モバイルメニューボタンを探す
-    const mobileMenuButton = screen.queryByRole('button', { name: /menu/i });
-
-    if (mobileMenuButton) {
-      // メニューが初期状態では閉じている
-      expect(screen.queryByTestId('mobile-menu')).not.toBeInTheDocument();
-
-      // メニューボタンをクリック
-      await user.click(mobileMenuButton);
-
-      // メニューが開く
-      const mobileMenu = screen.getByTestId('mobile-menu');
-      expect(mobileMenu).toBeInTheDocument();
-
-      // 再度クリックで閉じる
-      await user.click(mobileMenuButton);
-      expect(screen.queryByTestId('mobile-menu')).not.toBeInTheDocument();
-    }
+    expect(
+      screen.queryByRole('button', { name: /メニューを開く/ })
+    ).not.toBeInTheDocument();
   });
 
   it('navigates to home when logo is clicked', () => {
-    renderWithProviders(<Header />);
+    renderHeader();
 
     const logo = screen.getByText(/TechTrend/i);
     const logoLink = logo.closest('a');
@@ -117,41 +110,32 @@ describe('Header', () => {
     }
   });
 
-  it('shows search button or search bar', () => {
-    renderWithProviders(<Header />);
+  it('コマンドパレット（ページを開く・記事を検索）の入口をデスクトップとモバイルに出す', () => {
+    renderHeader();
 
-    // 検索ボタンまたは検索バーが存在する
-    const searchElement =
-      screen.queryByRole('search') ||
-      screen.queryByRole('button', { name: /検索|search/i });
-
-    if (searchElement) {
-      expect(searchElement).toBeInTheDocument();
-    }
+    expect(screen.getAllByTestId('command-palette-trigger')).toHaveLength(2);
   });
 
   it('shows correct navigation items', () => {
-    renderWithProviders(<Header />);
+    renderHeader();
 
-    // 主要なナビゲーション項目が表示される（/sources は管理者限定のため除外）
+    // 主要導線はホーム・ダイジェスト・トレンド（未ログイン。Issue #704）
     const expectedLinks = [
-      { text: /ホーム|Home/i, href: '/' },
-      { text: /分析|Analytics/i, href: '/analytics' },
+      { text: 'ホーム', href: '/' },
+      { text: 'ダイジェスト', href: '/digest' },
+      { text: 'トレンド', href: '/trends' },
     ];
 
     expectedLinks.forEach(({ text, href }) => {
-      const link = screen.queryByText(text);
-      if (link) {
-        const linkElement = link.closest('a');
-        if (linkElement) {
-          expect(linkElement).toHaveAttribute('href', href);
-        }
-      }
+      expect(screen.getByText(text).closest('a')).toHaveAttribute('href', href);
     });
+    // 主要導線から外した画面はヘッダーに出さない
+    expect(screen.queryByText('分析')).not.toBeInTheDocument();
+    expect(screen.queryByText('その他')).not.toBeInTheDocument();
   });
 
   it('renders sticky header when scrolling', () => {
-    const { container } = renderWithProviders(<Header />);
+    const { container } = renderHeader();
 
     const header = container.querySelector('header');
 
@@ -166,7 +150,7 @@ describe('Header', () => {
       isPending: false,
     });
 
-    renderWithProviders(<Header />);
+    renderHeader();
 
     // 通知アイコンが表示される
     const notificationIcon = screen.queryByRole('button', {
@@ -182,7 +166,7 @@ describe('Header', () => {
     // ダークモードのクラスを追加
     document.documentElement.classList.add('dark');
 
-    const { container } = renderWithProviders(<Header />);
+    const { container } = renderHeader();
 
     const header = container.querySelector('header');
 
@@ -198,7 +182,7 @@ describe('Header', () => {
 
   it('handles keyboard navigation', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<Header />);
+    renderHeader();
 
     const firstLink = screen.getAllByRole('link')[0];
 
@@ -215,7 +199,7 @@ describe('Header', () => {
   it('お問い合わせのリンクを Tooltip ごと描画しても落ちない', () => {
     // デスクトップ側は Tooltip（Radix）で包む。Provider が無いと描画時に例外になる。
     // このファイルの next/link のモックは href 以外を捨てるので、href で数える
-    const { container } = renderWithProviders(<Header />);
+    const { container } = renderHeader();
 
     expect(container.querySelectorAll('a[href="/contact"]')).toHaveLength(2);
   });

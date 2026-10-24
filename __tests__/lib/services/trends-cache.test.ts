@@ -104,7 +104,9 @@ it('page fills the complete keywords payload, including period, for the API', as
   );
   expect(page.trending[0].series).toEqual([0, 0, 0, 12, 0, 0, 5]);
   expect(page.trendingTotal).toBe(1);
-  expect(result.newTags).toEqual(page.newTags);
+  // 新着タグは API だけが返す（トレンド概要では使わず、タグ分析に移した。Issue #709）
+  expect(result.newTags).toEqual([]);
+  expect(page).not.toHaveProperty('newTags');
   expect(result.period.from).toEqual(expect.any(String));
   expect(result.period.to).toEqual(expect.any(String));
   // 画面の集計時刻は API と同じ集計の終点
@@ -233,7 +235,6 @@ it('all shared loaders and tag endpoints still return data with Redis unavailabl
   expect(await fetchKeywordsData()).toEqual({
     trending: [],
     trendingTotal: 0,
-    newTags: [],
     aggregatedAt: expect.any(String),
   });
   expect((await fetchAnalysisData(7)).period.days).toBe(7);
