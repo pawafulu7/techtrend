@@ -23,6 +23,7 @@ EXCLUDE_TABLES=(
 # shellcheck source=scripts/db/prod-db-env.sh
 source "$ROOT_DIR/scripts/db/prod-db-env.sh"
 
+# コンテナ $1 が起動中なら成功を返す（存在しないときも失敗）
 container_running() {
   [ "$(docker inspect --format '{{.State.Running}}' "$1" 2>/dev/null)" = "true" ]
 }
@@ -93,6 +94,21 @@ PG_CONN_NOPASS="$(prod_db_url_without_password "$PROD_DATABASE_URL")"
 TMP_DIR="$ROOT_DIR/.workflow/tmp/prod-db"
 (umask 077 && mkdir -p "$TMP_DIR")
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+# 本番のデータ（DUMP_FILE）は、どう終わっても消す。ログは、成功・中止のときは消し、失敗のときは
+# 原因を調べるために残す（エラーの文が場所を案内する）。mktemp の前に空で入れておき、
+# 途中で止まっても set -u で未設定の変数を展開しないようにする
+DUMP_FILE=""
+DUMP_STDERR_LOG=""
+RESTORE_LOG=""
+cleanup() {
+  local rc=$?
+  [ -z "$DUMP_FILE" ] || rm -f "$DUMP_FILE" || true
+  if [ "$rc" -eq 0 ]; then
+    [ -z "$DUMP_STDERR_LOG" ] || rm -f "$DUMP_STDERR_LOG" || true
+    [ -z "$RESTORE_LOG" ] || rm -f "$RESTORE_LOG" || true
+  fi
+}
+trap cleanup EXIT
 DUMP_STDERR_LOG="$(umask 077 && mktemp "$TMP_DIR/${TIMESTAMP}-pg_dump-XXXXXX")"
 RESTORE_LOG="$(umask 077 && mktemp "$TMP_DIR/${TIMESTAMP}-restore-XXXXXX")"
 
@@ -197,9 +213,8 @@ for table in "${EXCLUDE_TABLES[@]}"; do
 done
 EXCLUDE_OPTS+=("--exclude-table=_prisma_migrations")
 
-# 本番のデータは権限 600 のファイルに落とし、終わったら消す
+# 本番のデータは権限 600 のファイルに落とし、終わったら消す（上の cleanup）
 DUMP_FILE="$(umask 077 && mktemp "$TMP_DIR/${TIMESTAMP}-dump-XXXXXX")"
-trap 'rm -f "$DUMP_FILE"' EXIT
 
 echo "[sync] 本番DBのデータを取得中..."
 if ! "$PG_DUMP" "$PG_CONN_NOPASS" \
