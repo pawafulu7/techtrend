@@ -6,8 +6,8 @@
  *
  * Key features:
  * - Worker-based isolation: Timeouts work correctly even during heavy processing
- * - HTML size guard: Skips oversized HTML (>500KB) to prevent memory issues
  * - HTML preprocessing: Strips heavy content before Worker transfer
+ * - HTML size guard: Skips HTML still over 500KB after stripping, to prevent memory issues
  * - Graceful degradation: Returns null on timeout/error for fallback strategies
  */
 import { Worker } from 'worker_threads';
@@ -16,7 +16,9 @@ import sanitizeHtml from 'sanitize-html';
 import { logger } from '@/lib/logger';
 
 // Constants
-const MAX_HTML_SIZE = 500_000; // 500KB - 99% of tech articles are under this
+// 500KB - 99% of tech articles are under this. Measured after stripHeavyContent: pages built with
+// Next.js / Nuxt inline scripts that push the raw HTML past 500KB while the article itself is small
+const MAX_HTML_SIZE = 500_000;
 const DEFAULT_TIMEOUT = 5000; // 5 seconds
 
 export interface ReadabilityResult {
@@ -103,8 +105,14 @@ export async function extractWithReadability(
   url: string,
   timeout: number = DEFAULT_TIMEOUT
 ): Promise<ReadabilityResult | null> {
-  // Size guard: Skip oversized HTML to prevent memory issues
-  const htmlSize = Buffer.byteLength(html, 'utf8');
+  // Preprocess: Strip heavy content
+  const strippedHtml = stripHeavyContent(html);
+
+  // Size guard: Skip HTML that is still oversized to prevent memory issues.
+  // The raw HTML is already capped by readTextWithLimit (5MB). Stripping runs on the main thread:
+  // tens of ms for script-heavy pages, up to ~0.5s for 5MB of dense markup (cheerio.load in the
+  // caller takes about as long on the same input)
+  const htmlSize = Buffer.byteLength(strippedHtml, 'utf8');
   if (htmlSize > MAX_HTML_SIZE) {
     logger.warn(
       { url, size: htmlSize, maxSize: MAX_HTML_SIZE },
@@ -112,9 +120,6 @@ export async function extractWithReadability(
     );
     return null;
   }
-
-  // Preprocess: Strip heavy content
-  const strippedHtml = stripHeavyContent(html);
 
   return new Promise((resolve) => {
     let isResolved = false;

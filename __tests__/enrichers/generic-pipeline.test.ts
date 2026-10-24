@@ -1,4 +1,5 @@
 import { GenericContentEnricher } from '@/lib/enrichers/generic';
+import { BOT_USER_AGENT, BROWSER_USER_AGENT } from '@/lib/enrichers/user-agents';
 
 jest.mock('@/lib/enrichers/strategies', () => {
   const actual = jest.requireActual('@/lib/enrichers/strategies');
@@ -106,6 +107,135 @@ describe('GenericContentEnricher Pipeline', () => {
       const result = await enricher.enrich('https://example.com/notfound');
 
       expect(result).toBeNull();
+    }, 10000);
+  });
+
+  describe('User-Agent on 403', () => {
+    const articleHtml = (sentence: string, repeat: number) => `
+      <html>
+        <head><title>Article</title></head>
+        <body>
+          <article>
+            <h1>Article Title</h1>
+            <p>${sentence.repeat(repeat)}</p>
+          </article>
+        </body>
+      </html>
+    `;
+    const userAgentOf = (init?: RequestInit) => new Headers(init?.headers).get('User-Agent');
+
+    beforeEach(() => {
+      // 再試行の前の待ち（最大 2 秒）を飛ばす
+      jest
+        .spyOn(GenericContentEnricher.prototype as unknown as { delay: () => Promise<void> }, 'delay')
+        .mockResolvedValue(undefined);
+    });
+
+    it('should retry with the bot User-Agent when the browser User-Agent gets 403', async () => {
+      const mockFetch = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: false, status: 403 } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          url: 'https://example.com/blocked',
+          text: async () => articleHtml('A long sentence about how the incident happened. ', 50),
+        } as Response);
+
+      const result = await enricher.enrich('https://example.com/blocked');
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(userAgentOf(mockFetch.mock.calls[0][1])).toBe(BROWSER_USER_AGENT);
+      expect(userAgentOf(mockFetch.mock.calls[1][1])).toBe(BOT_USER_AGENT);
+      expect(result?.content).toContain('how the incident happened');
+    }, 10000);
+
+    it('should still retry with the bot User-Agent when 403 comes on the last attempt', async () => {
+      const mockFetch = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: false, status: 503 } as Response)
+        .mockResolvedValueOnce({ ok: false, status: 403 } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          url: 'https://example.com/blocked-after-503',
+          text: async () => articleHtml('A long sentence about how the incident happened. ', 50),
+        } as Response);
+
+      const result = await enricher.enrich('https://example.com/blocked-after-503');
+
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+      expect(userAgentOf(mockFetch.mock.calls[1][1])).toBe(BROWSER_USER_AGENT);
+      expect(userAgentOf(mockFetch.mock.calls[2][1])).toBe(BOT_USER_AGENT);
+      expect(result?.content).toContain('how the incident happened');
+    }, 10000);
+
+    it('should give up when the bot User-Agent also gets 403', async () => {
+      const mockFetch = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: false, status: 403 } as Response)
+        .mockResolvedValueOnce({ ok: false, status: 403 } as Response)
+        .mockResolvedValueOnce({ ok: false, status: 403 } as Response);
+
+      const result = await enricher.enrich('https://example.com/forbidden');
+
+      expect(result).toBeNull();
+      // ブラウザ → ボット → ボット（通常の再試行）の 3 回で終わる
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+    }, 10000);
+
+    it('should reject short content returned to the bot User-Agent (login or paywall pages)', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: false, status: 403 } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          url: 'https://example.com/paywall',
+          // 1,500 文字未満（48 文字 × 25 回）
+          text: async () => articleHtml('Subscribe to unlock this article and read more. ', 25),
+        } as Response);
+
+      const result = await enricher.enrich('https://example.com/paywall');
+
+      expect(result).toBeNull();
+    }, 10000);
+
+    it('should not keep og:image from a short page returned to the bot User-Agent', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: false, status: 403 } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          url: 'https://example.com/paywall-with-image',
+          text: async () =>
+            articleHtml('Subscribe to unlock this article and read more. ', 25).replace(
+              '<head>',
+              '<head><meta property="og:image" content="https://example.com/logo.png" />'
+            ),
+        } as Response);
+
+      const result = await enricher.enrich('https://example.com/paywall-with-image');
+
+      expect(result).toBeNull();
+    }, 10000);
+
+    it('should keep the browser User-Agent when the error is not 403', async () => {
+      const mockFetch = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: false, status: 503 } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          url: 'https://example.com/unavailable',
+          text: async () => articleHtml('A short but complete article sentence. ', 20),
+        } as Response);
+
+      const result = await enricher.enrich('https://example.com/unavailable');
+
+      expect(userAgentOf(mockFetch.mock.calls[1][1])).toBe(BROWSER_USER_AGENT);
+      expect(result?.content).toContain('complete article sentence');
     }, 10000);
   });
 

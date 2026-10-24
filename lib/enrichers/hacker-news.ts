@@ -1,6 +1,7 @@
 import { BaseContentEnricher, EnrichmentResult } from './base';
 import * as cheerio from 'cheerio';
 import { GenericContentEnricher } from './generic';
+import { BOT_USER_AGENT } from './user-agents';
 import logger from '@/lib/logger';
 import {
   fetchWithValidatedRedirects,
@@ -10,8 +11,7 @@ import {
 
 export class HackerNewsEnricher extends BaseContentEnricher {
   private static readonly DEFAULT_HEADERS = {
-    'User-Agent':
-      'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)',
+    'User-Agent': BOT_USER_AGENT,
     Accept:
       'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
     'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',

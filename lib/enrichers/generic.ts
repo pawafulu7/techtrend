@@ -17,12 +17,19 @@ import {
   isHighQuality,
   isMinimumViable,
 } from './strategies';
+import { BOT_USER_AGENT, BROWSER_USER_AGENT } from './user-agents';
 
 interface StrategyResult {
   content: string;
   thumbnail?: string;
   detail?: string;
 }
+
+/**
+ * ボットの UA で取り直したページを本文として採る最小の文字数。ブラウザを拒んでボットに返すページには、
+ * 記事のほかにログイン・購読・Cookie の案内だけのページがある（ACM・FT・Science・Wiley で 600〜1,350 文字）
+ */
+const BOT_USER_AGENT_MIN_CONTENT_LENGTH = 1500;
 
 export class GenericContentEnricher extends BaseContentEnricher {
   canHandle(_url: string): boolean {
@@ -38,6 +45,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
     // （enrich() は既存契約上 throw しない）
     const maxRetries = 2;
     let previousWas429 = false;
+    let userAgent = BROWSER_USER_AGENT;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -55,8 +63,7 @@ export class GenericContentEnricher extends BaseContentEnricher {
         const signal = this.composeSignal(externalSignal, 30000);
         const { response, finalUrl } = await fetchWithValidatedRedirects(url, {
           headers: {
-            'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'User-Agent': userAgent,
             Accept:
               'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9,ja;q=0.8',
@@ -75,6 +82,13 @@ export class GenericContentEnricher extends BaseContentEnricher {
             // 429 時の sleep 短縮 (1.5秒)。呼び出し側の source 別 sleep で本質的な rate 制御
             await this.delay(1500, externalSignal);
             previousWas429 = true;
+            continue;
+          }
+          // 同じ UA で取り直しても 403 は変わらないので、ボットを名乗って取り直す。
+          // 再試行の回数とは別に数え、最後の試行が 403 でも1回は試す（attempt を戻す）
+          if (response.status === 403 && userAgent === BROWSER_USER_AGENT) {
+            userAgent = BOT_USER_AGENT;
+            attempt--;
             continue;
           }
           if (attempt === maxRetries) {
@@ -128,6 +142,18 @@ export class GenericContentEnricher extends BaseContentEnricher {
         }
 
         content = this.cleanupContent(content);
+
+        // ボットの UA で取れた短いページは案内ページとみなし、og:image も使わない
+        if (
+          userAgent === BOT_USER_AGENT &&
+          content.length < BOT_USER_AGENT_MIN_CONTENT_LENGTH
+        ) {
+          logger.debug(
+            { url, attempt, length: content.length },
+            '[GenericEnricher] Rejecting short page returned to the bot User-Agent'
+          );
+          return null;
+        }
 
         if (!isMinimumViable(content)) {
           logger.debug(

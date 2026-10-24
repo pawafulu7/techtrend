@@ -6,6 +6,7 @@ import {
   readTextWithLimit,
 } from '@/lib/utils/url/safe-redirect';
 import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
+import { BROWSER_USER_AGENT } from './user-agents';
 
 export class MediumEngineeringEnricher extends BaseContentEnricher {
   canHandle(url: string): boolean {
@@ -27,8 +28,8 @@ export class MediumEngineeringEnricher extends BaseContentEnricher {
       const { response } = await fetchWithValidatedRedirects(url, {
         signal: this.composeSignal(externalSignal, 30000),
         headers: {
-          'User-Agent':
-            'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)',
+          // medium.com はボットを名乗る要求に Cloudflare の確認ページ（403）を返す
+          'User-Agent': BROWSER_USER_AGENT,
         },
       });
 
