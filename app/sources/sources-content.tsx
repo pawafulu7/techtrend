@@ -20,7 +20,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Search, SortAsc, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SourcesOverview } from '@/app/components/sources/SourcesOverview';
 import { SourcesOverviewSkeleton } from '@/app/components/sources/SourcesOverviewSkeleton';
-import { useFavoriteSources } from '@/lib/favorites/hooks';
 import type {
   SourceCategory,
   SourceCategoryWithAll,
@@ -38,7 +37,6 @@ export default function SourcesContent() {
   const [sortBy, setSortBy] = useState<SortBy>('articles');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
-  const { isFavorite } = useFavoriteSources();
 
   const { data, isPending, isError, isFetching, errorUpdateCount, refetch } =
     useQuery<SourceWithStats[]>({
@@ -142,10 +140,9 @@ export default function SourcesContent() {
       totalSources: allSources.length,
       activeSources: allSources.filter((s) => s.stats.publishFrequency > 0)
         .length,
-      favoriteCount: allSources.filter((s) => isFavorite(s.id)).length,
       categoryCount: uniqueCategories.size,
     };
-  }, [allSources, isFavorite]);
+  }, [allSources]);
 
   const totalPages = Math.max(1, Math.ceil(sources.length / ITEMS_PER_PAGE));
   const paginatedSources = sources.slice(

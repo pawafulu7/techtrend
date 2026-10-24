@@ -146,7 +146,6 @@ describe('prefetchHomeArticles', () => {
         selectedCategories: ['c1', 'c2'],
         filterEnabled: true,
         periodMonths: 6,
-        scope: 'home',
       })
     );
     mockGetArticles.mockResolvedValue(jsonResponse(PAGE));
@@ -159,9 +158,7 @@ describe('prefetchHomeArticles', () => {
 
     // ページで判定済みのセッションを渡す
     expect(mockGetPreferences.mock.calls[0][1]).toEqual({ session: USER });
-    expect(new URL(mockGetPreferences.mock.calls[0][0].url).search).toBe(
-      '?scope=home'
-    );
+    expect(new URL(mockGetPreferences.mock.calls[0][0].url).search).toBe('');
     expect(mockGetArticleList).not.toHaveBeenCalled();
     const url = requestUrl(mockGetArticles);
     expect(url.pathname).toBe('/api/articles');

@@ -91,14 +91,14 @@ test.describe('Visual Regression Tests', () => {
   });
 
   test('統計ダッシュボード - ライトモード', async ({ page }) => {
-    // /stats は管理者限定ページのため、管理者ログインが必要
+    // 記事の統計は管理画面（/admin/stats）にある。管理者ログインが必要
     const loggedIn = await loginAsAdmin(page);
     if (!loggedIn) {
       test.skip(true, 'Admin login/setup unavailable');
       return;
     }
-    await page.goto('/stats');
-    await expect(page).toHaveURL(/\/stats/);
+    await page.goto('/admin/stats');
+    await expect(page).toHaveURL(/\/admin\/stats/);
     await page.waitForLoadState('networkidle');
     
     // ページコンテンツが読み込まれるまで待機

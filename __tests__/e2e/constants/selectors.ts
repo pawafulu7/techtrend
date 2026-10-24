@@ -82,7 +82,6 @@ export const SELECTORS = {
   EXPORT_BUTTON: 'button:has-text("エクスポート"), button:has-text("Export"), button:has-text("ダウンロード")',
   
   // ===== レスポンシブ =====
-  MOBILE_MENU: '[data-testid="mobile-menu"], button[aria-label*="メニュー"]',
   MOBILE_VIEWPORT: '[class*="mobile"], [class*="sm:"]',
 } as const;
 

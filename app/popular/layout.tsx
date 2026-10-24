@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { PopularSubNav } from '@/app/components/popular/popular-sub-nav';
+import { TrendSectionNav } from '@/app/components/trends/TrendSectionNav';
 
 export default function PopularLayout({
   children,
@@ -8,7 +9,9 @@ export default function PopularLayout({
 }) {
   return (
     <div className="min-h-screen">
-      {/* Sub Navigation */}
+      <TrendSectionNav />
+
+      {/* ランキング期間 */}
       <div className="bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur">
         <div className="mx-auto w-full max-w-7xl px-4 py-3">
           <Suspense>

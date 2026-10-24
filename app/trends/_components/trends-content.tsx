@@ -1,6 +1,5 @@
 'use client';
 
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import {
   useState,
   useEffect,
@@ -12,21 +11,13 @@ import {
 import { useRouter } from 'next/navigation';
 import { BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
-import { ErrorState } from '@/components/ui-v2/error-state';
 import { PageHeader } from '@/components/ui-v2/page-header';
-import Link from 'next/link';
 import { TrendLineChart, SourcePieChart } from '@/app/components/trends';
-import { TrendStatsBar } from '@/app/components/trends/overview/TrendStatsBar';
 import { TrendNavigationCards } from '@/app/components/trends/overview/TrendNavigationCards';
 import { DataFreshness } from '@/app/components/common/data-freshness';
-import {
-  TrendingKeywordsSection,
-  NewTagsSection,
-  RETRY_DESCRIPTION,
-} from './keyword-sections';
+import { TrendingKeywordsSection } from './keyword-sections';
 import type {
   TrendingKeyword,
-  NewTag,
   TrendAnalysis,
   SourceDataItem,
 } from './trends-data';
@@ -36,8 +27,7 @@ interface TrendsContentProps {
   initialKeywords: TrendingKeyword[] | null;
   /** 急上昇のタグの総数（一覧は上位 20 件に打ち切る） */
   trendingTotal: number | null;
-  initialNewTags: NewTag[] | null;
-  /** 急上昇キーワード・新着タグの集計時刻（issue #707） */
+  /** 急上昇キーワードの集計時刻（issue #707） */
   keywordsAggregatedAt?: string | null;
   initialAnalysis: TrendAnalysis | null;
   initialSourceData: SourceDataItem[] | null;
@@ -48,7 +38,6 @@ interface TrendsContentProps {
 export function TrendsContent({
   initialKeywords,
   trendingTotal,
-  initialNewTags,
   keywordsAggregatedAt,
   initialAnalysis,
   initialSourceData,
@@ -186,16 +175,6 @@ export function TrendsContent({
       {/* 間隔は親の space-y-8 が持つので、見出しの下の余白は消す */}
       <PageHeader icon={BarChart3} title="トレンド概要" className="pb-0" />
 
-      {/* Stats Bar */}
-      <TrendStatsBar
-        trendingCount={trendingTotal}
-        newTagCount={initialNewTags?.length ?? null}
-        topTagCount={
-          trendAnalysis ? (trendAnalysis.topTags?.length ?? 0) : null
-        }
-        loading={false}
-      />
-
       <TrendingKeywordsSection
         keywords={initialKeywords}
         total={trendingTotal}
@@ -204,13 +183,7 @@ export function TrendsContent({
         retrying={isRefreshing}
       />
 
-      <NewTagsSection
-        tags={initialNewTags}
-        onRetry={refreshServerData}
-        retrying={isRefreshing}
-      />
-
-      {/* Sub-page Navigation */}
+      {/* Sub-page Navigation。人気タグ・新着タグはタグ分析（/tags）にまとめ、ここからはリンクにする（Issue #709） */}
       <section>
         <h2 className="text-foreground text-h2 mb-3">詳細レポート</h2>
         <TrendNavigationCards />
@@ -258,71 +231,19 @@ export function TrendsContent({
             retrying={loadingAnalysis}
           />
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Top Tags List */}
-            <div className="bg-background rounded-lg border p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-(--tt-color-info)" />
-                <h3 className="text-h3">人気タグ TOP10</h3>
-              </div>
-              {loadingAnalysis && !analysisFailed ? (
-                <div className="space-y-2">
-                  {[...Array(10)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-8 animate-pulse rounded bg-(--tt-color-surface-muted) motion-reduce:animate-none"
-                    />
-                  ))}
-                </div>
-              ) : analysisFailed ? (
-                <ErrorState
-                  title="人気タグを読み込めませんでした"
-                  description={RETRY_DESCRIPTION}
-                  onRetry={retryAnalysis}
-                  retrying={loadingAnalysis}
-                />
-              ) : trendAnalysis?.topTags && trendAnalysis.topTags.length > 0 ? (
-                <div className="space-y-1">
-                  {trendAnalysis.topTags.slice(0, 10).map((tag, index) => (
-                    <Link
-                      key={tag.name}
-                      href={`/?tags=${encodeURIComponent(tag.name)}`}
-                      className="group flex items-center gap-3 rounded px-2 py-1.5 transition-colors hover:bg-(--tt-color-surface-hover) focus-visible:ring-2 focus-visible:ring-(--tt-color-primary) focus-visible:outline-none"
-                    >
-                      <span className="text-muted-foreground w-5 text-xs font-semibold">
-                        {index + 1}
-                      </span>
-                      <span className="flex-1 truncate text-sm font-medium">
-                        {getTagDisplayName(tag.name)}
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {tag.totalCount}件
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground flex h-20 items-center justify-center text-sm">
-                  データがありません
-                </p>
-              )}
-            </div>
-
-            {/* Source Pie Chart */}
-            <SourcePieChart
-              data={initialSourceData}
-              note={
-                <DataFreshness
-                  at={sourceAggregatedAt}
-                  period="全期間"
-                  className="-mt-2 mb-2"
-                />
-              }
-              loading={false}
-              onRetry={refreshServerData}
-              retrying={isRefreshing}
-            />
-          </div>
+          <SourcePieChart
+            data={initialSourceData}
+            note={
+              <DataFreshness
+                at={sourceAggregatedAt}
+                period="全期間"
+                className="-mt-2 mb-2"
+              />
+            }
+            loading={false}
+            onRetry={refreshServerData}
+            retrying={isRefreshing}
+          />
         </div>
       </section>
     </div>

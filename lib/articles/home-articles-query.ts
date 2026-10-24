@@ -3,7 +3,8 @@
  *
  * クライアント（app/components/home/home-client-infinite.tsx と
  * app/hooks/use-infinite-articles.ts）と、サーバーでの1ページ目の先読み
- * （app/components/home/prefetch-home-articles.ts）が同じ関数を使う。どちらかで条件や
+ * （app/components/home/prefetch-home-articles.ts）が同じ関数を使う。リーダー（app/reader/reader-client.tsx）も
+ * 一覧の条件を buildHomeArticleFilters で組み立てる。どちらかで条件や
  * キーの作り方がずれると、サーバーで取ったページをクライアントが使えず、
  * hydration の後に1ページ目を取り直すため（issue #714）。
  * ブラウザの API（navigator など）はここで参照しない。
@@ -26,13 +27,17 @@ export function isMobileUserAgent(userAgent: string): boolean {
 /** 1回の取得で読む件数 */
 export const ARTICLES_PAGE_LIMIT = 20;
 
-/** URL の検索条件のうち、一覧の取得条件にしないもの（sources/sourceId は別に扱う） */
+/**
+ * URL の検索条件のうち、一覧の取得条件にしないもの（sources/sourceId は別に扱う）。
+ * article はリーダーで選んでいる記事。条件に入れると、記事を選ぶたびに一覧を取り直す
+ */
 const NON_FILTER_PARAMS = new Set([
   'page',
   'limit',
   'returning',
   'sources',
   'sourceId',
+  'article',
 ]);
 
 /** URLSearchParams と next/navigation の ReadonlyURLSearchParams の共通部分 */

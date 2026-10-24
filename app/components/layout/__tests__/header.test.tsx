@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { Header } from '@/app/components/layout/header';
 import { usePathname } from 'next/navigation';
+import { authClient } from '@/lib/auth/auth-client';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
@@ -26,6 +27,10 @@ jest.mock('@/lib/auth/auth-client', () => ({
   },
 }));
 
+jest.mock('@/config/features', () => ({
+  features: { aiSearch: true },
+}));
+
 // コンポーネントのモック
 jest.mock('@/components/theme-toggle', () => ({
   ThemeToggle: () => <button data-testid="theme-toggle">Theme Toggle</button>,
@@ -35,27 +40,22 @@ jest.mock('@/components/auth/UserMenu', () => ({
   UserMenu: () => <button data-testid="user-menu">User Menu</button>,
 }));
 
-jest.mock('@/app/components/layout/nav-dropdown', () => ({
-  NavDropdown: ({ items }: any) => (
-    <div data-testid="nav-dropdown">
-      <span>その他</span>
-      {items.map((item: any) => (
-        <a
-          key={item.href}
-          href={item.href}
-          data-testid={`nav-dropdown-item-${item.href.replace(/\//g, '-').replace(/^-/, '')}`}
-        >
-          {item.label}
-        </a>
-      ))}
-    </div>
+// コマンドパレットの中身は command-palette.test.tsx で見る。ここでは入口があるかだけ
+jest.mock('@/app/components/layout/command-palette', () => ({
+  CommandPaletteTrigger: ({ compact }: { compact?: boolean }) => (
+    <button data-testid={compact ? 'palette-trigger-compact' : 'palette-trigger'}>
+      検索
+    </button>
   ),
 }));
+
+const mockUseSession = authClient.useSession as jest.Mock;
 
 describe('Header', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (usePathname as jest.Mock).mockReturnValue('/');
+    mockUseSession.mockReturnValue({ data: null, isPending: false });
   });
 
   describe('基本的なレンダリング', () => {
@@ -67,53 +67,70 @@ describe('Header', () => {
       expect(logo).toBeInTheDocument();
       expect(screen.getByText('TechTrend')).toBeInTheDocument();
 
-      // テーマトグルとユーザーメニュー
-      expect(screen.getAllByTestId('theme-toggle')).toHaveLength(2); // Desktop + Mobile
-      expect(screen.getAllByTestId('user-menu')).toHaveLength(2); // Desktop + Mobile
+      // テーマトグル・ユーザーメニュー・コマンドパレットの入口（デスクトップとモバイル）
+      expect(screen.getAllByTestId('theme-toggle')).toHaveLength(2);
+      expect(screen.getAllByTestId('user-menu')).toHaveLength(2);
+      expect(screen.getByTestId('palette-trigger')).toBeInTheDocument();
+      expect(screen.getByTestId('palette-trigger-compact')).toBeInTheDocument();
     });
 
-    it('デスクトップナビゲーションが表示される', () => {
+    it('主要導線はホーム・ダイジェスト・トレンドの3つ（未ログイン）。ほかの画面はヘッダーに出さない（Issue #704）', () => {
       render(<Header />);
 
       const desktopNav = screen.getByTestId('desktop-nav');
-      expect(desktopNav).toBeInTheDocument();
-
-      // 主要ナビゲーション項目（/sources・/stats は管理者限定のため除外）
-      expect(screen.getByTestId('nav-link-ホーム')).toBeInTheDocument();
-      expect(screen.getByTestId('nav-link-人気')).toBeInTheDocument();
-      expect(screen.getByTestId('nav-link-トレンド')).toBeInTheDocument();
+      expect(
+        within(desktopNav)
+          .getAllByRole('link')
+          .map((link) => [link.textContent, link.getAttribute('href')])
+      ).toEqual([
+        ['ホーム', '/'],
+        ['ダイジェスト', '/digest'],
+        ['トレンド', '/trends'],
+      ]);
+      expect(screen.queryByText('その他')).not.toBeInTheDocument();
     });
 
-    it('モバイルメニューボタンが表示される', () => {
+    it('ログイン中は AI 検索を4つ目に足す', () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { id: 'u1' } },
+        isPending: false,
+      });
       render(<Header />);
 
-      const mobileMenuToggle = screen.getByTestId('mobile-menu-toggle');
-      expect(mobileMenuToggle).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('desktop-nav'))
+          .getAllByRole('link')
+          .map((link) => link.textContent)
+      ).toEqual(['ホーム', 'ダイジェスト', 'トレンド', 'AI検索']);
+    });
+
+    it('モバイルのメニューボタンは無い（主要導線はボトムナビ）', () => {
+      render(<Header />);
+
+      expect(screen.queryByTestId('mobile-menu-toggle')).not.toBeInTheDocument();
     });
   });
 
   describe('アクティブ状態の表示', () => {
     it('現在のページがアクティブ状態で表示される', () => {
-      (usePathname as jest.Mock).mockReturnValue('/popular');
+      (usePathname as jest.Mock).mockReturnValue('/digest');
 
       render(<Header />);
 
-      const popularLink = screen.getByTestId('nav-link-人気');
-      expect(popularLink).toHaveAttribute('aria-current', 'page');
+      const digestLink = screen.getByTestId('nav-link-ダイジェスト');
+      expect(digestLink).toHaveAttribute('aria-current', 'page');
       // 選ばれている項目は文字を濃くし、下に藍の線を引く
-      expect(popularLink).toHaveClass(
+      expect(digestLink).toHaveClass(
         'font-semibold text-(--tt-color-text) after:bg-(--tt-color-primary)'
       );
     });
 
     it('非アクティブなリンクは通常のスタイルで表示される', () => {
-      (usePathname as jest.Mock).mockReturnValue('/');
-
       render(<Header />);
 
-      const popularLink = screen.getByTestId('nav-link-人気');
-      expect(popularLink).not.toHaveAttribute('aria-current');
-      expect(popularLink).toHaveClass(
+      const trendsLink = screen.getByTestId('nav-link-トレンド');
+      expect(trendsLink).not.toHaveAttribute('aria-current');
+      expect(trendsLink).toHaveClass(
         'text-(--tt-color-text-muted) after:bg-transparent'
       );
     });
@@ -132,42 +149,24 @@ describe('Header', () => {
         'aria-current'
       );
     });
-  });
 
-  describe('メニューアイコンの切り替え', () => {
-    it('開いている時はXアイコンが表示される', async () => {
-      const user = userEvent.setup();
-      render(<Header />);
+    it.each([
+      ['/popular', 'トレンド'],
+      ['/tags', 'トレンド'],
+      ['/changelog', 'トレンド'],
+      ['/reader', 'ホーム'],
+    ])(
+      '主要導線から外した %s では、移した先の「%s」を選ばれている表示にする',
+      (pathname, label) => {
+        (usePathname as jest.Mock).mockReturnValue(pathname);
 
-      const toggleButton = screen.getByTestId('mobile-menu-toggle');
+        render(<Header />);
 
-      // 初期状態はMenuアイコン
-      const menuIcon = toggleButton.querySelector('.lucide-menu');
-      expect(menuIcon).toBeInTheDocument();
-
-      // クリック後はXアイコン
-      await user.click(toggleButton);
-      const xIcon = toggleButton.querySelector('.lucide-x');
-      expect(xIcon).toBeInTheDocument();
-    });
-  });
-
-  describe('リンクのhref属性', () => {
-    it('正しいhref属性が設定されている', () => {
-      render(<Header />);
-
-      // /sources・/stats は管理者限定のため primaryNav から除外済み
-      const links = [
-        { testId: 'nav-link-ホーム', href: '/' },
-        { testId: 'nav-link-人気', href: '/popular' },
-        { testId: 'nav-link-トレンド', href: '/trends' },
-      ];
-
-      links.forEach((link) => {
-        const element = screen.getByTestId(link.testId);
-        expect(element).toHaveAttribute('href', link.href);
-      });
-    });
+        const link = screen.getByTestId(`nav-link-${label}`);
+        expect(link).toHaveAttribute('aria-current', 'true');
+        expect(link).toHaveClass('after:bg-(--tt-color-primary)');
+      }
+    );
   });
 
   // ヘッダーのデスクトップ切替は lg。ツールバー（検索・タグ等）が lg 基準のため、
@@ -180,23 +179,12 @@ describe('Header', () => {
       expect(desktopNav).toHaveClass('hidden lg:flex');
     });
 
-    it('モバイルメニューボタンはlg未満で表示される', () => {
+    it('モバイルの操作はlg未満で表示される', () => {
       render(<Header />);
 
-      const mobileMenuToggle =
-        screen.getByTestId('mobile-menu-toggle').parentElement;
-      expect(mobileMenuToggle).toHaveClass('lg:hidden');
-    });
-
-    it('モバイルナビはlg未満でのみ表示される', async () => {
-      const user = userEvent.setup();
-      render(<Header />);
-
-      const toggleButton = screen.getByTestId('mobile-menu-toggle');
-      await user.click(toggleButton);
-
-      const mobileNav = screen.getByTestId('mobile-nav');
-      expect(mobileNav).toHaveClass('lg:hidden');
+      expect(screen.getByTestId('palette-trigger-compact').parentElement).toHaveClass(
+        'lg:hidden'
+      );
     });
   });
 
@@ -218,7 +206,6 @@ describe('Header', () => {
 
   describe('アクセシビリティ', () => {
     it('aria-current属性が正しく設定される', () => {
-      // /stats は管理者限定のため、代わりに /trends を使用
       (usePathname as jest.Mock).mockReturnValue('/trends');
 
       render(<Header />);
@@ -242,27 +229,12 @@ describe('Header', () => {
 
   describe('ホバー効果', () => {
     it('非アクティブリンクにホバー効果がある', () => {
-      (usePathname as jest.Mock).mockReturnValue('/');
-
       render(<Header />);
 
-      const popularLink = screen.getByTestId('nav-link-人気');
+      const trendsLink = screen.getByTestId('nav-link-トレンド');
       // 拡大や塗りは使わず、文字を濃くする
-      expect(popularLink).toHaveClass('hover:text-(--tt-color-text)');
-      expect(popularLink).not.toHaveClass('hover:scale-105');
-    });
-
-    it('モバイルナビのリンクにホバー効果がある', async () => {
-      const user = userEvent.setup();
-      (usePathname as jest.Mock).mockReturnValue('/');
-
-      render(<Header />);
-
-      const toggleButton = screen.getByTestId('mobile-menu-toggle');
-      await user.click(toggleButton);
-
-      const popularLink = screen.getByTestId('mobile-nav-link-人気');
-      expect(popularLink).toHaveClass('hover:bg-(--tt-color-surface-hover)');
+      expect(trendsLink).toHaveClass('hover:text-(--tt-color-text)');
+      expect(trendsLink).not.toHaveClass('hover:scale-105');
     });
   });
 

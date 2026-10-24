@@ -187,16 +187,17 @@ test.describe('スクロール機能のテスト', () => {
   });
 
   test('統計ページでスクロールが可能', async ({ page }) => {
-    // /stats は管理者限定ページのため、管理者ログインが必要
+    // 記事の統計は管理画面（/admin/stats）にある。管理者ログインが必要
     if (!(await requireAdminSessionOrSkip(page))) return;
-    await page.goto('/stats');
-    await expect(page).toHaveURL(/\/stats/);
+    await page.goto('/admin/stats');
+    await expect(page).toHaveURL(/\/admin\/stats/);
 
     // ページが読み込まれるまで待機
     await waitForPageLoad(page, { waitForNetworkIdle: false });
 
     // mainタグがスクロール可能であることを確認
-    const mainOverflow = await page.locator('main').evaluate((el) => {
+    // 管理画面はサイドバーの中にも main がある。スクロールするのはルートの main
+    const mainOverflow = await page.locator('main#main-content').evaluate((el) => {
       return window.getComputedStyle(el).overflowY;
     });
     expect(['auto', 'scroll']).toContain(mainOverflow);

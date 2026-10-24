@@ -13,7 +13,7 @@ import type {
   SourceStats,
   DailyStats,
   ArticleStatsResponse,
-} from '@/app/dashboard/jobs/types';
+} from '@/app/admin/jobs/types';
 
 const DEFAULT_RANGE_DAYS = 7;
 const MIN_RANGE_DAYS = 1;

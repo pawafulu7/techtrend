@@ -31,6 +31,7 @@ interface HeadingCase {
 }
 
 const TREND_SUB_NAV = 'nav[aria-label="トレンドナビゲーション"]';
+const HISTORY_SUB_NAV = 'nav[aria-label="閲覧履歴と読書分析"]';
 
 const PUBLIC_PAGES: HeadingCase[] = [
   { path: '/', h1: '記事一覧', pageHeader: 'row' },
@@ -41,7 +42,8 @@ const PUBLIC_PAGES: HeadingCase[] = [
     pageHeader: '7xl',
     subNav: 'nav[aria-label="ランキング期間"]',
   },
-  { path: '/tags', h1: 'タグ分析', pageHeader: '7xl' },
+  // タグ・人気・AIエージェント更新情報は、トレンドのサブナビから行く画面（Issue #704）
+  { path: '/tags', h1: 'タグ分析', pageHeader: '7xl', subNav: TREND_SUB_NAV },
   {
     path: '/trends',
     h1: 'トレンド概要',
@@ -77,9 +79,18 @@ const PUBLIC_PAGES: HeadingCase[] = [
 const AUTHENTICATED_PAGES: HeadingCase[] = [
   { path: '/digest', h1: 'ダイジェスト', pageHeader: 'full' },
   { path: '/favorites', h1: 'お気に入り', pageHeader: 'full' },
-  { path: '/favorites/feed', h1: 'お気に入りフィード', pageHeader: 'full' },
-  { path: '/history', h1: '閲覧履歴', pageHeader: 'full' },
-  { path: '/analytics', h1: '読書分析', pageHeader: '7xl' },
+  {
+    path: '/history',
+    h1: '閲覧履歴',
+    pageHeader: 'full',
+    subNav: HISTORY_SUB_NAV,
+  },
+  {
+    path: '/history?tab=analytics',
+    h1: '読書分析',
+    pageHeader: 'full',
+    subNav: HISTORY_SUB_NAV,
+  },
   { path: '/search/agent', h1: 'AI検索' },
   { path: '/reader', h1: 'リーダー' },
   { path: '/profile', h1: 'プロフィール設定' },
@@ -103,9 +114,11 @@ async function expectHeadings(
   page: Page,
   { path, h1, pageHeader, subNav }: HeadingCase
 ) {
-  // リダイレクトされていない（callbackUrl に同じパスが入るので、URL 全体の部分一致では見分けられない）
+  // リダイレクトされていない（callbackUrl に同じパスが入るので、URL 全体の部分一致では見分けられない）。
+  // 検索条件で表示を切り替える画面（/history?tab=analytics）は、検索条件まで比べる
+  const url = new URL(page.url());
   expect(
-    new URL(page.url()).pathname,
+    path.includes('?') ? `${url.pathname}${url.search}` : url.pathname,
     `${path} でリダイレクトされていない`
   ).toBe(path);
 

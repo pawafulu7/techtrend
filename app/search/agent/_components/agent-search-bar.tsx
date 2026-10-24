@@ -12,6 +12,7 @@ import { Search, X, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
+import { cn } from '@/lib/utils';
 import {
   useSearchHistory,
   type SearchHistoryItem,
@@ -35,6 +36,10 @@ interface AgentSearchBarProps {
   inputLabel?: string;
   showHistoryTimestamp?: boolean;
   onHistoryCleared?: () => void;
+  /** 表示したときに入力欄へフォーカスを移す（記事詳細の Q&A を開いたとき） */
+  autoFocus?: boolean;
+  /** 外枠の class。既定は中央寄せの最大幅（max-w-4xl）で、パネルの中では幅いっぱいにする */
+  className?: string;
 }
 
 export function AgentSearchBar({
@@ -55,6 +60,8 @@ export function AgentSearchBar({
   inputLabel = 'AI検索クエリ入力',
   showHistoryTimestamp = true,
   onHistoryCleared,
+  autoFocus = false,
+  className,
 }: AgentSearchBarProps) {
   const [query, setQuery] = useState(initialQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -107,6 +114,14 @@ export function AgentSearchBar({
     },
     [removeFromHistory, onHistoryCleared]
   );
+
+  useEffect(() => {
+    if (!autoFocus || document.activeElement === inputRef.current) return;
+    // 履歴の候補は開かない（skipNextFocusRef）。開くと、押したボタンの直後に候補が覆いかぶさる。
+    // すでにフォーカスがあるとき（開発時の effect の二重実行）は focus イベントが来ないので、印を立てない
+    skipNextFocusRef.current = true;
+    inputRef.current?.focus();
+  }, [autoFocus]);
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -178,7 +193,10 @@ export function AgentSearchBar({
   }, [onPrefillQuery, applyQueryFromExternal]);
 
   return (
-    <div ref={searchRef} className="relative mx-auto w-full max-w-4xl">
+    <div
+      ref={searchRef}
+      className={cn('relative mx-auto w-full max-w-4xl', className)}
+    >
       {(badgeLabel || helperText) && (
         <div className="mb-2 flex items-center gap-2">
           {badgeLabel && (

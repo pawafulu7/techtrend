@@ -23,10 +23,11 @@ const NO_PERSONALIZATION = {
 };
 
 describe('buildHomeArticleFilters', () => {
-  it('URL の条件を写し、page・limit・returning は取得条件にしない', () => {
+  it('URL の条件を写し、page・limit・returning・article は取得条件にしない', () => {
+    // article はリーダーで選んでいる記事（同じ関数で条件を作る、Issue #709）
     const filters = buildHomeArticleFilters({
       searchParams: new URLSearchParams(
-        'tags=React&page=3&limit=50&returning=1&search=next'
+        'tags=React&page=3&limit=50&returning=1&search=next&article=a1'
       ),
       personalization: NO_PERSONALIZATION,
     });

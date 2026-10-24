@@ -173,7 +173,7 @@ export default function AnalyticsContent() {
     return (
       <div
         data-testid="loading-spinner"
-        className="mx-auto w-full max-w-7xl px-4 pt-3 pb-6"
+        className="px-4 pt-3 pb-6 lg:px-6"
       >
         {/* 見出しは読み込み中も出す（h1 を常に1つ置く。Issue #700） */}
         <PageHeader icon={LineChartIcon} title="読書分析" className="pb-6" />
@@ -186,7 +186,7 @@ export default function AnalyticsContent() {
 
   if (!isEnabled) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 pt-3 pb-6">
+      <div className="px-4 pt-3 pb-6 lg:px-6">
         <PageHeader icon={LineChartIcon} title="読書分析" className="pb-6" />
         <Card className="mx-auto max-w-2xl">
           <CardHeader>
@@ -217,7 +217,7 @@ export default function AnalyticsContent() {
 
   return (
     <div
-      className="mx-auto w-full max-w-7xl px-4 pt-3 pb-6"
+      className="px-4 pt-3 pb-6 lg:px-6"
       data-testid="analytics-content"
     >
       <PageHeader

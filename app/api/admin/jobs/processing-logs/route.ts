@@ -11,7 +11,7 @@ import logger from '@/lib/logger';
 import type {
   ProcessingLogEntry,
   ProcessingLogsResponse,
-} from '@/app/dashboard/jobs/types';
+} from '@/app/admin/jobs/types';
 
 /**
  * Query parameter defaults and limits

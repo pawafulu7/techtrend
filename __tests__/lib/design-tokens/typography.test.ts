@@ -136,7 +136,7 @@ const ALLOWED: Array<{
     reason: '404 の数字',
   },
   ...[
-    'app/analytics/analytics-content.tsx',
+    'app/history/_components/analytics/analytics-content.tsx',
     'app/admin/page.tsx',
     'components/dashboard/MetricsCard.tsx',
   ].map((file) => ({
@@ -146,7 +146,7 @@ const ALLOWED: Array<{
     reason: 'KPI のラベル',
   })),
   {
-    file: 'app/dashboard/performance/PerformanceDashboard.tsx',
+    file: 'app/admin/performance/PerformanceDashboard.tsx',
     tag: 'CardTitle',
     className: 'flex items-center gap-2 text-base',
     reason: 'KPI のラベル',

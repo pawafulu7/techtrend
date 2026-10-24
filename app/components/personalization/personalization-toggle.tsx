@@ -53,10 +53,19 @@ export function PersonalizationToggle({
   };
 
   // Handle save from dialog
-  const handleSave = async (categoryIds: string[], period: PeriodPreset) => {
+  const handleSave = async (
+    categoryIds: string[],
+    period: PeriodPreset,
+    homeFilterEnabled: boolean
+  ) => {
+    // 分野は変えたときだけ送る。スイッチや期間だけを変えたときに、開いたときの分野で
+    // 別の画面（ダイジェスト）で変えた分野を戻さないため
+    const categoriesChanged =
+      categoryIds.length !== selectedCategories.length ||
+      categoryIds.some((id) => !selectedCategories.includes(id));
     await updatePreferencesAsync({
-      categoryIds,
-      filterEnabled: categoryIds.length > 0,
+      ...(categoriesChanged && { categoryIds }),
+      filterEnabled: homeFilterEnabled && categoryIds.length > 0,
       periodMonths: period,
     });
   };
@@ -110,6 +119,9 @@ export function PersonalizationToggle({
         categories={categories}
         selectedCategories={selectedCategories}
         selectedPeriod={periodMonths}
+        // 初めて分野を選ぶときは、選んだらホームを絞り込む（今までと同じ）。
+        // ダイジェストで分野を選んだだけの人はオフから始まる
+        homeFilterEnabled={hasPreferences ? filterEnabled : true}
         onSave={handleSave}
         isLoading={isLoading}
         isSaving={isUpdating}

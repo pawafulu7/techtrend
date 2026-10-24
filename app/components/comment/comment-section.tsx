@@ -7,7 +7,7 @@
  * - 認証状態に応じた表示切り替え
  * - sessionStatus === 'loading' 時の Skeleton 表示
  * - コメント状態管理
- * - 記事詳細画面（ArticleQADialog 下）への配置
+ * - 記事詳細画面（記事の Q&A の下）への配置
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';

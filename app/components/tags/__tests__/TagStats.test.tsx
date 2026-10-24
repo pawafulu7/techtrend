@@ -2,7 +2,7 @@
  * タグ統計: 取得に失敗した項目を 0 件と表示せず、失敗と再試行を出す（issue #701）
  */
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -216,5 +216,80 @@ describe('TagStats', () => {
 
     // 初回と再試行の2回の失敗で、2回だけ
     await waitFor(() => expect(logger.error).toHaveBeenCalledTimes(2));
+  });
+
+  describe('新着タグの一覧（トレンド概要から移した、Issue #709）', () => {
+    it('記事の多い順にタグを並べ、ホームをそのタグで絞り込むリンクにする', async () => {
+      mockFetch({
+        stats: ok({ total: 120 }),
+        cloud: ok(cloudBody),
+        newTags: ok({
+          count: 2,
+          tags: [
+            { id: 't1', name: 'Bun', articleCount: 2 },
+            { id: 't2', name: 'Deno', articleCount: 5 },
+          ],
+        }),
+      });
+
+      renderTagStats();
+
+      const card = await screen.findByTestId('new-tags');
+      expect(within(card).getByText('直近7日に初めて使われたタグ')).toBeInTheDocument();
+      const links = within(card).getAllByRole('link');
+      // ほかのタグのリンクと同じく、タグは OR で絞る
+      expect(links.map((l) => l.getAttribute('href'))).toEqual([
+        '/?tags=Deno&tagMode=OR',
+        '/?tags=Bun&tagMode=OR',
+      ]);
+      expect(links[0]).toHaveTextContent('Deno5');
+    });
+
+    it('30 件を超えた分は件数だけを出す', async () => {
+      mockFetch({
+        stats: ok({ total: 120 }),
+        cloud: ok(cloudBody),
+        newTags: ok({
+          count: 32,
+          tags: Array.from({ length: 32 }, (_, i) => ({
+            id: `t${i}`,
+            name: `tag-${i}`,
+            articleCount: 32 - i,
+          })),
+        }),
+      });
+
+      renderTagStats();
+
+      const card = await screen.findByTestId('new-tags');
+      expect(within(card).getAllByRole('link')).toHaveLength(30);
+      expect(within(card).getByText('ほか 2 件')).toBeInTheDocument();
+    });
+
+    it('新着が無いときはその旨を出す', async () => {
+      mockFetch({
+        stats: ok({ total: 120 }),
+        cloud: ok(cloudBody),
+        newTags: ok({ count: 0, tags: [] }),
+      });
+      renderTagStats();
+      expect(
+        await screen.findByText('直近7日に初めて使われたタグはありません')
+      ).toBeInTheDocument();
+    });
+
+    it('新着タグの取得に失敗したら、一覧のカードは出さない', async () => {
+      mockFetch({
+        stats: ok({ total: 120 }),
+        cloud: ok(cloudBody),
+        newTags: fail(),
+      });
+      renderTagStats();
+      expect(await screen.findByText('120')).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.getByTestId('error-message')).toBeInTheDocument()
+      );
+      expect(screen.queryByTestId('new-tags')).not.toBeInTheDocument();
+    });
   });
 });

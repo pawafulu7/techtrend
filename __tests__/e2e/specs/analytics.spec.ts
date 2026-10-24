@@ -7,6 +7,7 @@ import {
   expectNavigationMenu,
   waitForLoadingToDisappear,
   _waitForDataLoad,
+  loginTestUser,
 } from '../utils/e2e-helpers';
 import { _SELECTORS } from '../constants/selectors';
 import { MOBILE_VIEWPORT, LAPTOP_VIEWPORT } from '../../../e2e/constants/viewports';
@@ -18,9 +19,21 @@ test.describe('分析ページ', () => {
       localStorage.setItem('analytics-enabled', 'true');
     });
     
-    // 分析ページへアクセス
-    await page.goto('/analytics');
+    // 読書分析は閲覧履歴のタブにまとめた（Issue #709）。閲覧履歴と同じくログインが要る
+    const loggedIn = await loginTestUser(page);
+    if (!loggedIn) {
+      throw new Error('Failed to login test user');
+    }
+    await page.goto('/history?tab=analytics');
     await waitForPageLoad(page);
+  });
+
+  test('旧 URL（/analytics）は閲覧履歴の読書分析のタブへ移る', async ({ page }) => {
+    await page.goto('/analytics');
+    await expect(page).toHaveURL(/\/history\?tab=analytics$/);
+    await expect(
+      page.locator('nav[aria-label="閲覧履歴と読書分析"] a[aria-current="page"]')
+    ).toHaveText('読書分析');
   });
 
   test('分析ページが正常に表示される', async ({ page }) => {

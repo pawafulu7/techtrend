@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-  type RefObject,
-} from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
 import { Bot, MessageSquare, Sparkles, User, X } from 'lucide-react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
 import { AgentLoadingState } from '@/app/search/agent/_components/agent-loading-state';
@@ -20,7 +13,6 @@ import {
   type ArticleQAError,
 } from '@/lib/hooks/useArticleQA';
 import { Button } from '@/components/ui-v2/button-v2';
-import { DialogTitle } from '@/components/ui/dialog';
 
 const ENABLE_STREAMING_UI =
   process.env.NEXT_PUBLIC_ENABLE_AGENT_STREAMING_UI !== 'false';
@@ -32,7 +24,8 @@ export interface ArticleQAClientProps {
   articleTopics?: string[];
   locale?: 'ja' | 'en';
   onClose?: () => void;
-  scrollContainerRef?: RefObject<HTMLDivElement | null>;
+  /** 開いたときに質問欄へフォーカスを移す */
+  autoFocus?: boolean;
 }
 
 interface QAExchange {
@@ -123,8 +116,9 @@ export function ArticleQAClient({
   articleTopics,
   locale = 'ja',
   onClose,
-  scrollContainerRef,
+  autoFocus = false,
 }: ArticleQAClientProps) {
+  const headingId = useId();
   const [showResult, setShowResult] = useState(false);
   const [chatHistory, setChatHistory] = useState<QAExchange[]>([]);
   const [activeExchangeId, setActiveExchangeId] = useState<string | null>(null);
@@ -138,20 +132,7 @@ export function ArticleQAClient({
     }
   );
   const prefillQueryRef = useRef<((query: string) => void) | null>(null);
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
-  const scrollToBottom = useCallback(
-    (behavior: ScrollBehavior) => {
-      if (scrollContainerRef?.current) {
-        scrollContainerRef.current.scrollTo({
-          top: scrollContainerRef.current.scrollHeight,
-          behavior,
-        });
-        return;
-      }
-      chatEndRef.current?.scrollIntoView({ behavior, block: 'nearest' });
-    },
-    [scrollContainerRef]
-  );
+  const latestQuestionRef = useRef<HTMLDivElement | null>(null);
 
   const handleSearch = useCallback(
     async (query: string) => {
@@ -202,13 +183,17 @@ export function ArticleQAClient({
     }
   }, [isLoading, result, error]);
 
+  // 質問を送ったら、その質問を画面に入れる。パネルはページの中にあるので、回答の生成中に
+  // スクロールを追いかけると本文を読んでいる位置が動いてしまう。追うのは質問を足したときだけにする
   useEffect(() => {
-    if (!chatEndRef.current) return;
-    const behavior: ScrollBehavior = chatHistory.length > 1 ? 'smooth' : 'auto';
+    if (chatHistory.length === 0) return;
     requestAnimationFrame(() => {
-      scrollToBottom(behavior);
+      latestQuestionRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
     });
-  }, [chatHistory, partialText, showResult, isLoading, error, scrollToBottom]);
+  }, [chatHistory.length]);
 
   useEffect(() => {
     if (!result || !activeExchangeId) return;
@@ -294,250 +279,225 @@ export function ArticleQAClient({
       }),
     [articleTitle, articleSummary, normalizedTopics, locale]
   );
-  const dialogTitleText =
-    locale === 'ja' ? `${articleTitle}に質問する` : `Ask about ${articleTitle}`;
+  const headingText =
+    locale === 'ja' ? '記事について質問する' : 'Ask about this article';
 
+  // ショートカットはキーボードのある幅だけで案内する。パネルの左端にそろえるため、検索欄の中央寄せの案内は使わない
   const shortcutHint =
     locale === 'ja' ? (
       <>
-        ショートカット:{' '}
         <kbd className="bg-muted rounded px-1 py-0.5">Cmd+Shift+K</kbd> または{' '}
         <kbd className="bg-muted rounded px-1 py-0.5">Ctrl+Shift+K</kbd>{' '}
-        で質問欄を開く
+        で質問欄へ移る
       </>
     ) : (
       <>
-        Shortcut:{' '}
         <kbd className="bg-muted rounded px-1 py-0.5">Cmd+Shift+K</kbd> or{' '}
         <kbd className="bg-muted rounded px-1 py-0.5">Ctrl+Shift+K</kbd> to
         focus the question box
       </>
     );
 
+  // 記事詳細のカードと同じ1枚の枠（rounded-lg）にする。中の質問・回答・エラーも同じ角丸にそろえ、
+  // サンプル質問のような押せる小さな部品だけを rounded-full にする（Issue #740）
   return (
-    <section className="flex flex-col gap-6">
-      <div className="relative flex flex-1 flex-col rounded-3xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] px-4 py-6 shadow-xl sm:px-8 sm:py-8">
-        <DialogTitle className="sr-only">{dialogTitleText}</DialogTitle>
+    <section
+      aria-labelledby={headingId}
+      className="animate-in fade-in-0 slide-in-from-top-1 motion-reduce:animate-none rounded-lg border border-(--tt-color-border) bg-(--tt-color-surface) p-4 duration-200 sm:p-6"
+      data-testid="article-qa-panel"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-1">
+          <h2
+            id={headingId}
+            className="text-h3 flex items-center gap-2 text-(--tt-color-text)"
+          >
+            <MessageSquare
+              className="h-5 w-5 shrink-0 text-(--tt-color-primary)"
+              aria-hidden="true"
+            />
+            {headingText}
+          </h2>
+          <p className="text-sm text-(--tt-color-text-muted)">{helperText}</p>
+        </div>
         {onClose && (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="absolute top-4 right-4 rounded-full border-[var(--tt-color-border)] text-[var(--tt-color-text-muted)] shadow-sm transition hover:shadow sm:top-6 sm:right-6"
+            className="shrink-0 text-(--tt-color-text-muted)"
             onClick={onClose}
-            aria-label={
-              locale === 'ja'
-                ? '記事QAパネルを閉じる'
-                : 'Close article Q&A panel'
-            }
           >
-            <X className="mr-2 h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
             {locale === 'ja' ? '閉じる' : 'Close'}
           </Button>
         )}
+      </div>
 
-        <div className="flex flex-1 flex-col">
-          <div className="mb-6 flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--tt-color-text-muted)]">
-              <MessageSquare className="text-primary h-4 w-4" />
-              {locale === 'ja' ? 'チャットタイムライン' : 'Conversation'}
-            </div>
-            <p className="text-muted-foreground text-sm">
-              {locale === 'ja'
-                ? '質問内容とAIの回答がカード形式で表示されます。引用には記事ソースが含まれます。'
-                : 'Your prompts and grounded answers render below with contextual citations.'}
-            </p>
-          </div>
+      {chatHistory.length > 0 && (
+        <div className="mt-6 space-y-5">
+          {chatHistory.map((exchange, index) => {
+            const isActive = exchange.id === activeExchangeId;
+            const exchangeResult = isActive
+              ? (result ?? exchange.answer)
+              : exchange.answer;
+            const showAnswerPanel = Boolean(
+              exchangeResult ||
+              (isActive &&
+                (shouldShowStreamingResult ||
+                  (showResult &&
+                    (result || (ENABLE_STREAMING_UI ? partialText : null)))))
+            );
+            const streamingPartial =
+              isActive && ENABLE_STREAMING_UI ? partialText : null;
+            const showLoading =
+              isActive && isLoading && !isStreamingWithPartialText;
 
-          <div className="relative flex flex-1 flex-col gap-6">
-            <div className="flex flex-1 flex-col space-y-5 pr-1 pb-6">
-              {chatHistory.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] p-6 text-sm text-[var(--tt-color-text-muted)]">
-                  {locale === 'ja'
-                    ? '質問を入力すると、ここにチャット履歴が表示されます。'
-                    : 'Start asking questions to build your chat history here.'}
-                </div>
-              ) : (
-                chatHistory.map((exchange) => {
-                  const isActive = exchange.id === activeExchangeId;
-                  const exchangeResult = isActive
-                    ? (result ?? exchange.answer)
-                    : exchange.answer;
-                  const showAnswerPanel = Boolean(
-                    exchangeResult ||
-                    (isActive &&
-                      (shouldShowStreamingResult ||
-                        (showResult &&
-                          (result ||
-                            (ENABLE_STREAMING_UI ? partialText : null)))))
-                  );
-                  const streamingPartial =
-                    isActive && ENABLE_STREAMING_UI ? partialText : null;
-                  const showLoading =
-                    isActive && isLoading && !isStreamingWithPartialText;
-
-                  return (
-                    <div key={exchange.id} className="space-y-3">
-                      {/* User question bubble with User icon for color-blind accessibility */}
-                      <div className="flex items-start justify-end gap-3">
-                        <div className="max-w-2xl rounded-3xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] px-5 py-3 text-sm font-medium text-[var(--tt-color-text)] shadow-sm">
-                          {exchange.question}
-                        </div>
-                        <User
-                          className="mt-3 h-5 w-5 flex-shrink-0 text-[var(--tt-color-text-muted)]"
-                          aria-hidden="true"
-                        />
-                      </div>
-
-                      {showLoading && (
-                        <div className="rounded-2xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] p-4">
-                          <AgentLoadingState />
-                        </div>
-                      )}
-
-                      {exchange.error && (
-                        <div className="rounded-2xl border border-[var(--tt-color-negative-border)] bg-[var(--tt-color-negative-bg)] p-4">
-                          <AgentErrorDisplay
-                            error={exchange.error}
-                            onRetry={() => {
-                              void handleSearch(exchange.question);
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      {!exchange.error && showAnswerPanel && (
-                        <div className="flex items-start gap-3">
-                          <Bot
-                            className="text-primary mt-5 h-5 w-5 flex-shrink-0"
-                            aria-hidden="true"
-                          />
-                          <div className="flex-1">
-                            <ArticleQaAnswer
-                              answer={
-                                streamingPartial ||
-                                exchangeResult?.response ||
-                                null
-                              }
-                              isStreaming={
-                                isActive && shouldShowStreamingResult
-                              }
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            <div className="via-tt-surface to-tt-surface sticky right-0 bottom-0 left-0 bg-gradient-to-b from-transparent pt-6">
-              {/* Sample queries section - positioned above input for better task-completion UX */}
-              <aside
-                role="complementary"
-                aria-label={
-                  locale === 'ja' ? 'サンプル質問' : 'Sample questions'
+            return (
+              <div
+                key={exchange.id}
+                ref={
+                  index === chatHistory.length - 1
+                    ? latestQuestionRef
+                    : undefined
                 }
-                className="mb-4"
+                className="scroll-mt-4 space-y-3"
               >
-                {/* Separator for visual separation from answer */}
-                <div className="mb-4 border-t border-[var(--tt-color-border)]" />
-
-                {sampleQueriesOpen ? (
-                  <div
-                    id="sample-queries-panel"
-                    role="region"
-                    aria-label={
-                      locale === 'ja' ? '関連する質問' : 'Related questions'
-                    }
-                    className="animate-in fade-in-0 slide-in-from-top-2 space-y-3 duration-300"
-                  >
-                    {/* Header with collapse button */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium tracking-wide text-[var(--tt-color-text-muted)] uppercase">
-                        {locale === 'ja' ? '関連する質問' : 'Related questions'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setSampleQueriesOpen(false)}
-                        aria-expanded={sampleQueriesOpen}
-                        aria-controls="sample-queries-panel"
-                        className="focus-visible:ring-primary/30 rounded text-xs text-[var(--tt-color-text-muted)] transition hover:text-[var(--tt-color-text)] focus-visible:ring-2 focus-visible:outline-none"
-                      >
-                        {locale === 'ja' ? '閉じる' : 'Close'}
-                      </button>
-                    </div>
-                    {/* Sample query buttons - horizontal scroll on mobile, wrap on desktop */}
-                    <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-2 lg:flex-wrap lg:overflow-visible">
-                      {sampleQueries.map((query) => (
-                        <button
-                          key={query}
-                          type="button"
-                          aria-label={
-                            locale === 'ja'
-                              ? `サンプル質問を入力: ${query.slice(0, 20)}...`
-                              : `Insert sample: ${query.slice(0, 20)}...`
-                          }
-                          onClick={() => handlePrefillQuery(query)}
-                          className="group hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/30 inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-[var(--tt-color-border)] bg-[var(--tt-color-surface-muted)] px-2.5 py-1 text-xs text-[var(--tt-color-text-muted)] transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:flex-shrink"
-                        >
-                          <span className="bg-primary/10 text-primary inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold">
-                            Q
-                          </span>
-                          <span className="text-left whitespace-nowrap lg:whitespace-normal">
-                            {query}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+                {/* User question bubble with User icon for color-blind accessibility */}
+                <div className="flex items-start justify-end gap-3">
+                  <div className="max-w-2xl rounded-lg border border-(--tt-color-border) bg-(--tt-color-surface-muted) px-4 py-3 text-sm font-medium text-(--tt-color-text)">
+                    {exchange.question}
                   </div>
-                ) : (
-                  <button
-                    id="sample-queries-toggle"
-                    type="button"
-                    onClick={() => setSampleQueriesOpen(true)}
-                    aria-expanded={sampleQueriesOpen}
-                    aria-controls="sample-queries-panel"
-                    className="border-primary/30 text-primary hover:bg-primary/5 focus-visible:ring-primary/30 bg-background inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    {locale === 'ja'
-                      ? 'サンプル質問を表示'
-                      : 'Show sample questions'}
-                  </button>
-                )}
-              </aside>
-
-              <div className="rounded-3xl border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)] p-4 shadow-lg backdrop-blur-sm sm:p-6">
-                <div className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.3em] text-[var(--tt-color-text-muted)] uppercase">
-                  <MessageSquare className="text-primary h-4 w-4" />
-                  {locale === 'ja' ? 'この記事に質問する' : 'Ask this article'}
-                </div>
-                <div className="mt-4">
-                  <AgentSearchBar
-                    onSearch={handleSearch}
-                    isLoading={isLoading}
-                    onPrefillQuery={handleSetPrefillCallback}
-                    badgeLabel={locale === 'ja' ? '記事Q&A' : 'Article Q&A'}
-                    badgeIcon={<MessageSquare className="mr-1 h-3 w-3" />}
-                    helperText={helperText}
-                    placeholder={placeholder}
-                    submitLabel={locale === 'ja' ? '質問' : 'Ask'}
-                    loadingLabel={locale === 'ja' ? '回答中' : 'Answering'}
-                    historyEnabled={false}
-                    inputLabel={
-                      locale === 'ja'
-                        ? '記事QA質問入力'
-                        : 'Article QA question input'
-                    }
-                    shortcutHint={shortcutHint}
+                  <User
+                    className="mt-3 h-5 w-5 flex-shrink-0 text-(--tt-color-text-muted)"
+                    aria-hidden="true"
                   />
                 </div>
+
+                {showLoading && (
+                  <div className="rounded-lg border border-(--tt-color-border) bg-(--tt-color-surface-muted) p-4">
+                    <AgentLoadingState />
+                  </div>
+                )}
+
+                {exchange.error && (
+                  <div className="rounded-lg border border-(--tt-color-negative-border) bg-(--tt-color-negative-bg) p-4">
+                    <AgentErrorDisplay
+                      error={exchange.error}
+                      onRetry={() => {
+                        void handleSearch(exchange.question);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {!exchange.error && showAnswerPanel && (
+                  <div className="flex items-start gap-3">
+                    <Bot
+                      className="text-primary mt-5 h-5 w-5 flex-shrink-0"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <ArticleQaAnswer
+                        answer={
+                          streamingPartial || exchangeResult?.response || null
+                        }
+                        isStreaming={isActive && shouldShowStreamingResult}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* サンプル質問は質問欄のすぐ上。まだ何も聞いていないときは、これが入口になる */}
+      <aside
+        aria-label={locale === 'ja' ? 'サンプル質問' : 'Sample questions'}
+        className="mt-6 border-t border-(--tt-color-border) pt-4"
+      >
+        {sampleQueriesOpen ? (
+          <div
+            id="sample-queries-panel"
+            role="region"
+            aria-label={locale === 'ja' ? '関連する質問' : 'Related questions'}
+            className="space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-(--tt-color-text-muted)">
+                {locale === 'ja' ? '関連する質問' : 'Related questions'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSampleQueriesOpen(false)}
+                aria-expanded={sampleQueriesOpen}
+                aria-controls="sample-queries-panel"
+                className="focus-visible:ring-primary/30 rounded text-xs text-(--tt-color-text-muted) transition hover:text-(--tt-color-text) focus-visible:ring-2 focus-visible:outline-none"
+              >
+                {locale === 'ja' ? '隠す' : 'Hide'}
+              </button>
+            </div>
+            {/* Sample query buttons - horizontal scroll on mobile, wrap on desktop */}
+            <div className="scrollbar-hide -mx-1 flex gap-2 overflow-x-auto px-1 pb-2 lg:flex-wrap lg:overflow-visible">
+              {sampleQueries.map((query) => (
+                <button
+                  key={query}
+                  type="button"
+                  aria-label={
+                    locale === 'ja'
+                      ? `サンプル質問を入力: ${query.slice(0, 20)}...`
+                      : `Insert sample: ${query.slice(0, 20)}...`
+                  }
+                  onClick={() => handlePrefillQuery(query)}
+                  className="group hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:ring-primary/30 inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-(--tt-color-border) bg-(--tt-color-surface-muted) px-2.5 py-1 text-xs text-(--tt-color-text-muted) transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none lg:flex-shrink"
+                >
+                  <span className="bg-primary/10 text-primary inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold">
+                    Q
+                  </span>
+                  <span className="text-left whitespace-nowrap lg:whitespace-normal">
+                    {query}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
-        </div>
+        ) : (
+          <button
+            id="sample-queries-toggle"
+            type="button"
+            onClick={() => setSampleQueriesOpen(true)}
+            aria-expanded={sampleQueriesOpen}
+            aria-controls="sample-queries-panel"
+            className="border-primary/30 text-primary hover:bg-primary/5 focus-visible:ring-primary/30 bg-background inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+            {locale === 'ja' ? 'サンプル質問を表示' : 'Show sample questions'}
+          </button>
+        )}
+      </aside>
+
+      <div className="mt-4">
+        <AgentSearchBar
+          onSearch={handleSearch}
+          isLoading={isLoading}
+          onPrefillQuery={handleSetPrefillCallback}
+          // 見出しと説明はパネルの上にあるので、検索欄のバッジは出さない
+          badgeLabel=""
+          placeholder={placeholder}
+          submitLabel={locale === 'ja' ? '質問' : 'Ask'}
+          loadingLabel={locale === 'ja' ? '回答中' : 'Answering'}
+          historyEnabled={false}
+          inputLabel={
+            locale === 'ja' ? '記事QA質問入力' : 'Article QA question input'
+          }
+          shortcutHint={null}
+          autoFocus={autoFocus}
+          className="max-w-none"
+        />
+        <p className="mt-2 hidden text-xs text-(--tt-color-text-muted) sm:block">
+          {shortcutHint}
+        </p>
       </div>
     </section>
   );

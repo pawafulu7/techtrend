@@ -8,6 +8,7 @@ import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle
 import { SearchBox } from '@/app/components/common/search-box';
 import { TagFilterDropdown } from '@/app/components/common/tag-filter-dropdown';
 import { ViewModeToggle } from '@/app/components/common/view-mode-toggle';
+import { ReaderModeLink } from '@/app/components/common/reader-mode-link';
 import { SortButtons } from '@/app/components/common/sort-buttons';
 import { getSession } from '@/lib/auth/get-session';
 import { HomeArticles } from '@/app/components/home/home-articles';
@@ -21,8 +22,7 @@ import {
 } from '@/app/components/home/filter-sidebar';
 import { ToolbarMoreMenu } from '@/app/components/home/toolbar-more-menu';
 import { parseViewModeFromCookie } from '@/lib/cookies/view-mode-cookie';
-import { parseSourceFilterFromCookie } from '@/lib/cookies/source-filter-cookie';
-import { getFilterPreferencesFromCookies } from '@/lib/cookies/filter-preferences-cookie';
+import { resolveHomeFilterDefaults } from '@/lib/articles/home-filter-defaults';
 import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
 import { groupSourcesStatic } from '@/lib/utils/source/source-grouping-static';
@@ -103,55 +103,19 @@ export default async function Home({ searchParams }: PageProps) {
   const filteredSources = withoutPaperSources(sources);
   const filteredGroupedSources = withoutPaperSourceGroups(groupedSources);
 
-  // Get filter preferences from cookie
-  const filterPreferences = getFilterPreferencesFromCookies(cookieStore);
+  // URL に無いソース・並び順を Cookie から補う（リーダーと同じ。lib/articles/home-filter-defaults.ts）
+  const { filterPreferences, initialSourceIds, initialSortBy } =
+    resolveHomeFilterDefaults({
+      params,
+      cookieStore,
+      validSourceIds: new Set(filteredSources.map((s) => s.id)),
+    });
 
   // Get view mode (from dedicated cookie or filter preferences)
   const viewMode =
     parseViewModeFromCookie(cookieStore.get('article-view-mode')?.value) ||
     filterPreferences.viewMode ||
     'card';
-
-  // Get source filter from URL params first, then fall back to cookie
-  let initialSourceIds: string[] | undefined = undefined;
-  if (params.sources) {
-    // URL has explicit sources parameter - use it
-    if (params.sources === 'all') {
-      // All sources selected - leave undefined to use default (all)
-      initialSourceIds = undefined;
-    } else if (params.sources === 'none') {
-      // No sources selected
-      initialSourceIds = [];
-    } else {
-      // Specific source IDs
-      initialSourceIds = params.sources.split(',').filter((id) => id);
-    }
-  } else if (!params.sourceId) {
-    // No URL params - try filter preferences first, then fall back to old source-filter cookie
-    if (filterPreferences.sources !== undefined) {
-      // 空配列の場合は、全選択として扱う場合を考慮
-      // ただし、明示的な全解除の場合は空配列を維持
-      initialSourceIds = filterPreferences.sources;
-    } else {
-      const oldCookie = parseSourceFilterFromCookie(
-        cookieStore.get('source-filter')?.value
-      );
-      if (oldCookie.length > 0) {
-        initialSourceIds = oldCookie;
-      }
-    }
-  }
-
-  // Filter out invalid source IDs (excluded or deleted sources)
-  if (initialSourceIds && initialSourceIds.length > 0) {
-    const validIds = new Set(filteredSources.map((s) => s.id));
-    const filtered = initialSourceIds.filter((id) => validIds.has(id));
-    // If all IDs were invalid, fall back to all sources (undefined)
-    initialSourceIds = filtered.length > 0 ? filtered : undefined;
-  }
-
-  // Get initial sort order from cookie if no URL params
-  const initialSortBy = !params.sortBy ? filterPreferences.sortBy : undefined;
 
   // 検索キーワードはURLパラメータのみで管理（Cookie復元は無効）
 
@@ -196,6 +160,7 @@ export default async function Home({ searchParams }: PageProps) {
               <PersonalizationToggle />
               <div className="bg-border hidden h-5 w-px lg:block" />
               <ViewModeToggle currentMode={viewMode} />
+              <ReaderModeLink />
               <SortButtons initialSortBy={initialSortBy} />
               <div className="bg-border hidden h-5 w-px lg:block" />
               <ToolbarMoreMenu />

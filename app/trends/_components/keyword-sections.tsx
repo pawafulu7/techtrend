@@ -1,15 +1,12 @@
 import type { CSSProperties, ReactNode } from 'react';
-import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { Sparkles, TrendingUp } from 'lucide-react';
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
+import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { EmptyState } from '@/components/ui-v2/empty-state';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { TrendingTopicRow } from '@/app/components/trends/overview/TrendingTopicRow';
 import { DataFreshness } from '@/app/components/common/data-freshness';
-import type { TrendingKeyword, NewTag } from './trends-data';
+import type { TrendingKeyword } from './trends-data';
 
 export const RETRY_DESCRIPTION = '時間をおいて再試行してください。';
 
@@ -110,47 +107,6 @@ export function TrendingKeywordsSection({
             />
           )}
         </>
-      )}
-    </SectionCard>
-  );
-}
-
-export function NewTagsSection({
-  tags,
-  onRetry,
-  retrying,
-}: RetryProps & { tags: NewTag[] | null }) {
-  return (
-    <SectionCard
-      icon={Sparkles}
-      iconClassName="text-(--tt-color-positive)"
-      title={`新着タグ${tags ? ` (${tags.length})` : ''}`}
-    >
-      {tags === null ? (
-        <ErrorState
-          title="新着タグを読み込めませんでした"
-          description={RETRY_DESCRIPTION}
-          onRetry={onRetry}
-          retrying={retrying}
-        />
-      ) : tags.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <BadgeV2 key={tag.id} variant="positive" asChild>
-              <Link href={`/?tags=${encodeURIComponent(tag.name)}`}>
-                {getTagDisplayName(tag.name)}
-                <span className="ml-1">{tag.count}</span>
-              </Link>
-            </BadgeV2>
-          ))}
-        </div>
-      ) : (
-        <EmptyState
-          icon={Sparkles}
-          size="compact"
-          title="新着タグはありません"
-          description="直近24時間に初めて使われたタグがここに出ます。"
-        />
       )}
     </SectionCard>
   );

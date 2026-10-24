@@ -66,7 +66,7 @@ async function fetchHomePreferences(
 ): Promise<UserCategoryPreferences | null> {
   try {
     const request = new NextRequest(
-      `${INTERNAL_ORIGIN}/api/user/preferences/categories?scope=home`,
+      `${INTERNAL_ORIGIN}/api/user/preferences/categories`,
       { headers: cookie ? { cookie } : undefined }
     );
     // ページで判定済みのセッションを渡し、もう一度判定しない

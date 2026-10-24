@@ -38,7 +38,7 @@ export function DigestClient() {
     !digest && !isUnauthorized && (!!error || hasFailedSinceMount);
 
   const { mutateAsync: updatePreferencesAsync, isPending: isUpdating } =
-    useUpdatePreferences('digest');
+    useUpdatePreferences();
 
   const categories = useMemo(
     () => digest?.categories ?? [],
@@ -53,10 +53,8 @@ export function DigestClient() {
     categoryIds: string[],
     _selectedPeriod: PeriodPreset
   ) => {
-    await updatePreferencesAsync({
-      categoryIds,
-      filterEnabled: categoryIds.length > 0,
-    });
+    // 分野だけを保存する。ホームの一覧を絞り込むかどうか（filterEnabled）はホームの設定で決める
+    await updatePreferencesAsync({ categoryIds });
   };
 
   const handlePeriodChange = (value: string) => {

@@ -3,6 +3,7 @@
 import { getTagDisplayName } from '@/lib/constants/tag-labels';
 import { useQueries } from '@tanstack/react-query';
 import { useEffect, useRef, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -11,10 +12,19 @@ import {
 } from '@/components/ui-v2/card-v2';
 import { Badge } from '@/components/ui-v2/badge-v2';
 import { TagStatsSkeleton } from './tags-skeletons';
-import { TrendingUp, Hash, Calendar, Activity } from 'lucide-react';
+import { TrendingUp, Hash, Calendar, Activity, Sparkles } from 'lucide-react';
 import logger from '@/lib/logger.client';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { LiveStatus } from '@/components/ui-v2/live-status';
+
+interface NewTagItem {
+  id: string;
+  name: string;
+  articleCount: number;
+}
+
+/** 新着タグの一覧に出す上限。残りは件数だけを出す */
+const NEW_TAGS_DISPLAY_LIMIT = 30;
 
 interface TagCloudItem {
   id?: string;
@@ -170,6 +180,14 @@ export function TagStats() {
       }));
   }, [activeData]);
 
+  // 新着タグの一覧（トレンド概要から移した、Issue #709）。件数と同じ取得（直近7日）を使う。
+  // 記事の多い順に並べ、上限を超えた分は件数だけを出す
+  const newTagList = useMemo(() => {
+    if (newData === null) return null;
+    const tags: NewTagItem[] = Array.isArray(newData.tags) ? newData.tags : [];
+    return [...tags].sort((a, b) => b.articleCount - a.articleCount);
+  }, [newData]);
+
   const stats: TagStat = useMemo(() => {
     const newTags = newData === null ? null : newData.count || 0;
     return {
@@ -256,6 +274,50 @@ export function TagStats() {
           )}
         </CardContent>
       </Card>
+
+      {newTagList !== null && (
+        <Card data-testid="new-tags">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles
+                className="h-5 w-5 text-(--tt-color-positive)"
+                aria-hidden="true"
+              />
+              新着タグ
+            </CardTitle>
+            <p className="text-xs text-(--tt-color-text-muted)">
+              直近7日に初めて使われたタグ
+            </p>
+          </CardHeader>
+          <CardContent>
+            {newTagList.length > 0 ? (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {newTagList.slice(0, NEW_TAGS_DISPLAY_LIMIT).map((tag) => (
+                    <Badge key={tag.id} variant="positive" asChild>
+                      <Link
+                        href={`/?tags=${encodeURIComponent(tag.name)}&tagMode=OR`}
+                      >
+                        {getTagDisplayName(tag.name)}
+                        <span className="ml-1">{tag.articleCount}</span>
+                      </Link>
+                    </Badge>
+                  ))}
+                </div>
+                {newTagList.length > NEW_TAGS_DISPLAY_LIMIT && (
+                  <p className="mt-3 text-xs text-(--tt-color-text-muted) tabular-nums">
+                    {`ほか ${newTagList.length - NEW_TAGS_DISPLAY_LIMIT} 件`}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-(--tt-color-text-muted)">
+                直近7日に初めて使われたタグはありません
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {stats.topGrowthTags.length > 0 && (
         <Card>

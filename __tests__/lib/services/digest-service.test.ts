@@ -97,7 +97,7 @@ describe('DigestService', () => {
       const result = await service.getDigest('user-1', 'daily');
 
       expect(result).toEqual(cachedResponse);
-      expect(mockCache.get).toHaveBeenCalledWith('digest:user-1:daily');
+      expect(mockCache.get).toHaveBeenCalledWith('digest:v2:user-1:daily');
       // キャッシュヒット時はDBアクセスしない
       expect(prismaMock.userCategoryPreference.count).not.toHaveBeenCalled();
     });
@@ -334,7 +334,7 @@ describe('DigestService', () => {
 
       expect(mockCache.set).toHaveBeenCalledTimes(1);
       const [cacheKey, cacheValue] = mockCache.set.mock.calls[0];
-      expect(cacheKey).toBe('digest:user-1:weekly');
+      expect(cacheKey).toBe('digest:v2:user-1:weekly');
       expect(cacheValue.period).toBe('weekly');
       expect(cacheValue.hasPreferences).toBe(true);
       expect(cacheValue.sections).toHaveLength(3);
@@ -720,7 +720,7 @@ describe('DigestService', () => {
 
       expect(mockCache.set).toHaveBeenCalledTimes(1);
       const [cacheKey, , ttl] = mockCache.set.mock.calls[0];
-      expect(cacheKey).toBe('digest:user-1:daily');
+      expect(cacheKey).toBe('digest:v2:user-1:daily');
       expect(ttl).toBe(DIGEST_CONFIG.NEGATIVE_CACHE_TTL);
       expect(DIGEST_CONFIG.NEGATIVE_CACHE_TTL).toBe(300);
     });
@@ -784,8 +784,8 @@ describe('DigestService', () => {
     });
   });
 
-  describe('scope filtering', () => {
-    it('getDigest should query preferences with scope: digest', async () => {
+  describe('shared category preferences', () => {
+    it('getDigest should read the categories shared with the home filter', async () => {
       prismaMock.userCategoryPreference.count.mockResolvedValue(1);
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
@@ -805,20 +805,17 @@ describe('DigestService', () => {
 
       await service.getDigest('user-1', 'daily');
 
-      // count should filter by scope: 'digest'
+      // 分野はホームと共通（Issue #709）。ホームの絞り込みのオン/オフには関係なく読む
       expect(prismaMock.userCategoryPreference.count).toHaveBeenCalledWith({
-        where: { userId: 'user-1', scope: 'digest' },
+        where: { userId: 'user-1' },
       });
-
-      // findMany should also filter by scope: 'digest'
       expect(prismaMock.userCategoryPreference.findMany).toHaveBeenCalledWith({
-        where: { userId: 'user-1', scope: 'digest' },
+        where: { userId: 'user-1' },
         select: { categoryId: true },
       });
     });
 
-    it('should return empty sections when user has no digest scope preferences', async () => {
-      // User has home preferences but no digest preferences
+    it('should return empty sections when user has no category preferences', async () => {
       prismaMock.userCategoryPreference.count.mockResolvedValue(0);
 
       const result = await service.getDigest('user-1', 'daily');
@@ -836,8 +833,8 @@ describe('DigestService', () => {
     it('daily/weeklyの両方のキャッシュを削除する', async () => {
       await service.invalidateUserCache('user-1');
       expect(mockCache.delete).toHaveBeenCalledTimes(2);
-      expect(mockCache.delete).toHaveBeenCalledWith('digest:user-1:daily');
-      expect(mockCache.delete).toHaveBeenCalledWith('digest:user-1:weekly');
+      expect(mockCache.delete).toHaveBeenCalledWith('digest:v2:user-1:daily');
+      expect(mockCache.delete).toHaveBeenCalledWith('digest:v2:user-1:weekly');
     });
 
     it('キャッシュ削除失敗時もエラーを投げない', async () => {

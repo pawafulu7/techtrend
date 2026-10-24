@@ -34,6 +34,14 @@ export const DIGEST_CONFIG = {
   DIGEST_MAX_CONCURRENCY: 5,
 } as const;
 
+/**
+ * ダイジェストのキャッシュのキー。v2 は分野の設定をホームと共通にした後の形（Issue #709）。
+ * 前の形のキャッシュはダイジェストだけの分野を持っていて、それを編集して保存するとホームの分野が消えるので読まない
+ */
+function digestCacheKey(userId: string, period: DigestPeriod): string {
+  return `digest:v2:${userId}:${period}`;
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -149,7 +157,7 @@ export class DigestService {
     period: DigestPeriod
   ): Promise<DigestResponse> {
     // 1. Check cache
-    const cacheKey = `digest:${userId}:${period}`;
+    const cacheKey = digestCacheKey(userId, period);
     try {
       const cached = await measureAsync('digest.cache_get', async (span) => {
         try {
@@ -182,9 +190,9 @@ export class DigestService {
       );
     }
 
-    // 2. Check if user has category preferences (digest scope)
+    // 2. Check if user has category preferences (shared with the home filter, Issue #709)
     const preferenceCount = await this.db.userCategoryPreference.count({
-      where: { userId, scope: 'digest' },
+      where: { userId },
     });
 
     if (preferenceCount === 0) {
@@ -204,10 +212,10 @@ export class DigestService {
       return emptyResponse;
     }
 
-    // 3. Get user's categoryIds (digest scope) and all active categories in parallel
+    // 3. Get user's categoryIds and all active categories in parallel
     const [preferences, allCategories] = await Promise.all([
       this.db.userCategoryPreference.findMany({
-        where: { userId, scope: 'digest' },
+        where: { userId },
         select: { categoryId: true },
       }),
       this.getActiveCategoriesWithTiming(userId),
@@ -554,7 +562,7 @@ export class DigestService {
     const periods: DigestPeriod[] = ['daily', 'weekly'];
     await Promise.all(
       periods.map((period) =>
-        this.cache.delete(`digest:${userId}:${period}`).catch((error) => {
+        this.cache.delete(digestCacheKey(userId, period)).catch((error) => {
           logger.warn(
             { err: error, userId, period },
             'Failed to invalidate digest cache'

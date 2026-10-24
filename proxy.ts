@@ -267,9 +267,14 @@ export async function proxy(request: NextRequest) {
         );
       }
 
-      // ページの場合はログインページにリダイレクト
+      // ページの場合はログインページにリダイレクト。ログインした後に同じ表示へ戻すため、検索条件も渡す
+      // （/history?tab=analytics の読書分析、/digest の期間など）。callbackUrl はログイン画面で
+      // sanitizeCallbackUrl（同じサイトの相対パスだけ）を通る
       const url = new URL('/auth/login', request.url);
-      url.searchParams.set('callbackUrl', pathname);
+      url.searchParams.set(
+        'callbackUrl',
+        `${pathname}${request.nextUrl.search}`
+      );
       return finalize(NextResponse.redirect(url));
     }
   }
