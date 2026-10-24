@@ -43,6 +43,7 @@
     "db:backup:dev": "bash scripts/db/backup-dev.sh",
     "db:backup:test": "bash scripts/db/backup-test.sh",
     "db:sync:prod": "bash scripts/db/sync-prod.sh",
+    "db:cache:clear": "bash scripts/db/clear-local-cache.sh",
     "test:node": "jest -c jest.config.node.js",
     "test:node:serial": "cross-env JEST_SERIAL_DB=1 jest -c jest.config.node.js --runInBand --testPathPatterns '(__tests__/api/workers/embedding|__tests__/unit/services/embedding-scheduler)\\.test\\.ts$'",
     "test:dom": "jest -c jest.config.dom.js",
