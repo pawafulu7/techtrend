@@ -350,9 +350,9 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                   }
                 });
               });
+              result.updated = true;
               // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
               await embeddingScheduler.enqueue(article.id);
-              result.updated = true;
             }
 
             console.error(`   ✅ 再生成成功! スコア: ${beforeScore} → ${result.afterScore}点`);
