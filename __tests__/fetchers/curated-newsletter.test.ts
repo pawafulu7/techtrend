@@ -212,17 +212,34 @@ describe('CuratedNewsletterFetcher: Cooperpress', () => {
     expect(errors.some((e) => e instanceof SourceFormatError)).toBe(true);
   });
 
-  it('最初の欄が特集の見出し（例: 「TanStack Start Reaches 1.0」）で始まっても、その下の記事を最初の欄の記事として取り出す', async () => {
-    // React Status #494 の形: 誌名の見出しの代わりに、リンクの無い短い表で特集の見出しが置かれ、その下に最初の欄の記事が並ぶ
-    const headlined = COOPERPRESS_ISSUE.replace('<td>JavaScript Weekly</td>', '<td><p>Big Framework Reaches 1.0</p></td>');
-    expect(headlined).not.toBe(COOPERPRESS_ISSUE);
-    installFetch(feedXml([{ title: 'Issue 902', link: 'https://javascriptweekly.com/issues/902', daysAgo: 1, html: headlined }]));
+  // 「Code Tools for Everyone」は道具の欄の名前（Code & Tools）の語を含むが、欄の見出しの実物と一致しないので特集の見出し
+  it.each(['Big Framework Reaches 1.0', 'Code Tools for Everyone'])(
+    '最初の欄が特集の見出し「%s」で始まっても、その下の記事を最初の欄の記事として取り出す',
+    async (headline) => {
+      // React Status #494 の形: 誌名の見出しの代わりに、リンクの無い短い表で特集の見出しが置かれ、その下に最初の欄の記事が並ぶ
+      const headlined = COOPERPRESS_ISSUE.replace('<td>JavaScript Weekly</td>', `<td><p>${headline}</p></td>`);
+      expect(headlined).not.toBe(COOPERPRESS_ISSUE);
+      installFetch(feedXml([{ title: 'Issue 902', link: 'https://javascriptweekly.com/issues/902', daysAgo: 1, html: headlined }]));
+
+      const { articles, errors } = await jsWeekly().fetch();
+
+      expect(errors).toEqual([]);
+      expect(articles.map((a) => a.title).sort()).toEqual(
+        ['Lead Article One', 'Article Section Feature', 'Compact Feature Without Host Hint', 'Short Article One', 'Short Article Two'].sort()
+      );
+    }
+  );
+
+  it('号の先頭が道具の欄の見出しの実物（🛠 Code & Tools）なら特集の見出しとは扱わず、その下の記事は除く', async () => {
+    const toolsFirst = COOPERPRESS_ISSUE.replace('<td>JavaScript Weekly</td>', '<td><p>🛠 Code &amp; Tools</p></td>');
+    expect(toolsFirst).not.toBe(COOPERPRESS_ISSUE);
+    installFetch(feedXml([{ title: 'Issue 904', link: 'https://javascriptweekly.com/issues/904', daysAgo: 1, html: toolsFirst }]));
 
     const { articles, errors } = await jsWeekly().fetch();
 
     expect(errors).toEqual([]);
     expect(articles.map((a) => a.title).sort()).toEqual(
-      ['Lead Article One', 'Article Section Feature', 'Compact Feature Without Host Hint', 'Short Article One', 'Short Article Two'].sort()
+      ['Article Section Feature', 'Compact Feature Without Host Hint', 'Short Article One', 'Short Article Two'].sort()
     );
   });
 

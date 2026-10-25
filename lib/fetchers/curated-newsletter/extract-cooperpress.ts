@@ -50,6 +50,32 @@ export function isKnownExcludedSection(section: string): boolean {
   return KNOWN_EXCLUDED_SECTION.test(section);
 }
 
+/**
+ * 記事の欄でない欄の見出しの実物（先頭の絵文字と末尾の記号を落とし、小文字にしたもの）。
+ * 号の先頭にこれと完全に一致する見出しがあれば、特集の見出しではなく欄として扱う。
+ * 部分一致（KNOWN_EXCLUDED_SECTION）にすると「Code」「Tools」を含む特集の見出しを取り違えるので、
+ * ここだけは完全一致で見る。号の最後の「And finally…」は文言が号ごとに変わるが、先頭には来ないので載せない
+ */
+const EXACT_EXCLUDED_SECTIONS: ReadonlySet<string> = new Set([
+  'code & tools', // JavaScript Weekly・Node Weekly
+  'code, tools & libraries', // React Status
+  'tools, code & resources', // Frontend Focus
+  'releases and code', // Postgres Weekly（「RELEASES AND CODE:」）
+  'classifieds',
+  'elsewhere in the ecosystem',
+]);
+
+function normalizeSectionName(text: string): string {
+  return text
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+function isExactExcludedSection(text: string): boolean {
+  return EXACT_EXCLUDED_SECTIONS.has(normalizeSectionName(text));
+}
+
 export function isArticleSection(section: string): boolean {
   return section === LEAD_SECTION || ARTICLE_SECTION.test(section);
 }
@@ -58,18 +84,24 @@ export function isArticleSection(section: string): boolean {
  * 最初の欄の特集の見出しか（例: React Status #494 の「TanStack Start Reaches 1.0」、
  * Frontend Focus #763 の「Everyone's Interop 2027 Wishlists」）。
  *
- * 最初の欄で、まだ記事を1本も取っておらず、記事の欄の名前でもないものは、特集の見出しとみなして
- * 欄を変えない。Cooperpress の号は最初の欄に記事がある形なので、最初の欄に記事が無いまま道具の欄が
- * 来ることは想定しない（道具の欄の名前の一覧は見ない。「Code」「Tools」を含む見出しを道具の欄と
- * 取り違えて、最初の欄の記事を全部落とさないため）。記事を取った後に出る知らない名前は、
- * 一回きりの欄（例: 「🔤 A font that annotates itself」）として今までどおり除く。
+ * 最初の欄で、まだ記事を1本も取っておらず、記事の欄の名前でも、記事でない欄の見出しの実物
+ * （EXACT_EXCLUDED_SECTIONS）でもないものは、特集の見出しとみなして欄を変えない。
+ * Cooperpress の号は最初の欄に記事がある形なので、最初の欄に記事が無いまま道具の欄が来ることは
+ * 想定しないが、形が変わって来たときは道具の記事を黙って保存せず、記事0本の失敗（SourceFormatError）で
+ * 人が気づけるようにする。記事を取った後に出る知らない名前は、一回きりの欄
+ * （例: 「🔤 A font that annotates itself」）として今までどおり除く。
  */
 function isLeadHeadline(
   text: string,
   section: string,
   itemCount: number
 ): boolean {
-  return section === LEAD_SECTION && itemCount === 0 && !isArticleSection(text);
+  return (
+    section === LEAD_SECTION &&
+    itemCount === 0 &&
+    !isArticleSection(text) &&
+    !isExactExcludedSection(text)
+  );
 }
 
 export function extractCooperpressIssue(
