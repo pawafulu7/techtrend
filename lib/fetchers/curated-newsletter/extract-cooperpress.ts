@@ -10,16 +10,26 @@
  *
  * 記事の欄は、許す名前の一覧で決める（ユーザーが選んだのは「記事の欄だけ」。道具の欄・
  * 「And finally…」などの一回きりの欄・知らない名前の欄は除き、欄の名前ごとの数を返す）。
+ *
+ * 最初の欄は特集の見出し（例: React Status #494 の「TanStack Start Reaches 1.0」）で始まることがある。
+ * 見出しは欄の見出しと同じ「リンクの無い短い表」で HTML では区別できないので、位置で区別する
+ * （isLeadHeadline）。区別しないと最初の欄の記事がすべて知らない名前の欄として除かれ、号から記事を
+ * 1本も取り出せずに収集のジョブが失敗する（2026-10-25 の Scheduler - Scraping Twice Daily）。
  */
 
 import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
-import { addExcluded, type ExtractionResult, type ExtractedItem } from './types';
+import {
+  addExcluded,
+  type ExtractionResult,
+  type ExtractedItem,
+} from './types';
 
 /** 見出しの前、または誌名の見出しの下（号の最初の欄） */
 export const LEAD_SECTION = 'lead';
 
-const ARTICLE_SECTION = /article|opinion|tutorial|video|operations|performance|what['’]s new/i;
+const ARTICLE_SECTION =
+  /article|opinion|tutorial|video|operations|performance|what['’]s new/i;
 const LINK_HREF = /\/link\/\d+\/rss/;
 const EMOJI_ONLY = /^[\p{Extended_Pictographic}️‍\s]+$/u;
 const SECTION_HEADER_MAX_LENGTH = 60;
@@ -33,7 +43,8 @@ function lettersOnly(text: string): string {
 }
 
 // 記事の欄でないと分かっている欄（道具・リリース・求人・号の最後のおまけ）。これ以外の名前の欄を除くときは WARN を出す
-const KNOWN_EXCLUDED_SECTION = /code|tools|releases|libraries|resources|classified|and finally|elsewhere/i;
+const KNOWN_EXCLUDED_SECTION =
+  /code|tools|releases|libraries|resources|classified|and finally|elsewhere/i;
 
 export function isKnownExcludedSection(section: string): boolean {
   return KNOWN_EXCLUDED_SECTION.test(section);
@@ -43,21 +54,47 @@ export function isArticleSection(section: string): boolean {
   return section === LEAD_SECTION || ARTICLE_SECTION.test(section);
 }
 
-export function extractCooperpressIssue(html: string, newsletterName: string): ExtractionResult {
+/**
+ * 最初の欄の特集の見出しか（例: React Status #494 の「TanStack Start Reaches 1.0」、
+ * Frontend Focus #763 の「Everyone's Interop 2027 Wishlists」）。
+ *
+ * 最初の欄で、まだ記事を1本も取っておらず、記事の欄の名前でもないものは、特集の見出しとみなして
+ * 欄を変えない。Cooperpress の号は最初の欄に記事がある形なので、最初の欄に記事が無いまま道具の欄が
+ * 来ることは想定しない（道具の欄の名前の一覧は見ない。「Code」「Tools」を含む見出しを道具の欄と
+ * 取り違えて、最初の欄の記事を全部落とさないため）。記事を取った後に出る知らない名前は、
+ * 一回きりの欄（例: 「🔤 A font that annotates itself」）として今までどおり除く。
+ */
+function isLeadHeadline(
+  text: string,
+  section: string,
+  itemCount: number
+): boolean {
+  return section === LEAD_SECTION && itemCount === 0 && !isArticleSection(text);
+}
+
+export function extractCooperpressIssue(
+  html: string,
+  newsletterName: string
+): ExtractionResult {
   const $ = cheerio.load(html);
   const items: ExtractedItem[] = [];
   const excluded: Record<string, number> = {};
   let section = LEAD_SECTION;
 
-  const leaves = $('table').filter((_, table) => $(table).find('table').length === 0);
+  const leaves = $('table').filter(
+    (_, table) => $(table).find('table').length === 0
+  );
   leaves.each((_, table) => {
     const $table = $(table);
     const text = normalizeSpace($table.text());
 
-    // 欄の見出し: リンクが無く短い表。誌名の見出しの下は、まだ最初の欄
+    // 欄の見出し: リンクが無く短い表。誌名の見出しの下は、まだ最初の欄。特集の見出しは欄を変えない
     if ($table.find('a').length === 0) {
-      if (text && text.length < SECTION_HEADER_MAX_LENGTH) {
-        section = lettersOnly(text) === lettersOnly(newsletterName) ? LEAD_SECTION : text;
+      if (!text || text.length >= SECTION_HEADER_MAX_LENGTH) return;
+      if (lettersOnly(text) === lettersOnly(newsletterName)) {
+        section = LEAD_SECTION;
+      } else if (!isLeadHeadline(text, section, items.length)) {
+        section = text;
       }
       return;
     }
@@ -68,7 +105,9 @@ export function extractCooperpressIssue(html: string, newsletterName: string): E
     const isSponsor = $table
       .find('span')
       .toArray()
-      .some((span) => normalizeSpace($(span).text()).toLowerCase() === 'sponsor');
+      .some(
+        (span) => normalizeSpace($(span).text()).toLowerCase() === 'sponsor'
+      );
 
     for (const item of found) {
       if (isSponsor) {
@@ -84,7 +123,10 @@ export function extractCooperpressIssue(html: string, newsletterName: string): E
   return { items, excluded };
 }
 
-function findItems($: cheerio.CheerioAPI, $table: cheerio.Cheerio<Element>): Omit<ExtractedItem, 'section'>[] {
+function findItems(
+  $: cheerio.CheerioAPI,
+  $table: cheerio.Cheerio<Element>
+): Omit<ExtractedItem, 'section'>[] {
   const found: Omit<ExtractedItem, 'section'>[] = [];
   $table.find('p').each((_, p) => {
     const $p = $(p);
@@ -103,7 +145,10 @@ function findItems($: cheerio.CheerioAPI, $table: cheerio.Cheerio<Element>): Omi
 
     // 短い記事: 先頭の文字が絵文字だけで、すぐ後に記事のリンクが来て、著者（<cite>）を含む段落
     const firstNode = $p.contents().first();
-    const leadText = firstNode.length > 0 && firstNode[0].type === 'text' ? firstNode.text() : '';
+    const leadText =
+      firstNode.length > 0 && firstNode[0].type === 'text'
+        ? firstNode.text()
+        : '';
     const nextNode = firstNode.next();
     const href = nextNode.attr('href') ?? '';
     if (

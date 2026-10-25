@@ -11,6 +11,7 @@ import { CuratedNewsletterFetcher } from '@/lib/fetchers/curated-newsletter';
 import { SourceFormatError } from '@/lib/fetchers/errors';
 import { resolveRedirectLinks } from '@/lib/fetchers/curated-newsletter/resolve-links';
 import { filterArticleUrl } from '@/lib/fetchers/curated-newsletter/link-filter';
+import logger from '@/lib/logger';
 import type { Source } from '@/lib/prisma-exports';
 
 const FIXTURES = path.join(__dirname, '../fixtures/feeds/newsletters');
@@ -211,14 +212,34 @@ describe('CuratedNewsletterFetcher: Cooperpress', () => {
     expect(errors.some((e) => e instanceof SourceFormatError)).toBe(true);
   });
 
-  it('知らない名前の欄だけに記事があるときも SourceFormatError（欄の名前が変わった）', async () => {
-    const renamed = COOPERPRESS_ISSUE.replace('<td>JavaScript Weekly</td>', '<td>Deep Dives</td>').replace('📖 Articles and Videos', 'Deep Reads');
-    installFetch(feedXml([{ title: 'Issue 902', link: 'https://javascriptweekly.com/issues/902', daysAgo: 1, html: renamed }]));
+  it('最初の欄が特集の見出し（例: 「TanStack Start Reaches 1.0」）で始まっても、その下の記事を最初の欄の記事として取り出す', async () => {
+    // React Status #494 の形: 誌名の見出しの代わりに、リンクの無い短い表で特集の見出しが置かれ、その下に最初の欄の記事が並ぶ
+    const headlined = COOPERPRESS_ISSUE.replace('<td>JavaScript Weekly</td>', '<td><p>Big Framework Reaches 1.0</p></td>');
+    expect(headlined).not.toBe(COOPERPRESS_ISSUE);
+    installFetch(feedXml([{ title: 'Issue 902', link: 'https://javascriptweekly.com/issues/902', daysAgo: 1, html: headlined }]));
 
     const { articles, errors } = await jsWeekly().fetch();
 
-    expect(articles).toEqual([]);
-    expect(errors.some((e) => e instanceof SourceFormatError)).toBe(true);
+    expect(errors).toEqual([]);
+    expect(articles.map((a) => a.title).sort()).toEqual(
+      ['Lead Article One', 'Article Section Feature', 'Compact Feature Without Host Hint', 'Short Article One', 'Short Article Two'].sort()
+    );
+  });
+
+  it('記事を取った後に出てくる知らない名前の欄は一回きりの欄として除き、WARN を出す（記事の欄の名前が変わったときも同じ）', async () => {
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined as never);
+    const renamed = COOPERPRESS_ISSUE.replace('📖 Articles and Videos', 'Deep Reads');
+    installFetch(feedXml([{ title: 'Issue 903', link: 'https://javascriptweekly.com/issues/903', daysAgo: 1, html: renamed }]));
+
+    const { articles, errors } = await jsWeekly().fetch();
+
+    expect(errors).toEqual([]);
+    expect(articles.map((a) => a.title)).toEqual(['Lead Article One']);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'JavaScript Weekly', sections: ['Deep Reads'] }),
+      expect.stringContaining('知らない名前の欄を除いた')
+    );
+    warn.mockRestore();
   });
 
   it('フィードを取れないときは例外を投げずにエラーを返す', async () => {
