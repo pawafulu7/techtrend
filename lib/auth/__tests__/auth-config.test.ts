@@ -29,6 +29,11 @@ jest.mock('better-auth/plugins', () => ({
 jest.mock('@better-auth/prisma-adapter', () => ({
   prismaAdapter: jest.fn(() => ({})),
 }));
+const mockAfter = jest.fn();
+jest.mock('next/server', () => ({
+  ...jest.requireActual('next/server'),
+  after: mockAfter,
+}));
 
 function loadOptions(): BetterAuthOptions {
   jest.isolateModules(() => {
@@ -121,8 +126,9 @@ describe('email verification on sign-up (#832)', () => {
   });
 
   it('sends the verification email after responding to sign-up', () => {
-    // 送信を待つと、メールを送らない登録済みのアドレスとの応答時間の差で、有無が分かる
-    expect(options.advanced?.backgroundTasks?.handler).toEqual(expect.any(Function));
+    // 送信を待つと、メールを送らない登録済みのアドレスとの応答時間の差で、有無が分かる。
+    // 何もしない関数に置き換わると、Vercel では応答の後に関数が止まり、メールが送られない
+    expect(options.advanced?.backgroundTasks?.handler).toBe(mockAfter);
   });
 
   it('keeps the verification link valid for 24 hours as the email says', () => {
