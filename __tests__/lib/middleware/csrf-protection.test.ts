@@ -248,7 +248,7 @@ describe('csrf-protection', () => {
 
     it('should return true for /api/auth/* subpaths (Better Auth handles its own CSRF)', () => {
       // /api/auth プレフィックスは全てexempt（Better Auth が自前のCSRF保護を持つため）
-      expect(isCSRFExemptPath('/api/auth/register-with-email')).toBe(true);
+      expect(isCSRFExemptPath('/api/auth/sign-up/email')).toBe(true);
       expect(isCSRFExemptPath('/api/auth/callbackadmin')).toBe(true);
       expect(isCSRFExemptPath('/api/auth/signinpage')).toBe(true);
     });

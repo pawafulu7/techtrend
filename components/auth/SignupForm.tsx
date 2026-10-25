@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
-import { useRouter } from 'next/navigation';
+import { getSignUpErrorMessage } from '@/lib/auth/error-messages';
+import { EMAIL_VERIFICATION_CALLBACK_URL } from '@/lib/routes/auth';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { SignupEmailSent } from '@/components/auth/SignupEmailSent';
 import { Loader2 } from 'lucide-react';
 
 type SignupFormData = {
@@ -18,9 +20,9 @@ type SignupFormData = {
 };
 
 export function SignupForm() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const {
     register,
@@ -37,26 +39,30 @@ export function SignupForm() {
     setError(null);
 
     try {
-      // Create user account and auto sign in
+      // メールアドレスの確認が済むまでログインしない。確認リンクを開くとログインする
       const { error: signUpError } = await authClient.signUp.email({
         name: data.name,
         email: data.email,
         password: data.password,
+        callbackURL: EMAIL_VERIFICATION_CALLBACK_URL,
       });
 
       if (signUpError) {
-        setError(signUpError.message || '登録中にエラーが発生しました');
+        setError(getSignUpErrorMessage(signUpError));
         return;
       }
 
-      router.push('/profile');
-      router.refresh();
+      setIsSuccess(true);
     } catch {
       setError('登録中にエラーが発生しました');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isSuccess) {
+    return <SignupEmailSent />;
+  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

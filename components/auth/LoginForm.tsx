@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import { useRouter } from 'next/navigation';
-import { sanitizeCallbackUrl } from '@/lib/routes/auth';
+import {
+  EMAIL_VERIFICATION_CALLBACK_URL,
+  sanitizeCallbackUrl,
+} from '@/lib/routes/auth';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
@@ -20,11 +23,16 @@ interface LoginFormProps {
   callbackUrl?: string;
 }
 
+type ResendState = 'idle' | 'sending' | 'sent' | 'failed';
+
 export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
   const safeUrl = sanitizeCallbackUrl(callbackUrl);
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // パスワードは合っているが、メールアドレスの確認が済んでいないアカウント
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resendState, setResendState] = useState<ResendState>('idle');
 
   const {
     register,
@@ -35,14 +43,19 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setError(null);
+    setUnverifiedEmail(null);
+    setResendState('idle');
 
     try {
+      // callbackURL は渡さない。渡すと Better Auth のクライアントが成功時にそこへ遷移する
       const { error: signInError } = await authClient.signIn.email({
         email: data.email,
         password: data.password,
       });
 
-      if (signInError) {
+      if (signInError?.code === 'EMAIL_NOT_VERIFIED') {
+        setUnverifiedEmail(data.email);
+      } else if (signInError) {
         setError('メールアドレスまたはパスワードが正しくありません');
       } else {
         router.push(safeUrl);
@@ -55,11 +68,62 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
     }
   };
 
+  const handleResend = async () => {
+    if (!unverifiedEmail) return;
+    setResendState('sending');
+    try {
+      const { error: resendError } = await authClient.sendVerificationEmail({
+        email: unverifiedEmail,
+        callbackURL: EMAIL_VERIFICATION_CALLBACK_URL,
+      });
+      setResendState(resendError ? 'failed' : 'sent');
+    } catch {
+      setResendState('failed');
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {unverifiedEmail && (
+        <Alert className="border-[var(--tt-color-warning-border)] bg-[var(--tt-color-warning-bg)]">
+          <AlertDescription className="space-y-3 text-[var(--tt-color-text)]">
+            <p>
+              メールアドレスの確認が済んでいません。確認メールのリンクを開くと確認が完了し、ログインした状態になります。
+            </p>
+            {resendState === 'sent' ? (
+              <p>確認メールを再送信しました。</p>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResend}
+                  disabled={resendState === 'sending'}
+                >
+                  {resendState === 'sending' ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      送信中...
+                    </>
+                  ) : (
+                    '確認メールを再送信'
+                  )}
+                </Button>
+                {resendState === 'failed' && (
+                  <p>
+                    確認メールを再送信できませんでした。しばらくしてからもう一度お試しください。
+                  </p>
+                )}
+              </>
+            )}
+          </AlertDescription>
         </Alert>
       )}
 

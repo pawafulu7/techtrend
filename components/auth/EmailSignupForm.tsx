@@ -2,19 +2,15 @@
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { authClient } from '@/lib/auth/auth-client';
+import { getSignUpErrorMessage } from '@/lib/auth/error-messages';
+import { EMAIL_VERIFICATION_CALLBACK_URL } from '@/lib/routes/auth';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Loader2,
-  Mail,
-  CheckCircle,
-  Eye,
-  EyeOff,
-  Check,
-  X,
-} from 'lucide-react';
+import { SignupEmailSent } from '@/components/auth/SignupEmailSent';
+import { Loader2, Mail, Eye, EyeOff, Check, X } from 'lucide-react';
 
 type EmailSignupFormData = {
   email: string;
@@ -78,26 +74,20 @@ export function EmailSignupForm() {
     setIsSuccess(false);
 
     try {
-      // First, create the user account with password
-      const response = await fetch('/api/auth/register-with-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-        }),
+      const { error: signUpError } = await authClient.signUp.email({
+        // このフォームには名前の欄が無い。名前はプロフィールで後から設定できる
+        name: '',
+        email: data.email,
+        password: data.password,
+        callbackURL: EMAIL_VERIFICATION_CALLBACK_URL,
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        setError(result.error || 'アカウント作成に失敗しました。');
+      if (signUpError) {
+        setError(getSignUpErrorMessage(signUpError));
         return;
       }
 
-      if (result.success) {
-        setIsSuccess(true);
-      }
+      setIsSuccess(true);
     } catch {
       setError('エラーが発生しました。しばらくしてからお試しください。');
     } finally {
@@ -106,29 +96,7 @@ export function EmailSignupForm() {
   };
 
   if (isSuccess) {
-    return (
-      <div className="space-y-4">
-        <Alert className="border-[var(--tt-color-positive-border)] bg-[var(--tt-color-positive-bg)]">
-          <CheckCircle className="h-4 w-4 text-[var(--tt-color-positive)]" />
-          <AlertDescription className="text-[var(--tt-color-text)]">
-            確認メールを送信しました！
-          </AlertDescription>
-        </Alert>
-        <div className="rounded-lg bg-[var(--tt-color-surface-muted)] p-4">
-          <p className="text-sm text-[var(--tt-color-text-muted)]">
-            入力されたメールアドレスに認証リンクを送信しました。
-            メールをご確認いただき、リンクをクリックして登録を完了してください。
-          </p>
-          <ul className="mt-3 space-y-1 text-xs text-[var(--tt-color-text-muted)]">
-            <li>
-              • メールが届かない場合は、迷惑メールフォルダをご確認ください
-            </li>
-            <li>• リンクの有効期限は24時間です</li>
-            <li>• 問題が続く場合は、もう一度お試しください</li>
-          </ul>
-        </div>
-      </div>
-    );
+    return <SignupEmailSent />;
   }
 
   return (

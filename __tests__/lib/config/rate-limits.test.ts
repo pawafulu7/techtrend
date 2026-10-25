@@ -10,9 +10,7 @@ import { logger } from '@/lib/logger';
 describe('Rate Limit Configuration', () => {
   describe('RATE_LIMIT_POLICIES', () => {
     it('should have auth policies', () => {
-      expect(RATE_LIMIT_POLICIES['auth:register']).toBeDefined();
       expect(RATE_LIMIT_POLICIES['auth:login']).toBeDefined();
-      expect(RATE_LIMIT_POLICIES['auth:verify']).toBeDefined();
     });
 
     it('should have AI policies', () => {
@@ -61,13 +59,10 @@ describe('Rate Limit Configuration', () => {
     });
 
     it('should have appropriate limits for auth endpoints', () => {
-      expect(RATE_LIMIT_POLICIES['auth:register'].points).toBe(5);
       expect(RATE_LIMIT_POLICIES['auth:login'].points).toBe(5);
-      expect(RATE_LIMIT_POLICIES['auth:verify'].points).toBe(10);
     });
 
     it('should use IP strategy for auth endpoints', () => {
-      expect(RATE_LIMIT_POLICIES['auth:register'].keyStrategy).toBe('ip');
       expect(RATE_LIMIT_POLICIES['auth:login'].keyStrategy).toBe('ip');
     });
 
@@ -222,7 +217,6 @@ describe('Rate Limit Configuration', () => {
 
   describe('Policy Coverage', () => {
     it('should have telemetry events for high-value policies', () => {
-      expect(RATE_LIMIT_POLICIES['auth:register'].telemetryEvent).toBeDefined();
       expect(RATE_LIMIT_POLICIES['auth:login'].telemetryEvent).toBeDefined();
       expect(RATE_LIMIT_POLICIES['admin:ai-generate'].telemetryEvent).toBeDefined();
       expect(RATE_LIMIT_POLICIES['rag:agent'].telemetryEvent).toBeDefined();

@@ -56,14 +56,17 @@ export const auth = betterAuth({
     env.NEXT_PUBLIC_APP_URL ||
     `http://localhost:${env.PORT}`,
 
+  // メールアドレスの確認が済むまでログインさせない。確認リンクを開くとログインする（#832）
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false,
+    requireEmailVerification: true,
   },
 
   emailVerification: {
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
+    // メール本文と画面に「リンクは24時間有効」と書いている。既定は1時間
+    expiresIn: 24 * 60 * 60,
     sendVerificationEmail: async (
       data: {
         user: { email: string; [key: string]: any };

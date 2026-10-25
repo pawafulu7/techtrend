@@ -91,6 +91,8 @@ services:
       <<: *common-test-env
       BASE_URL: http://localhost:3000
       NEXT_PUBLIC_ENABLE_AI_SEARCH: "true"
+      # 確認メールを送らない（e2e には送信先が無い）。lib/auth/auth.ts の sendVerificationEmail が見る
+      SKIP_EMAIL_SEND: "true"
     volumes:
       - ./__tests__:/app/__tests__:ro
       - ./e2e:/app/e2e:ro

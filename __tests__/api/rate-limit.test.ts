@@ -28,7 +28,7 @@ describe('Rate Limiting Integration Tests', () => {
 
     it('should create different instances for different keys', () => {
       const limiter1 = createRateLimiterFromConfig('auth:login');
-      const limiter2 = createRateLimiterFromConfig('auth:register');
+      const limiter2 = createRateLimiterFromConfig('write:password');
       expect(limiter1).not.toBe(limiter2);
     });
   });
@@ -39,8 +39,8 @@ describe('Rate Limiting Integration Tests', () => {
         return new Response(JSON.stringify({ endpoint: 'login' }));
       });
 
-      const handler2 = withRateLimit('auth:register', async () => {
-        return new Response(JSON.stringify({ endpoint: 'register' }));
+      const handler2 = withRateLimit('write:password', async () => {
+        return new Response(JSON.stringify({ endpoint: 'password' }));
       });
 
       const request = new NextRequest('http://localhost/api/test', {

@@ -38,14 +38,6 @@ export type RateLimitConfig = z.input<typeof RateLimitConfigSchemaInternal>;
  */
 export const RATE_LIMIT_POLICIES = {
   // Authentication (High Security) - 60s block for brute-force prevention
-  'auth:register': {
-    points: 5,
-    duration: 60,
-    blockDuration: 60,
-    keyStrategy: 'ip',
-    notes: 'Prevent account creation spam',
-    telemetryEvent: 'ratelimit.auth.register',
-  },
   'auth:login': {
     points: 5,
     duration: 60,
@@ -53,22 +45,6 @@ export const RATE_LIMIT_POLICIES = {
     keyStrategy: 'ip',
     notes: 'Prevent brute force attacks',
     telemetryEvent: 'ratelimit.auth.login',
-  },
-  'auth:verify': {
-    points: 10,
-    duration: 60,
-    blockDuration: 60,
-    keyStrategy: 'ip',
-    notes: 'Email verification attempts',
-    telemetryEvent: 'ratelimit.auth.verify',
-  },
-  'auth:auto-login': {
-    points: 5,
-    duration: 300,
-    blockDuration: 60,
-    keyStrategy: 'ip',
-    notes: 'Auto-login token validation abuse prevention',
-    telemetryEvent: 'ratelimit.auth.auto-login',
   },
 
   // RAG (Existing Policies) - No block, soft throttle only

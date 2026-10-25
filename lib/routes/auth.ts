@@ -34,3 +34,10 @@ export const AUTH_PATHS = {
   verify: '/auth/verify',
   error: '/auth/error',
 } as const;
+
+/**
+ * 確認メールのリンクを開いた後の戻り先。
+ * Better Auth は確認に失敗したときもここへ戻し、`&error=<コード>` を付ける
+ * （app/auth/verify/page.tsx が読む）。
+ */
+export const EMAIL_VERIFICATION_CALLBACK_URL = `${AUTH_PATHS.verify}?success=true`;

@@ -76,3 +76,25 @@ describe('auth config invariants (#666)', () => {
     );
   });
 });
+
+describe('email verification on sign-up (#832)', () => {
+  let options: BetterAuthOptions;
+
+  beforeAll(() => {
+    mockBetterAuth.mockClear();
+    options = loadOptions();
+  });
+
+  it('keeps users signed out until they open the verification link', () => {
+    // 登録フォーム（components/auth/*SignupForm.tsx）は、登録後にログインしない前提で
+    // 「確認メールを送信しました」を出す
+    expect(options.emailAndPassword?.requireEmailVerification).toBe(true);
+    expect(options.emailVerification?.sendOnSignUp).toBe(true);
+    expect(options.emailVerification?.autoSignInAfterVerification).toBe(true);
+  });
+
+  it('keeps the verification link valid for 24 hours as the email says', () => {
+    // メール本文（buildVerificationEmailHtml）と画面に「24時間有効」と書いている
+    expect(options.emailVerification?.expiresIn).toBe(24 * 60 * 60);
+  });
+});

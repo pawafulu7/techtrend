@@ -13,6 +13,7 @@ jest.mock('@/lib/auth/auth-client', () => ({
     signIn: { email: jest.fn(), social: jest.fn() },
     signOut: jest.fn(),
     signUp: { email: jest.fn() },
+    sendVerificationEmail: jest.fn(),
   },
   useSession: jest.fn().mockReturnValue({ data: null, isPending: false }),
   signIn: jest.fn(),
@@ -25,6 +26,9 @@ jest.mock('next/navigation', () => ({
 }));
 
 const mockedSignInEmail = jest.mocked(authClient.signIn.email);
+const mockedSendVerificationEmail = jest.mocked(
+  authClient.sendVerificationEmail
+);
 const mockedUseRouter = jest.mocked(useRouter);
 
 describe('LoginForm', () => {
@@ -215,6 +219,82 @@ describe('LoginForm', () => {
           screen.getByText('ログイン中にエラーが発生しました')
         ).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Unverified email (#832)', () => {
+    async function submitUnverified() {
+      const user = userEvent.setup();
+      mockedSignInEmail.mockResolvedValue({
+        data: null,
+        error: {
+          code: 'EMAIL_NOT_VERIFIED',
+          message: 'Email not verified',
+          status: 403,
+        },
+      } as any);
+
+      render(<LoginForm />);
+
+      await user.type(
+        screen.getByLabelText('メールアドレス'),
+        'new@example.com'
+      );
+      await user.type(screen.getByLabelText('パスワード'), 'Password123!');
+      await user.click(screen.getByRole('button', { name: 'ログイン' }));
+
+      await screen.findByText(/メールアドレスの確認が済んでいません/);
+      return user;
+    }
+
+    it('shows the verification notice instead of the credentials error', async () => {
+      await submitUnverified();
+
+      expect(
+        screen.queryByText('メールアドレスまたはパスワードが正しくありません')
+      ).not.toBeInTheDocument();
+      expect(mockRouter.push).not.toHaveBeenCalled();
+    });
+
+    it('resends the verification email back to the verify page', async () => {
+      mockedSendVerificationEmail.mockResolvedValue({
+        data: { status: true },
+        error: null,
+      } as any);
+      const user = await submitUnverified();
+
+      await user.click(
+        screen.getByRole('button', { name: '確認メールを再送信' })
+      );
+
+      await waitFor(() => {
+        expect(mockedSendVerificationEmail).toHaveBeenCalledWith({
+          email: 'new@example.com',
+          callbackURL: '/auth/verify?success=true',
+        });
+        expect(
+          screen.getByText('確認メールを再送信しました。')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('tells the user when resending fails', async () => {
+      mockedSendVerificationEmail.mockResolvedValue({
+        data: null,
+        error: { message: 'Too many requests', status: 429 },
+      } as any);
+      const user = await submitUnverified();
+
+      await user.click(
+        screen.getByRole('button', { name: '確認メールを再送信' })
+      );
+
+      expect(
+        await screen.findByText(/確認メールを再送信できませんでした/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: '確認メールを再送信' })
+      ).toBeEnabled();
     });
   });
 
