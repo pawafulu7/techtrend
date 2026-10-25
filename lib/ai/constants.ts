@@ -5,6 +5,7 @@
  */
 
 import type { DetailPolicy } from './adapter/summary-provider.interface';
+import type { ContentAnalysis } from './service/quality-checker.interface';
 
 // プロンプト行を検出する正規表現パターン
 export const INSTRUCTION_PATTERNS = [
@@ -212,6 +213,20 @@ export function getSummaryLengthBand(
     max: SUMMARY_LENGTH.hardMax,
     penaltyMin: SUMMARY_LENGTH.penaltyMin,
     absoluteMin: SUMMARY_LENGTH.absoluteMin,
+  };
+}
+
+/**
+ * 本文の長さから、要約の検証（service/quality-checker.ts の checkQuality）に渡す contentAnalysis を作る。
+ * 要約生成（unified-summary-service.ts）と定期の品質チェック（scripts/scheduled/quality-check.ts）で
+ * 短記事の判定を揃えるため、ここだけで組み立てる。短記事の判定は getSummaryLengthBand と同じく、
+ * 本文の長さが分かる（1 以上）ときだけ行う
+ */
+export function contentAnalysisForLength(contentLength: number): ContentAnalysis {
+  return {
+    totalLength: contentLength,
+    contentLength,
+    isThinContent: contentLength > 0 && contentLength < THIN_CONTENT_MAX_LENGTH,
   };
 }
 

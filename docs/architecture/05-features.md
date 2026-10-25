@@ -156,7 +156,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 手動で使う npm script のうち、要約に関わるもの:
 
 - `add-article`: URL を指定して記事を追加する
-- `regenerate:low-quality`: 要約の文面の品質チェックで低品質と判定した記事を作り直す（定期実行の `auto-regenerate-low-quality.ts` は記事の品質スコアで選ぶので、選び方が違う）
+- `regenerate:low-quality`: 要約生成と同じ判定（`lib/ai/service/quality-checker.ts`）で低品質な要約を持つ記事を作り直す（定期実行の `auto-regenerate-low-quality.ts` は記事の品質スコアで選ぶので、選び方が違う）
 - `regenerate:all-unified`: 統一フォーマットより前の版の要約を作り直す
 
 どれも、定期実行と同じ要約サービス（`lib/ai/service/`）で要約を作る。

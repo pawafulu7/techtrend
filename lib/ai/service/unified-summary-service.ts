@@ -14,7 +14,7 @@ import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { logger } from '@/lib/logger';
 
 import { SUMMARY_VERSION } from '@/types/article';
-import { contentAnalysisForLength } from './quality-checker';
+import { contentAnalysisForLength } from '../constants';
 
 export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
   constructor(

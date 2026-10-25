@@ -2,19 +2,16 @@
 
 /**
  * 直近の記事要約を、要約生成と同じ判定（lib/ai/service/quality-checker.ts）で採点し、
- * 品質の分布と点の低い記事をログに出す。DB には書かない。
- * 作り直しは auto-regenerate-low-quality.ts（記事の品質スコアで選ぶ）が行う（#833）。
+ * 品質の分布と点の低い記事をログに出す。DB には書かない（#833）。
+ * 作り直しは auto-regenerate-low-quality.ts が、記事の品質スコアが低く版が古い記事に行う。
  * .github/workflows/scheduler-quality-auto.yml から実行
  */
 
 import { prisma } from '@/lib/prisma';
-import {
-  SummaryQualityChecker,
-  contentAnalysisForLength,
-} from '@/lib/ai/service/quality-checker';
-import { config } from '@/lib/config/env';
+import type { Prisma } from '@/lib/prisma-exports';
+import { SummaryQualityChecker } from '@/lib/ai/service/quality-checker';
+import { contentAnalysisForLength } from '@/lib/ai/constants';
 import { parseArgs } from 'util';
-import type { ArticleWhereClause } from '../../types/database';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface QualityCheckOptions {
@@ -98,9 +95,16 @@ Examples:
   }
 }
 
-/** 問題の文面から数値を除いた種類（「一覧要約が短すぎる: 45文字（最小50文字）」→「一覧要約が短すぎる」） */
+/** これより低い点の記事を低品質として一覧に出す（品質分布の「良好」の下限） */
+const LOW_QUALITY_SCORE = 70;
+
+/**
+ * 問題の文面から数値を除いた種類。
+ * 「一覧要約が短すぎる: 45文字（最小50文字）」→「一覧要約が短すぎる」、
+ * 「短文（300字）に箇条書き（2項目）は…」→「短文（N字）に箇条書き（N項目）は…」
+ */
 function issueKind(message: string): string {
-  return message.split(/[:：]/)[0];
+  return message.split(/[:：]/)[0].replace(/\d+/g, 'N');
 }
 
 export async function checkQuality(options: QualityCheckOptions) {
@@ -110,9 +114,9 @@ export async function checkQuality(options: QualityCheckOptions) {
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  const whereClause: ArticleWhereClause = {
+  const whereClause: Prisma.ArticleWhereInput = {
     publishedAt: { gte: since },
-    summary: { not: null },
+    summary: { not: null, notIn: [''] },
   };
 
   if (sourceId) {
@@ -128,7 +132,7 @@ export async function checkQuality(options: QualityCheckOptions) {
       title: true,
       summary: true,
       detailedSummary: true,
-      contentLength: true,
+      content: true,
     },
   });
 
@@ -140,27 +144,27 @@ export async function checkQuality(options: QualityCheckOptions) {
   console.error(`📝 ${articles.length}件の記事をチェックします...\n`);
 
   const checker = new SummaryQualityChecker();
-  // 要約生成はこの点数以上の要約を採用する（unified-summary-service.ts の qualityThreshold）
-  const passScore = config.quality.minScore();
 
   const scores: number[] = [];
-  const lowQualityArticles = [];
+  const lowQualityArticles: Array<{ id: string; title: string; score: number; issues: string[] }> = [];
   const issuesByType = new Map<string, number>();
 
   for (const article of articles) {
     if (!article.summary) continue;
 
-    // 要約生成と同じ入力で採点する。生成時は本文の長さで短い記事の帯を選ぶ。
-    // contentLength は CHAR_LENGTH(content) を保つ DB トリガーの列
+    // 要約生成と同じ判定で採点する。生成時は本文の長さで短い記事の帯を選ぶので、長さも生成時と
+    // 同じく content.length で数える（DB の contentLength は CHAR_LENGTH なので、絵文字などで食い違う）。
+    // 保存された要約は生成後の整形（summary-manager.ts の cleanupText など）を通っているので、
+    // 生成時の点数とわずかに違うことがある
     const result = checker.checkQuality(
       article.summary,
       article.detailedSummary ?? '',
-      contentAnalysisForLength(article.contentLength ?? 0)
+      contentAnalysisForLength(article.content?.length ?? 0)
     );
     const messages = result.issues.map((issue) => issue.message);
     scores.push(result.score);
 
-    if (result.score < passScore) {
+    if (result.score < LOW_QUALITY_SCORE) {
       lowQualityArticles.push({
         id: article.id,
         title: article.title,
@@ -222,9 +226,9 @@ export async function checkQuality(options: QualityCheckOptions) {
     }
   }
 
-  // 生成時の合格点に届かない記事のリスト
+  // 低品質記事のリスト
   if (lowQualityArticles.length > 0) {
-    console.error(`\n⚠️  生成時の合格点（${passScore}点）未満の記事: ${lowQualityArticles.length}件\n`);
+    console.error(`\n⚠️  低品質記事（${LOW_QUALITY_SCORE}点未満）: ${lowQualityArticles.length}件\n`);
 
     const topWorst = lowQualityArticles
       .sort((a, b) => a.score - b.score)
