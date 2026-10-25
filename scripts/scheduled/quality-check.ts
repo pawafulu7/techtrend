@@ -1,22 +1,23 @@
 #!/usr/bin/env node
 
 /**
- * 記事要約の品質を定期的にチェックし、低品質な要約を検出
+ * 直近の記事要約を、要約生成と同じ判定（lib/ai/service/quality-checker.ts）で採点し、
+ * 品質の分布と点の低い記事をログに出す。DB には書かない（#833）。
+ * 作り直しは auto-regenerate-low-quality.ts が、記事の品質スコアが低く版が古い記事に行う。
  * .github/workflows/scheduler-quality-auto.yml から実行
  */
 
 import { prisma } from '@/lib/prisma';
-import { calculateSummaryScore, calculateAverageScore, needsRegeneration } from '@/lib/utils/quality-scorer';
-import { getSummaryLengthBand } from '@/lib/ai/constants';
+import type { Prisma } from '@/lib/prisma-exports';
+import { SummaryQualityChecker } from '@/lib/ai/service/quality-checker';
+import { contentAnalysisForLength } from '@/lib/ai/constants';
 import { parseArgs } from 'util';
-import type { ArticleWhereClause } from '../../types/database';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface QualityCheckOptions {
   days?: number;
   sourceId?: string;
   limit?: number;
-  autoRegenerate?: boolean;
   verbose?: boolean;
 }
 
@@ -36,11 +37,6 @@ async function main() {
         type: 'string',
         short: 'l',
         default: '100',
-      },
-      'auto-regenerate': {
-        type: 'boolean',
-        short: 'r',
-        default: false,
       },
       verbose: {
         type: 'boolean',
@@ -62,7 +58,6 @@ Options:
   -d, --days <number>         Check articles from last N days (default: 7)
   -s, --source-id <id>        Check specific source only
   -l, --limit <number>        Maximum articles to check (default: 100)
-  -r, --auto-regenerate       Automatically mark low-quality for regeneration
   -v, --verbose               Show detailed output
   -h, --help                  Show this help message
 
@@ -72,9 +67,6 @@ Examples:
 
   # Check specific source with verbose output
   npx tsx scripts/scheduled/quality-check.ts -s SOURCE_ID -v
-
-  # Check and mark for regeneration
-  npx tsx scripts/scheduled/quality-check.ts -r
 `);
     process.exit(0);
   }
@@ -83,7 +75,6 @@ Examples:
     days: parseInt(values.days as string, 10),
     sourceId: values['source-id'] as string | undefined,
     limit: parseInt(values.limit as string, 10),
-    autoRegenerate: values['auto-regenerate'] as boolean,
     verbose: values.verbose as boolean,
   };
 
@@ -92,7 +83,6 @@ Examples:
   - 対象期間: 過去${options.days}日間
   - 対象ソース: ${options.sourceId || 'すべて'}
   - 最大件数: ${options.limit}件
-  - 自動再生成マーク: ${options.autoRegenerate ? '有効' : '無効'}
   - 詳細出力: ${options.verbose ? '有効' : '無効'}\n`);
 
   try {
@@ -105,16 +95,28 @@ Examples:
   }
 }
 
-async function checkQuality(options: QualityCheckOptions) {
-  const { days = 7, sourceId, limit = 100, autoRegenerate = false, verbose = false } = options;
+/** これより低い点の記事を低品質として一覧に出す（品質分布の「良好」の下限） */
+const LOW_QUALITY_SCORE = 70;
+
+/**
+ * 問題の文面から数値を除いた種類。
+ * 「一覧要約が短すぎる: 45文字（最小50文字）」→「一覧要約が短すぎる」、
+ * 「短文（300字）に箇条書き（2項目）は…」→「短文（N字）に箇条書き（N項目）は…」
+ */
+function issueKind(message: string): string {
+  return message.split(/[:：]/)[0].replace(/\d+/g, 'N');
+}
+
+export async function checkQuality(options: QualityCheckOptions) {
+  const { days = 7, sourceId, limit = 100, verbose = false } = options;
 
   // 対象記事を取得
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  const whereClause: ArticleWhereClause = {
+  const whereClause: Prisma.ArticleWhereInput = {
     publishedAt: { gte: since },
-    summary: { not: null },
+    summary: { not: null, notIn: [''] },
   };
 
   if (sourceId) {
@@ -125,9 +127,12 @@ async function checkQuality(options: QualityCheckOptions) {
     where: whereClause,
     take: limit,
     orderBy: { publishedAt: 'desc' },
-    include: {
-      source: true,
-      tags: true,
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      detailedSummary: true,
+      content: true,
     },
   });
 
@@ -138,66 +143,62 @@ async function checkQuality(options: QualityCheckOptions) {
 
   console.error(`📝 ${articles.length}件の記事をチェックします...\n`);
 
-  // 品質スコアを計算
-  const results = [];
-  const lowQualityArticles = [];
+  const checker = new SummaryQualityChecker();
+
+  const scores: number[] = [];
+  const lowQualityArticles: Array<{ id: string; title: string; score: number; issues: string[] }> = [];
   const issuesByType = new Map<string, number>();
 
   for (const article of articles) {
     if (!article.summary) continue;
 
-    const tags = article.tags.map((t: any) => t.name);
-    // 長さは要約生成と同じ帯で判定する（短記事は短い帯）
-    const score = calculateSummaryScore(article.summary, {
-      lengthBand: getSummaryLengthBand(article.contentLength),
-      isDetailed: false,
-      tags,
-    });
+    // 要約生成と同じ判定で採点する。生成時は本文の長さで短い記事の帯を選ぶので、長さも生成時と
+    // 同じく content.length で数える（DB の contentLength は CHAR_LENGTH なので、絵文字などで食い違う）。
+    // 保存された要約は生成後の整形（summary-manager.ts の cleanupText など）を通っているので、
+    // 生成時の点数とわずかに違うことがある
+    const result = checker.checkQuality(
+      article.summary,
+      article.detailedSummary ?? '',
+      contentAnalysisForLength(article.content?.length ?? 0)
+    );
+    const messages = result.issues.map((issue) => issue.message);
+    scores.push(result.score);
 
-    results.push({
-      articleId: article.id,
-      title: article.title,
-      source: article.source.name,
-      score: score.totalScore,
-      issues: score.issues,
-      needsRegeneration: needsRegeneration(score),
-    });
-
-    // 問題のある記事を記録
-    if (score.totalScore < 70) {
+    if (result.score < LOW_QUALITY_SCORE) {
       lowQualityArticles.push({
         id: article.id,
         title: article.title,
-        score: score.totalScore,
-        issues: score.issues,
+        score: result.score,
+        issues: messages,
       });
     }
 
     // 問題タイプを集計
-    for (const issue of score.issues) {
-      issuesByType.set(issue, (issuesByType.get(issue) || 0) + 1);
+    for (const message of messages) {
+      const kind = issueKind(message);
+      issuesByType.set(kind, (issuesByType.get(kind) || 0) + 1);
     }
 
     if (verbose) {
-      console.error(`[${score.totalScore}点] ${article.title.substring(0, 50)}...`);
-      if (score.issues.length > 0) {
-        console.error(`  問題: ${score.issues.join(', ')}`);
+      console.error(`[${result.score}点] ${article.title.substring(0, 50)}...`);
+      if (messages.length > 0) {
+        console.error(`  問題: ${messages.join(', ')}`);
       }
     }
   }
 
   // 統計情報を計算
-  const summariesForAverage = articles
-    .filter(a => a.summary)
-    .map(a => ({
-      summary: a.summary!,
-      tags: a.tags.map((t: any) => t.name),
-      isDetailed: false,
-      // 記事ごとの判定と同じ帯で集計する
-      lengthBand: getSummaryLengthBand(a.contentLength),
-    }));
-
-  const stats = calculateAverageScore(summariesForAverage);
+  const total = scores.length;
+  const stats = {
+    averageScore: total > 0 ? Math.round(scores.reduce((sum, s) => sum + s, 0) / total) : 0,
+    distribution: {
+      excellent: scores.filter((s) => s >= 90).length,
+      good: scores.filter((s) => s >= 70 && s < 90).length,
+      fair: scores.filter((s) => s >= 50 && s < 70).length,
+      poor: scores.filter((s) => s < 50).length,
+    },
+  };
+  const percent = (count: number) => (total > 0 ? (count / total * 100).toFixed(1) : '0.0');
 
   // 結果を表示
   console.error('\n' + '='.repeat(60));
@@ -207,10 +208,10 @@ async function checkQuality(options: QualityCheckOptions) {
 総合スコア: ${stats.averageScore}点
 
 品質分布:
-  優秀 (90点以上): ${stats.distribution.excellent}件 (${(stats.distribution.excellent / articles.length * 100).toFixed(1)}%)
-  良好 (70-89点):  ${stats.distribution.good}件 (${(stats.distribution.good / articles.length * 100).toFixed(1)}%)
-  可   (50-69点):  ${stats.distribution.fair}件 (${(stats.distribution.fair / articles.length * 100).toFixed(1)}%)
-  不良 (50点未満):  ${stats.distribution.poor}件 (${(stats.distribution.poor / articles.length * 100).toFixed(1)}%)
+  優秀 (90点以上): ${stats.distribution.excellent}件 (${percent(stats.distribution.excellent)}%)
+  良好 (70-89点):  ${stats.distribution.good}件 (${percent(stats.distribution.good)}%)
+  可   (50-69点):  ${stats.distribution.fair}件 (${percent(stats.distribution.fair)}%)
+  不良 (50点未満):  ${stats.distribution.poor}件 (${percent(stats.distribution.poor)}%)
 `);
 
   // 問題タイプ別の集計を表示
@@ -219,7 +220,7 @@ async function checkQuality(options: QualityCheckOptions) {
     const sortedIssues = Array.from(issuesByType.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
-    
+
     for (const [issue, count] of sortedIssues) {
       console.error(`  - ${issue}: ${count}件`);
     }
@@ -227,8 +228,8 @@ async function checkQuality(options: QualityCheckOptions) {
 
   // 低品質記事のリスト
   if (lowQualityArticles.length > 0) {
-    console.error(`\n⚠️  低品質記事（70点未満）: ${lowQualityArticles.length}件\n`);
-    
+    console.error(`\n⚠️  低品質記事（${LOW_QUALITY_SCORE}点未満）: ${lowQualityArticles.length}件\n`);
+
     const topWorst = lowQualityArticles
       .sort((a, b) => a.score - b.score)
       .slice(0, 10);
@@ -238,42 +239,6 @@ async function checkQuality(options: QualityCheckOptions) {
       console.error(`  ID: ${article.id}`);
       console.error(`  問題: ${article.issues.slice(0, 3).join(', ')}`);
       console.error('');
-    }
-  }
-
-  // 再生成が必要な記事
-  const needsRegenerationCount = results.filter(r => r.needsRegeneration).length;
-  if (needsRegenerationCount > 0) {
-    console.error(`\n🔄 再生成が必要な記事: ${needsRegenerationCount}件`);
-
-    if (autoRegenerate) {
-      console.error('\n再生成マークを付与しています...');
-      
-      const articleIds = results
-        .filter(r => r.needsRegeneration)
-        .map(r => r.articleId);
-
-      // summaryVersionを0にリセットして再生成対象にする
-      await prisma.article.updateMany({
-        where: {
-          id: { in: articleIds },
-        },
-        data: {
-          summaryVersion: 0,
-        },
-      });
-
-      console.error(`✅ ${articleIds.length}件の記事に再生成マークを付与しました。`);
-      console.error('次回のregenerate-summaries.tsで自動的に再生成されます。');
-    } else {
-      console.error('再生成を実行するには、regenerate-summaries.tsを使用してください。');
-      
-      const articleIds = results
-        .filter(r => r.needsRegeneration)
-        .map(r => r.articleId)
-        .slice(0, 5);
-      
-      console.error(`\n例:\nnpx tsx scripts/scheduled/regenerate-summaries.ts --ids ${articleIds.join(',')}`);
     }
   }
 
@@ -298,7 +263,7 @@ async function checkQuality(options: QualityCheckOptions) {
   if (verbose && lowQualityArticles.length > 0) {
     const reportPath = `quality-report-${new Date().toISOString().split('T')[0]}.json`;
     const fs = await import('fs/promises');
-    
+
     await fs.writeFile(
       reportPath,
       JSON.stringify({
@@ -308,19 +273,18 @@ async function checkQuality(options: QualityCheckOptions) {
         issuesByType: Object.fromEntries(issuesByType),
       }, null, 2)
     );
-    
+
     console.error(`\n📄 詳細レポートを保存しました: ${reportPath}`);
   }
 }
 
-// エラーハンドリング
-process.on('unhandledRejection', (error) => {
-  console.error('Unhandled rejection:', summarizeError(error, { stack: true }));
-  process.exit(1);
-});
-
-// メイン処理の実行
+// メイン処理の実行（テストから checkQuality を読み込んだときはハンドラを登録しない）
 if (require.main === module) {
+  process.on('unhandledRejection', (error) => {
+    console.error('Unhandled rejection:', summarizeError(error, { stack: true }));
+    process.exit(1);
+  });
+
   main().catch((error) => {
     console.error('Fatal error:', summarizeError(error, { stack: true }));
     process.exit(1);

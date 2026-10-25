@@ -9,10 +9,6 @@ import {
   cleanupSummary,
   validateAndNormalizeTags,
 } from '../utils/summary/summary-validator';
-import {
-  calculateSummaryScore,
-  needsRegeneration,
-} from '../utils/quality-scorer';
 // import { detectArticleType } from '../utils/article/article-type-detector';  // 統一プロンプト移行により無効化
 // import { generatePromptForArticleType } from '../utils/article/article-type-prompts';  // 統一プロンプト移行により無効化
 import { generateUnifiedPrompt } from '../utils/article/article-type-prompts';
@@ -85,8 +81,7 @@ export class GeminiClient {
 
   async generateSummaryWithTags(
     title: string,
-    content: string,
-    maxRetries: number = 1
+    content: string
   ): Promise<{ summary: string; tags: string[] }> {
     try {
       const prompt = this.createSummaryAndTagsPrompt(title, content);
@@ -106,17 +101,7 @@ export class GeminiClient {
       const response = await result.response;
       const text = response.text();
 
-      const parsedResult = this.parseSummaryAndTags(text);
-
-      // 品質チェックと再生成
-      const score = calculateSummaryScore(parsedResult.summary, {
-        tags: parsedResult.tags,
-      });
-      if (needsRegeneration(score) && maxRetries > 0) {
-        return this.generateSummaryWithTags(title, content, maxRetries - 1);
-      }
-
-      return parsedResult;
+      return this.parseSummaryAndTags(text);
     } catch (error) {
       throw new ExternalAPIError(
         'Gemini',
@@ -274,11 +259,6 @@ export class GeminiClient {
     if (!validation.isValid) {
       // クリーンアップを試みる
       summary = cleanupSummary(summary);
-    }
-
-    // 品質スコアのチェック（再生成が必要な場合は警告）
-    const score = calculateSummaryScore(summary, { tags });
-    if (needsRegeneration(score)) {
     }
 
     return { summary, tags };

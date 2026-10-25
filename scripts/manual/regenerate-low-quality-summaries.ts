@@ -1,8 +1,9 @@
 #!/usr/bin/env tsx
 /**
  * 低品質な要約を検出して一括再生成するスクリプト
- * - 対象は要約の文面の品質チェック（checkSummaryQuality）が閾値未満か、一覧要約が 100 字未満の記事。
+ * - 対象は、要約生成と同じ判定（lib/ai/service/quality-checker.ts）で閾値未満の要約を持つ記事。
  *   定期実行の auto-regenerate-low-quality.ts（記事の品質スコアで選ぶ）とは選び方が違う
+ * - 作るかどうか（本文の有無・長さ）と、作った要約の判定も要約生成と同じ基準にする（#833）
  * - 要約は定期実行と同じ要約サービス（lib/ai/service/）で作る
  * 
  * 使用方法:
@@ -15,8 +16,10 @@
  */
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
-import { Article, Source } from '@/lib/prisma-exports';
-import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
+import { Article, Source, SkipReason } from '@/lib/prisma-exports';
+import { SummaryQualityChecker } from '@/lib/ai/service/quality-checker';
+import { contentAnalysisForLength } from '@/lib/ai/constants';
+import { validateArticleContent } from '@/lib/services/summary/summary-orchestrator';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { calculateArticleQualityScore } from '../../lib/utils/quality-score';
@@ -27,6 +30,7 @@ import { closeRedisConnection } from '@/lib/redis/client';
 
 const prisma = createPrismaClient();
 const embeddingScheduler = new EmbeddingScheduler(prisma);
+const qualityChecker = new SummaryQualityChecker();
 
 // コマンドライン引数の解析
 const args = process.argv.slice(2);
@@ -67,8 +71,11 @@ interface RegenerationResult {
   status: 'success' | 'failed' | 'skipped';
   error?: string;
   attempts: number;
-  /** 要約を保存したか。再生成後も短くて skipped にした記事も、要約は保存している */
-  saved?: boolean;
+  /**
+   * 記事を DB で更新したか（要約の保存と、スキップ理由・エラーの記録）。skipReason と qualityScore は
+   * 一覧の表示条件に使うので、要約を保存しなかった記事もキャッシュを消す対象にする。dry-run では設定しない
+   */
+  updated?: boolean;
 }
 
 interface Statistics {
@@ -169,19 +176,13 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
   for (const article of articles) {
     if (!article.summary) continue;
 
-    const contentLength = article.contentLength ?? 0;
-    const contentAnalysis = {
-      contentLength,
-      totalLength: contentLength,
-      isThinContent: contentLength < 1000,
-      recommendedMinLength: contentLength < 1000 ? 60 : 100,
-      recommendedMaxLength: contentLength < 1000 ? 100 : 200
-    };
-
-    const qualityCheck = checkSummaryQuality(
+    // 検出では本文を読まない（全記事の本文をメモリに載せないため）ので、長さは contentLength（CHAR_LENGTH）で
+    // 数える。生成時は content.length（UTF-16）なので、絵文字などを含み長さの帯の境目（400 字など）にある
+    // 記事では点数が食い違い、作り直しの対象から漏れることも、余分に入ることもある
+    const qualityCheck = qualityChecker.checkQuality(
       article.summary,
       article.detailedSummary || '',
-      contentAnalysis
+      contentAnalysisForLength(article.contentLength ?? 0)
     );
 
     // スコア分布を記録
@@ -190,11 +191,8 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
     else if (qualityCheck.score >= 70) scoreDistribution.fair++;
     else scoreDistribution.poor++;
 
-    // 閾値未満、または文字数不足の記事を低品質として記録
-    const summaryLength = article.summary.length;
-    const isTooShort = summaryLength < 100;
-
-    if (qualityCheck.score < qualityThreshold || isTooShort) {
+    // 閾値未満の記事を低品質として記録
+    if (qualityCheck.score < qualityThreshold) {
       lowQualityArticles.push({
         article: { id: article.id, title: article.title },
         score: qualityCheck.score,
@@ -256,29 +254,35 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
         results.push(result);
         continue;
       }
-      const content = article.content || '';
-      
-      if (content.length < 300) {
-        console.error('   ⚠️  コンテンツが短すぎるためスキップ（最低300文字必要）');
+      // 本文が無い・短すぎる記事は作らない（要約生成と同じ基準。MIN_CONTENT_LENGTH）
+      const validation = validateArticleContent(article);
+      if (!validation.valid) {
+        console.error(`   ⚠️  要約生成をスキップ: ${validation.reason}`);
         result.status = 'skipped';
-        result.error = 'THIN_CONTENT';
+        result.error = validation.reasonCode;
         if (!isDryRun) {
           await prisma.article.update({
             where: { id: article.id },
             data: {
-              skipReason: 'THIN_CONTENT',
-              summaryError: 'コンテンツ不足（<300文字）',
+              // 理由の対応は定期の要約生成（summary-manager.ts）と同じ
+              skipReason: validation.reasonCode === 'NO_CONTENT'
+                ? SkipReason.CONTENT_FETCH_FAILED
+                : SkipReason.THIN_CONTENT,
+              summaryError: `要約生成をスキップ: ${validation.reason}`,
               summaryComputedAt: new Date()
             }
           });
+          result.updated = true;
         }
         results.push(result);
         continue;
       }
+      const content = validation.content;
       
       // 再生成試行（最大3回）
       const MAX_ATTEMPTS = 3;
-      let regenerated = false;
+      // 生成を試みた記事は、要約を保存できた（success）かサービスがスキップした（skipped）とき以外は失敗に数える
+      result.status = 'failed';
       
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         result.attempts = attempt;
@@ -292,28 +296,17 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
             { sourceName: article.source?.name, url: article.url }
           );
 
-          // checkSummaryQualityで再検証（スクリプトレベルの品質確認）
-          const contentAnalysis = {
-            contentLength: content.length,
-            totalLength: content.length,
-            isThinContent: content.length < 1000,
-            recommendedMinLength: content.length < 1000 ? 60 : 100,
-            recommendedMaxLength: content.length < 1000 ? 100 : 200
-          };
-
-          const newQualityCheck = checkSummaryQuality(
+          // 要約生成と同じ判定で点数を出す（検出時の点数と比べるため）
+          const newQualityCheck = qualityChecker.checkQuality(
             generated.summary,
             generated.detailedSummary,
-            contentAnalysis
+            contentAnalysisForLength(content.length)
           );
 
           result.afterScore = newQualityCheck.score;
 
           if (newQualityCheck.score >= qualityThreshold) {
             // 品質基準を満たした場合
-            // ただし、再生成後も文字数が100文字未満の場合はskipReasonを設定
-            const stillTooShort = generated.summary.length < 100;
-
             if (!isDryRun) {
               // データベース更新（記事とタグを同一トランザクションで更新）
               await prisma.$transaction(async (tx) => {
@@ -336,8 +329,8 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                     articleType: generated.articleType,
                     summaryVersion: generated.summaryVersion,
                     summaryComputedAt: now,
-                    skipReason: stillTooShort ? 'QUALITY_FAILED' : null,
-                    summaryError: stillTooShort ? '再生成後も文字数不足（<100文字）' : null,
+                    skipReason: null,
+                    summaryError: null,
                     ...(tags.length > 0 && {
                       tags: {
                         set: tags.map(t => ({ id: t.id }))
@@ -357,19 +350,13 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                   }
                 });
               });
+              result.updated = true;
               // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
               await embeddingScheduler.enqueue(article.id);
-              result.saved = true;
             }
 
-            if (stillTooShort) {
-              console.error(`   ⚠️  再生成成功だが文字数不足: ${generated.summary.length}文字 → QUALITY_FAILEDマーク`);
-              result.status = 'skipped';
-            } else {
-              console.error(`   ✅ 再生成成功! スコア: ${beforeScore} → ${result.afterScore}点`);
-              result.status = 'success';
-            }
-            regenerated = true;
+            console.error(`   ✅ 再生成成功! スコア: ${beforeScore} → ${result.afterScore}点`);
+            result.status = 'success';
             break;
           } else {
             console.error(`   ⚠️  品質基準未達: ${newQualityCheck.score}点`);
@@ -395,6 +382,7 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                   summaryComputedAt: new Date()
                 }
               });
+              result.updated = true;
             }
             break;
           }
@@ -413,12 +401,12 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                 summaryComputedAt: new Date()
               }
             });
+            result.updated = true;
           }
         }
       }
 
-      if (!regenerated && result.status !== 'skipped') {
-        result.status = 'failed';
+      if (result.status === 'failed') {
         console.error(`   ❌ 再生成失敗（${MAX_ATTEMPTS}回試行）`);
       }
       
@@ -586,8 +574,8 @@ async function main() {
     // レポート出力
     printReport(stats, results);
     
-    // キャッシュ無効化（本番実行時のみ）。要約を保存した記事があれば消す
-    if (!isDryRun && results.some((r) => r.saved)) {
+    // キャッシュ無効化（本番実行時のみ）。DB で更新した記事があれば消す
+    if (!isDryRun && results.some((r) => r.updated)) {
       console.error('\n🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
       console.error('✅ キャッシュ無効化完了');

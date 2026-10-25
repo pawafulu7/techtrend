@@ -14,6 +14,7 @@ import { PromptBuilder } from '@/lib/ai/adapter/prompt-builder';
 import { GeminiSummaryAdapter } from '@/lib/ai/adapter/gemini-summary-adapter';
 import { GeminiTransportImpl } from '@/lib/ai/transport/gemini-transport';
 import { SummaryQualityChecker } from '@/lib/ai/service/quality-checker';
+import { contentAnalysisForLength } from '@/lib/ai/constants';
 import * as fs from 'fs';
 
 const prisma = createPrismaClient();
@@ -150,11 +151,8 @@ async function generateAndScore(
       const qualityResult = qualityChecker.checkQuality(
         output.headline,
         output.detailedSummary,
-        {
-          totalLength: article.content_len,
-          contentLength: article.content_len,
-          isThinContent: article.content_len < 400,
-        }
+        // 要約生成と同じく content.length で数える（content_len は SQL の LENGTH でコードポイント数）
+        contentAnalysisForLength(article.content.length)
       );
 
       results.push({

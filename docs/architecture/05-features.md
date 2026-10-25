@@ -131,7 +131,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 | `scheduler-off-topic` | `40 * * * *` | 毎時 40 分 | `classify-off-topic.ts` | 技術者向けでない記事の判定 |
 | `scheduler-tags` | `30 23 * * *`、`30 11 * * *` | 8:30、20:30 | `generate-tags.ts` | タグの生成 |
 | `scheduler-daily-quality` | `0 2 * * *` | 11:00 | `manage-quality-scores.ts` | 品質スコアの計算 |
-| `scheduler-quality-auto` | `30 6 * * *` | 15:30 | `quality-check.ts` → `auto-regenerate-low-quality.ts` → `manage-summaries.ts missing` | 低品質な要約の作り直しと、欠けた要約の補完（印の扱いの食い違いは #833） |
+| `scheduler-quality-auto` | `30 6 * * *` | 15:30 | `quality-check.ts` → `auto-regenerate-low-quality.ts` → `manage-summaries.ts missing` | 要約の品質の集計、低品質な要約の作り直し、欠けた要約の補完 |
 | `scheduler-translation-fix` | `30 */4 * * *` | 1:30 から 4 時間ごと | `fix-missing-translations.ts` | 翻訳漏れの補修 |
 | `scheduler-trend-report` | `30 5 * * *` | 14:30 | `generate-trend-report.ts` | 日次トレンドレポート |
 | `scheduler-diff-summary` | `0 21 * * 0` | 月曜 6:00 | `generate-diff-summaries.ts` | 週次の変化のまとめ（終わったら Redis のキーを消す） |
@@ -156,7 +156,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 手動で使う npm script のうち、要約に関わるもの:
 
 - `add-article`: URL を指定して記事を追加する
-- `regenerate:low-quality`: 要約の文面の品質チェックで低品質と判定した記事を作り直す（定期実行の `auto-regenerate-low-quality.ts` は記事の品質スコアで選ぶので、選び方が違う）
+- `regenerate:low-quality`: 要約生成と同じ判定（`lib/ai/service/quality-checker.ts`）で低品質な要約を持つ記事を作り直す（定期実行の `auto-regenerate-low-quality.ts` は記事の品質スコアで選ぶので、選び方が違う）
 - `regenerate:all-unified`: 統一フォーマットより前の版の要約を作り直す
 
 どれも、定期実行と同じ要約サービス（`lib/ai/service/`）で要約を作る。

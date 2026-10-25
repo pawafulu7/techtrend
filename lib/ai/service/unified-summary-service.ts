@@ -14,7 +14,7 @@ import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
 import { logger } from '@/lib/logger';
 
 import { SUMMARY_VERSION } from '@/types/article';
-import { THIN_CONTENT_MAX_LENGTH } from '../constants';
+import { contentAnalysisForLength } from '../constants';
 
 export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
   constructor(
@@ -64,12 +64,7 @@ export class UnifiedSummaryServiceImpl implements UnifiedSummaryService {
         const tags = this.postProcessor.formatTags(providerOutput.tags || []);
 
         // Build contentAnalysis for quality checker to enable strict bin enforcement
-        const contentLength = params.content.length;
-        const contentAnalysis = {
-          totalLength: contentLength,
-          contentLength,
-          isThinContent: contentLength < THIN_CONTENT_MAX_LENGTH,
-        };
+        const contentAnalysis = contentAnalysisForLength(params.content.length);
 
         const qualityResult = this.qualityChecker.checkQuality(
           summary,
