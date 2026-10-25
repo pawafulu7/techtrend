@@ -67,7 +67,7 @@ npx -y @mermaid-js/mermaid-cli -i docs/architecture/01-system-overview.md -o /tm
 ## この図に載せていないもの
 
 - 個別のソース定義（2026-10-25 時点の dev DB で 87 件）→ `Source` テーブルと `lib/fetchers/`
-- 全 32 model の詳細 → `prisma/schema.prisma`
+- 全 33 model の詳細 → `prisma/schema.prisma`
 - テストの構成（2026-10-25 時点で `*.test.*`・`*.spec.*` が 537 ファイル。`git ls-files | grep -cE '\.(test|spec)\.tsx?$'`）→ `jest.config.*.js` と `playwright.config.ts`
 - 各機能の実装詳細 → 各ディレクトリの実装。ローカルには補足の `CLAUDE_ARCHITECTURE.md` があるが、
   `CLAUDE*` は `.gitignore` で除外されているためリポジトリには含まれない

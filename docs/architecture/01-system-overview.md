@@ -78,7 +78,7 @@ flowchart LR
 | RSC Pages | `app/` 配下の公開・認証必須・管理者ページ | - |
 | API Routes | `app/api/` 配下 62 件の `route.ts`（一覧は [05 機能一覧](./05-features.md#4-api62本)） | - |
 | Better Auth | `lib/auth/auth.ts`（email+password, admin プラグインで RBAC） | `AUTH_SECRET`（フォールバック `NEXTAUTH_SECRET`） |
-| PostgreSQL + pgvector | Prisma 7（`prisma/schema.prisma`, 32 model）。マネージド。バージョン・提供元は注記参照 | `DATABASE_URL` |
+| PostgreSQL + pgvector | Prisma 7（`prisma/schema.prisma`, 33 model）。マネージド。バージョン・提供元は注記参照 | `DATABASE_URL` |
 | Redis | `lib/cache/`（LayeredCache: 用途別キャッシュ）+ `lib/rate-limiter.ts`（`getRedisClient()` 兼用） | `REDIS_URL` |
 | Gemini | 要約・抽出（`lib/ai/`） | `GEMINI_API_KEY` |
 | OpenAI embeddings | `text-embedding-3-small`（RAG, `lib/rag/`） | `OPENAI_API_KEY` |

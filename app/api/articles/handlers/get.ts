@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, formatErrorResponse } from '@/lib/errors';
@@ -50,18 +51,34 @@ const MAX_CATEGORY_IDS = 20;
 /** 興味の分野の ID の形（cuid。テストの `cat-1` のような ID も通す） */
 const CATEGORY_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
+/** 興味の分野の ID の検証（数の上限を先に見る。両方に問題があれば数のメッセージを返す） */
+const categoryIdsSchema = z
+  .array(z.string())
+  .superRefine((categoryIds, ctx) => {
+    if (categoryIds.length > MAX_CATEGORY_IDS) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `categoryIds must be at most ${MAX_CATEGORY_IDS} items`,
+      });
+      return;
+    }
+    if (!categoryIds.every((id) => CATEGORY_ID_PATTERN.test(id))) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          'categoryIds must be IDs of letters, digits, hyphens or underscores',
+      });
+    }
+  });
+
 /**
  * 興味の分野の ID を検証する。問題があればエラーメッセージを、無ければ null を返す。
  * ID は IN の条件とキャッシュキーに入るので、キャッシュキーを作る前に呼ぶ（validateTagFilter と同じ）
  */
 function validateCategoryIds(categoryIds: string[]): string | null {
-  if (categoryIds.length > MAX_CATEGORY_IDS) {
-    return `categoryIds must be at most ${MAX_CATEGORY_IDS} items`;
-  }
-  if (!categoryIds.every((id) => CATEGORY_ID_PATTERN.test(id))) {
-    return 'categoryIds must be IDs of letters, digits, hyphens or underscores';
-  }
-  return null;
+  const result = categoryIdsSchema.safeParse(categoryIds);
+  if (result.success) return null;
+  return result.error.issues[0]?.message ?? 'Invalid categoryIds';
 }
 
 // Initialize Layered cache system for articles

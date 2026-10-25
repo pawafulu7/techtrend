@@ -1,6 +1,11 @@
 /**
  * 記事の興味の分野の点数（lib/personalization/interest-scores.ts）と、重心の作り直し
- * （lib/personalization/centroid-service.ts）を、マイグレーションを適用したテスト DB で確かめる
+ * （lib/personalization/centroid-service.ts）を、マイグレーションを適用したテスト DB で確かめる。
+ *
+ * refreshCentroidsAndScores() はテスト DB の ArticleInterestScore を全件書き直すので、同じ表を使う
+ * 他の DB テスト（digest-personalized.db.test.ts）と並列にしない。通常の jest からは除外していて
+ * （jest.config.node.js の SERIAL_DB_TEST_PATHS）、`npm run test:node:serial`、または
+ * `JEST_SERIAL_DB=1 TEST_FILE=<このファイル> npm run docker:test:file` で流す
  */
 import {
   describe,
