@@ -20,7 +20,10 @@ import { BaseFetcher } from '../base';
 import { SourceFormatError } from '../errors';
 import { fetchFeedXml } from '../fetch-feed';
 import { getCuratedNewsletterConfig, type NewsletterConfig } from './configs';
-import { extractCooperpressIssue, isKnownExcludedSection } from './extract-cooperpress';
+import {
+  extractCooperpressIssue,
+  isKnownExcludedSection,
+} from './extract-cooperpress';
 import { extractSreWeeklyIssue } from './extract-sre-weekly';
 import {
   extractDataEngineeringWeeklyIssue,
@@ -118,7 +121,10 @@ export class CuratedNewsletterFetcher extends BaseFetcher {
     let items: NewsletterItem[];
     try {
       const xml = await fetchFeedXml(this.config.feedUrl, {
-        timeoutMs: Math.min(FEED_TIMEOUT_MS, Math.max(1, deadlineAt - this.now())),
+        timeoutMs: Math.min(
+          FEED_TIMEOUT_MS,
+          Math.max(1, deadlineAt - this.now())
+        ),
       });
       items = (await this.parser.parseString(xml)).items ?? [];
     } catch (error) {
@@ -156,7 +162,7 @@ export class CuratedNewsletterFetcher extends BaseFetcher {
         returned: 0,
       };
       allStats.push(stats);
-      // 協賛や知らない名前の欄だけが残って記事が0本でも、形の変化として扱う
+      // 協賛だけが残るなどで記事が0本なら、形の変化として扱う
       if (result.items.length === 0) {
         errors.push(
           new SourceFormatError(
@@ -201,7 +207,12 @@ export class CuratedNewsletterFetcher extends BaseFetcher {
       if (outcome.failed > 0 || outcome.unresolved > 0) {
         // collect-feeds はエラーの message を出さないので、解決できなかったリンクをここで出す
         logger.warn(
-          { source: name, hrefs: hrefs.filter((href) => !outcome.resolved.has(href)).slice(0, 20) },
+          {
+            source: name,
+            hrefs: hrefs
+              .filter((href) => !outcome.resolved.has(href))
+              .slice(0, 20),
+          },
           '[CuratedNewsletter] 転送を解決できなかったリンク'
         );
         errors.push(
@@ -241,7 +252,10 @@ export class CuratedNewsletterFetcher extends BaseFetcher {
       // エッセイの URL はニュースレター自身のサイトなので、自誌の除外は当てない
       const filtered = filterArticleUrl(essay.link, []);
       if (!filtered.ok) {
-        logger.warn({ source: name, essay: essay.title, reason: filtered.reason }, '[CuratedNewsletter] エッセイを飛ばした');
+        logger.warn(
+          { source: name, essay: essay.title, reason: filtered.reason },
+          '[CuratedNewsletter] エッセイを飛ばした'
+        );
         continue;
       }
       const url = filtered.url;
@@ -300,7 +314,8 @@ export class CuratedNewsletterFetcher extends BaseFetcher {
     // タイトルの書き方が変わっても号を号として扱えるよう、記事の節の数でも判定する
     // （号を1本のエッセイとして黙って保存しないため）
     const isIssue = (post: Post) =>
-      DATA_ENGINEERING_WEEKLY_ISSUE_TITLE.test(post.title) || looksLikeDataEngineeringWeeklyIssue(post.html);
+      DATA_ENGINEERING_WEEKLY_ISSUE_TITLE.test(post.title) ||
+      looksLikeDataEngineeringWeeklyIssue(post.html);
     return {
       issues: posts.filter(isIssue).slice(0, MAX_ISSUES),
       essays: posts.filter((post) => !isIssue(post)).slice(0, MAX_ESSAYS),
