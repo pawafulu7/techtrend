@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { logger, sanitizeError } from '@/lib/logger';
 import type {
@@ -36,6 +37,29 @@ const MAX_CATEGORY_SELECTIONS = 20;
 
 /** Default period in months for filtering */
 const DEFAULT_PERIOD_MONTHS = 12;
+
+const CATEGORY_IDS_TYPE_ERROR = 'categoryIds must be an array of strings';
+
+/**
+ * categoryIds の検証。省略（undefined）は「今の分野を保つ」なので通す。
+ * 重複を除いてから上限を見る（同じ ID を何度送っても 1 件と数える）。
+ * 上限を超えたときは、受け取った件数を details として issue の params に載せる
+ */
+const categoryIdsSchema = z
+  .array(z.string({ error: CATEGORY_IDS_TYPE_ERROR }), {
+    error: CATEGORY_IDS_TYPE_ERROR,
+  })
+  .transform((categoryIds) => [...new Set(categoryIds)])
+  .superRefine((categoryIds, ctx) => {
+    if (categoryIds.length > MAX_CATEGORY_SELECTIONS) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `Maximum ${MAX_CATEGORY_SELECTIONS} categories allowed`,
+        params: { details: `Received ${categoryIds.length} categories` },
+      });
+    }
+  })
+  .optional();
 
 // =============================================================================
 // Errors
@@ -197,35 +221,21 @@ async function postHandler(
       );
     }
 
-    // Validate categoryIds is an array of strings (optional: omitted means "keep the current categories")
-    if (
-      categoryIds !== undefined &&
-      (!Array.isArray(categoryIds) ||
-        !categoryIds.every((id: unknown) => typeof id === 'string'))
-    ) {
-      return NextResponse.json(
-        { error: 'categoryIds must be an array of strings' },
-        { status: 400 }
-      );
-    }
-
-    // Remove duplicates
-    const uniqueCategoryIds =
-      categoryIds === undefined ? undefined : [...new Set(categoryIds)];
-
-    // Check selection limit
-    if (
-      uniqueCategoryIds &&
-      uniqueCategoryIds.length > MAX_CATEGORY_SELECTIONS
-    ) {
+    // categoryIds is optional: omitted means "keep the current categories"
+    const categoryIdsResult = categoryIdsSchema.safeParse(categoryIds);
+    if (!categoryIdsResult.success) {
+      const issue = categoryIdsResult.error.issues[0];
+      const details =
+        issue?.code === 'custom' ? issue.params?.details : undefined;
       return NextResponse.json(
         {
-          error: `Maximum ${MAX_CATEGORY_SELECTIONS} categories allowed`,
-          details: `Received ${uniqueCategoryIds.length} categories`,
+          error: issue?.message ?? CATEGORY_IDS_TYPE_ERROR,
+          ...(typeof details === 'string' && { details }),
         },
         { status: 400 }
       );
     }
+    const uniqueCategoryIds = categoryIdsResult.data;
 
     // Update preferences in a transaction (includes validation to avoid race conditions)
     const saved = await prisma.$transaction(async (tx) => {
