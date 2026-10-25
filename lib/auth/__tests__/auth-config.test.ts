@@ -29,6 +29,11 @@ jest.mock('better-auth/plugins', () => ({
 jest.mock('@better-auth/prisma-adapter', () => ({
   prismaAdapter: jest.fn(() => ({})),
 }));
+const mockAfter = jest.fn();
+jest.mock('next/server', () => ({
+  ...jest.requireActual('next/server'),
+  after: mockAfter,
+}));
 
 function loadOptions(): BetterAuthOptions {
   jest.isolateModules(() => {
@@ -74,5 +79,60 @@ describe('auth config invariants (#666)', () => {
     expect(options.disabledPaths).toEqual(
       expect.arrayContaining(['/change-password', '/admin/set-user-password'])
     );
+  });
+});
+
+describe('email verification on sign-up (#832)', () => {
+  let options: BetterAuthOptions;
+
+  beforeAll(() => {
+    mockBetterAuth.mockClear();
+    options = loadOptions();
+  });
+
+  it('keeps users signed out until they verify the email and sign in with the password', () => {
+    // 登録フォーム（components/auth/*SignupForm.tsx）は、登録後にログインしない前提で
+    // 「確認メールを送信しました」を出す
+    expect(options.emailAndPassword?.requireEmailVerification).toBe(true);
+    expect(options.emailVerification?.sendOnSignUp).toBe(true);
+    // 確認リンクで自動ログインすると、先に他人が登録したアカウントに本人が入ってしまう
+    expect(options.emailVerification?.autoSignInAfterVerification).toBe(false);
+  });
+
+  it('answers sign-up for an existing email with the same user shape as a new user', () => {
+    // 新規作成では admin プラグインが role などを入れる。偽の応答に無いと null になり、
+    // 登録済みかどうかが応答から分かる
+    const synthetic = options.emailAndPassword?.customSyntheticUser?.({
+      coreFields: {
+        name: '',
+        email: 'existing@example.com',
+        emailVerified: false,
+        image: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      additionalFields: { personalizationPeriodMonths: 12 },
+      id: 'synthetic-id',
+    });
+
+    expect(synthetic).toMatchObject({
+      role: 'user',
+      banned: false,
+      banReason: null,
+      banExpires: null,
+      personalizationPeriodMonths: 12,
+      id: 'synthetic-id',
+    });
+  });
+
+  it('sends the verification email after responding to sign-up', () => {
+    // 送信を待つと、メールを送らない登録済みのアドレスとの応答時間の差で、有無が分かる。
+    // 何もしない関数に置き換わると、Vercel では応答の後に関数が止まり、メールが送られない
+    expect(options.advanced?.backgroundTasks?.handler).toBe(mockAfter);
+  });
+
+  it('keeps the verification link valid for 24 hours as the email says', () => {
+    // メール本文（buildVerificationEmailHtml）と画面に「24時間有効」と書いている
+    expect(options.emailVerification?.expiresIn).toBe(24 * 60 * 60);
   });
 });

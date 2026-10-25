@@ -28,6 +28,7 @@ import { CommentSection } from '@/app/components/comment';
 import { ReadOriginalLink } from '@/app/components/article/read-original-link';
 import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
 import { ArticleTags } from '@/app/articles/_components/article-tags';
+import { toInternalPath } from '@/lib/routes/internal-path';
 import {
   ObservationData,
   readingMinutes,
@@ -74,18 +75,9 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
     // ここで再度 decodeURIComponent すると `search=C%2B%2B` が `search=C++` になり、
     // 戻り先で URLSearchParams が `+` を空白と解釈してフィルタ条件が壊れる。
     //
-    // 検証は文字列の前方一致ではなく URL パーサに任せる。`startsWith('/') &&
-    // !startsWith('//')` だけでは `/\evil.example` を通してしまい、WHATWG URL の
-    // 正規化でバックスラッシュが `/` 扱いになる結果 https://evil.example/ への
-    // オープンリダイレクトになる。同一オリジンに解決されたものだけを許可する。
-    try {
-      const base = 'http://internal.invalid';
-      const resolved = new URL(fromParam, base);
-      if (resolved.origin !== base) return '/';
-      return `${resolved.pathname}${resolved.search}${resolved.hash}`;
-    } catch {
-      return '/';
-    }
+    // 検証は文字列の前方一致ではなく URL パーサに任せる（`/\evil.example` を外部へ
+    // 飛ばさないため。lib/routes/internal-path.ts）。同一オリジンに解決されたものだけを許可する。
+    return toInternalPath(fromParam) ?? '/';
   };
 
   const returnUrl = getReturnUrl(from);

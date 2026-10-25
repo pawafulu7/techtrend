@@ -1,8 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { authClient } from '@/lib/auth/auth-client';
+import { useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -11,112 +9,51 @@ import {
 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle, XCircle, Mail } from 'lucide-react';
+import { CheckCircle, XCircle, Mail } from 'lucide-react';
 import Link from 'next/link';
+
+type VerificationState = 'verified' | 'sent' | 'expired' | 'error';
+
+// 確認メールのリンク（Better Auth の /api/auth/verify-email）からの戻り先は
+// EMAIL_VERIFICATION_CALLBACK_URL（?success=true）。確認に失敗すると Better Auth は
+// 同じ戻り先に `&error=<コード>` を付けて返すので、error を success より先に見る。
+// 確認が済んでもログインはしない（lib/auth/auth.ts の autoSignInAfterVerification）。
+function getVerificationState(
+  searchParams: Pick<URLSearchParams, 'get'>
+): VerificationState {
+  const error = searchParams.get('error');
+  if (error === 'TOKEN_EXPIRED') return 'expired';
+  if (error) return 'error';
+  if (searchParams.get('success') === 'true') return 'verified';
+  return 'sent';
+}
+
+const TITLES: Record<VerificationState, string> = {
+  verified: '確認完了！',
+  sent: 'メールをご確認ください',
+  expired: '期限切れ',
+  error: 'エラー',
+};
+
+const MESSAGES: Record<VerificationState, string> = {
+  verified: 'メールアドレスの確認が完了しました！',
+  sent: '確認メールを送信しました。メール内のリンクを開いて、登録を完了してください。',
+  expired: '認証リンクの有効期限が切れています。',
+  error: '認証リンクが無効です。もう一度お試しください。',
+};
 
 export default function VerifyPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const { data: session, isPending: _sessionIsPending } =
-    authClient.useSession();
-  const [verificationState, setVerificationState] = useState<
-    'verifying' | 'success' | 'error' | 'expired'
-  >('verifying');
-  const [message, setMessage] = useState('');
-  const [isAutoLogin, setIsAutoLogin] = useState(false);
-
-  // 自動ログイン処理
-  const performAutoLogin = async (email: string, loginToken: string) => {
-    try {
-      // まず一時トークンを検証
-      const validateResponse = await fetch('/api/auth/auto-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, loginToken }),
-      });
-
-      if (validateResponse.ok) {
-        // Better AuthのsignIn.emailを使用してログイン
-        const { error: signInError } = await authClient.signIn.email({
-          email,
-          password: loginToken, // パスワードの代わりに一時トークンを使用
-        });
-
-        if (!signInError) {
-          // 3秒後にホームへリダイレクト
-          setTimeout(() => {
-            router.push('/');
-            router.refresh();
-          }, 3000);
-        } else {
-          console.error('Auto-login failed:', signInError.message);
-        }
-      } else {
-        console.error('Token validation failed');
-      }
-    } catch (error) {
-      console.error('Auto-login error:', error);
-    }
-  };
-
-  useEffect(() => {
-    // URLパラメータから成功・エラー状態を判定（searchParamsを読み取って画面状態を初期化する唯一のタイミング）
-    /* eslint-disable react-hooks/set-state-in-effect */
-    const success = searchParams.get('success');
-    const error = searchParams.get('error');
-    const email = searchParams.get('email');
-    const loginToken = searchParams.get('loginToken');
-
-    if (success === 'true' && email && loginToken) {
-      setVerificationState('success');
-      setMessage('メールアドレスの確認が完了しました！');
-      setIsAutoLogin(true);
-
-      // 自動ログイン処理
-      performAutoLogin(email, loginToken);
-    } else if (success === 'true') {
-      setVerificationState('success');
-      setMessage('メールアドレスの確認が完了しました！');
-    } else if (error === 'token_expired') {
-      setVerificationState('expired');
-      setMessage('認証リンクの有効期限が切れています。');
-    } else if (error === 'invalid_token') {
-      setVerificationState('error');
-      setMessage('認証リンクが無効です。もう一度お試しください。');
-    } else if (error === 'verification_failed') {
-      setVerificationState('error');
-      setMessage('認証処理中にエラーが発生しました。');
-    } else {
-      // パラメータがない場合は通常のメール送信完了メッセージ
-      setVerificationState('success');
-      setMessage('確認メールを送信しました。メールをご確認ください。');
-    }
-    /* eslint-enable react-hooks/set-state-in-effect */
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
-  // 自動ログイン後のリダイレクト処理
-  useEffect(() => {
-    if (isAutoLogin && !!session) {
-      // 3秒後にホームへリダイレクト
-      const timer = setTimeout(() => {
-        router.push('/');
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isAutoLogin, session, router]);
+  const verificationState = getVerificationState(searchParams);
 
   const getIcon = () => {
     switch (verificationState) {
-      case 'verifying':
-        return (
-          <Loader2 className="h-12 w-12 animate-spin text-[var(--tt-color-info)]" />
-        );
-      case 'success':
+      case 'verified':
         return (
           <CheckCircle className="h-12 w-12 text-[var(--tt-color-positive)]" />
         );
+      case 'sent':
+        return <Mail className="h-12 w-12 text-[var(--tt-color-info)]" />;
       case 'expired':
       case 'error':
         return (
@@ -125,84 +62,60 @@ export default function VerifyPage() {
     }
   };
 
-  const getTitle = () => {
-    switch (verificationState) {
-      case 'verifying':
-        return 'メールアドレスを確認中...';
-      case 'success':
-        return '確認完了！';
-      case 'expired':
-        return '期限切れ';
-      case 'error':
-        return 'エラー';
-    }
-  };
-
   return (
     <div className="container mx-auto max-w-lg py-10">
       <Card>
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">{getIcon()}</div>
-          <h1 className="font-heading text-foreground text-h1">{getTitle()}</h1>
-          <CardDescription className="mt-2">{message}</CardDescription>
+          <h1 className="font-heading text-foreground text-h1">
+            {TITLES[verificationState]}
+          </h1>
+          <CardDescription className="mt-2">
+            {MESSAGES[verificationState]}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {verificationState === 'success' && (
+          {verificationState === 'verified' && (
             <div className="space-y-4">
               <Alert className="border-[var(--tt-color-positive-border)] bg-[var(--tt-color-positive-bg)]">
                 <CheckCircle className="h-4 w-4 text-[var(--tt-color-positive)]" />
                 <AlertDescription className="text-[var(--tt-color-positive)]">
-                  {isAutoLogin && !!session
-                    ? '自動ログインしました。まもなくホームページへ移動します...'
-                    : 'アカウントが有効化されました。ログインしてTechTrendをお楽しみください。'}
+                  アカウントが有効化されました。ログインしてTechTrendをお楽しみください。
                 </AlertDescription>
               </Alert>
-
-              {isAutoLogin && !!session ? (
-                <div className="space-y-4">
-                  <div className="flex justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-[var(--tt-color-info)]" />
-                  </div>
-                  <p className="text-muted-foreground text-center text-sm">
-                    リダイレクト中...
-                  </p>
-                  <Button asChild variant="outline" className="w-full">
-                    <Link href="/">今すぐホームへ移動</Link>
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <Button asChild className="w-full">
-                    <Link href="/auth/login">ログインページへ</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="w-full">
-                    <Link href="/">ホームへ戻る</Link>
-                  </Button>
-                </div>
-              )}
+              <div className="flex flex-col gap-2">
+                <Button asChild className="w-full">
+                  <Link href="/auth/login">ログインページへ</Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/">ホームへ戻る</Link>
+                </Button>
+              </div>
             </div>
+          )}
+
+          {verificationState === 'sent' && (
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/">ホームへ戻る</Link>
+            </Button>
           )}
 
           {verificationState === 'expired' && (
             <div className="space-y-4">
               <Alert className="border-[var(--tt-color-warning-border)] bg-[var(--tt-color-warning-bg)]">
                 <AlertDescription className="text-[var(--tt-color-warning)]">
-                  認証リンクの有効期限は24時間です。新しい認証メールをリクエストしてください。
+                  認証リンクの有効期限は24時間です。ログインすると、新しい確認メールを送信できます。
                 </AlertDescription>
               </Alert>
               <div className="flex flex-col gap-2">
-                <Button
-                  className="w-full"
-                  onClick={() => {
-                    // TODO: Implement resend verification email
-                    alert('再送信機能は実装予定です');
-                  }}
-                >
-                  <Mail className="mr-2 h-4 w-4" />
-                  認証メールを再送信
+                <Button asChild className="w-full">
+                  <Link href="/auth/login">
+                    <Mail className="mr-2 h-4 w-4" />
+                    ログインして確認メールを再送信
+                  </Link>
                 </Button>
                 <Button asChild variant="outline" className="w-full">
-                  <Link href="/auth/signup">新規登録ページへ</Link>
+                  <Link href="/">ホームへ戻る</Link>
                 </Button>
               </div>
             </div>

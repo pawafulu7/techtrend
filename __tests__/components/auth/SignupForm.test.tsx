@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { SignupForm } from '@/components/auth/SignupForm';
 import { authClient } from '@/lib/auth/auth-client';
-import { useRouter } from 'next/navigation';
 
 // モック
 jest.mock('@/lib/auth/auth-client', () => ({
@@ -20,26 +19,11 @@ jest.mock('@/lib/auth/auth-client', () => ({
   signUp: jest.fn(),
 }));
 
-jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
-}));
-
 const mockedSignUpEmail = jest.mocked(authClient.signUp.email);
-const mockedUseRouter = jest.mocked(useRouter);
 
 describe('SignupForm', () => {
-  const mockRouter = {
-    push: jest.fn(),
-    refresh: jest.fn(),
-    back: jest.fn(),
-    forward: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedUseRouter.mockReturnValue(mockRouter as any);
   });
 
   describe('Rendering', () => {
@@ -204,7 +188,7 @@ describe('SignupForm', () => {
   });
 
   describe('Registration', () => {
-    it('successfully registers and logs in user', async () => {
+    it('registers the user and asks them to open the verification email', async () => {
       const user = userEvent.setup();
 
       mockedSignUpEmail.mockResolvedValue({ data: {}, error: null } as any);
@@ -227,23 +211,29 @@ describe('SignupForm', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
+        // 確認が済むまでログインしないので、ページは移らずに確認メールの案内を出す
         expect(mockedSignUpEmail).toHaveBeenCalledWith({
           name: '山田太郎',
           email: 'test@example.com',
           password: 'Password123',
+          callbackURL: '/auth/verify?success=true',
         });
-
-        expect(mockRouter.push).toHaveBeenCalledWith('/profile');
-        expect(mockRouter.refresh).toHaveBeenCalled();
+        expect(
+          screen.getByText('確認メールを送信しました！')
+        ).toBeInTheDocument();
       });
     });
 
-    it('displays error when email already exists', async () => {
+    it('shows the error in Japanese instead of the Better Auth message', async () => {
       const user = userEvent.setup();
 
       mockedSignUpEmail.mockResolvedValue({
         data: null,
-        error: { message: 'このメールアドレスは既に登録されています' },
+        error: {
+          code: 'PASSWORD_TOO_LONG',
+          message: 'Password too long',
+          status: 400,
+        },
       } as any);
 
       render(<SignupForm />);
@@ -265,9 +255,10 @@ describe('SignupForm', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('このメールアドレスは既に登録されています')
+          screen.getByText('パスワードは128文字以内で入力してください')
         ).toBeInTheDocument();
       });
+      expect(screen.queryByText('Password too long')).not.toBeInTheDocument();
     });
 
     it('handles network error gracefully', async () => {
