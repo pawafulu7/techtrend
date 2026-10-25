@@ -98,8 +98,8 @@ sequenceDiagram
 | API 用ラッパー | `lib/middleware/with-admin-auth.ts:41`、`lib/middleware/with-user-validation.ts:77`、`lib/middleware/with-rate-limit.ts:75`、`lib/middleware/csrf-protection.ts:295` |
 | `LayeredCache`（L1/L2/L3 = 用途別 Redis） | `lib/cache/layered-cache.ts:50-79` |
 | 軽量版の記事一覧（ホームの既定） | `app/api/articles/list/route.ts`、キャッシュは `app/api/articles/list/cache-config.ts` |
-| 記事一覧キャッシュ呼び出し | `app/api/articles/handlers/get.ts:402-404`（`cache.getArticles(cacheParams, () => executeStandardQuery(...))`）。興味の分野で絞るときも同じ |
-| ユーザー情報オーバーレイ（DataLoader） | `app/api/articles/handlers/get.ts:418`（`fetchUserSpecificData`） |
+| 記事一覧キャッシュ呼び出し | `app/api/articles/handlers/get.ts:419-421`（`cache.getArticles(cacheParams, () => executeStandardQuery(...))`）。興味の分野で絞るときも同じ |
+| ユーザー情報オーバーレイ（DataLoader） | `app/api/articles/handlers/get.ts:435`（`fetchUserSpecificData`） |
 | DataLoader ファクトリ | `lib/dataloader/index.ts:10-19`（`createLoaders()`） |
 | ユーザー情報の DataLoader（オーバーレイで使うのはこの 2 つ） | `lib/dataloader/favorite-loader.ts:221`（`cache: true`）、`lib/dataloader/article-view-loader.ts:135`（`cache: false`）。呼び出しは `app/api/articles/lib/user-data.ts:37-53` |
 | 記事詳細キャッシュ | `lib/cache/article-detail-cache.ts:10-18` |

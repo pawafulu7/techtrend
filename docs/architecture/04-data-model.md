@@ -224,7 +224,7 @@ erDiagram
 - **pgvector を使うフィールドは 3 つ**: `ArticleEmbedding.embedding`、`ArticleChunk.embedding`、`InterestCategory.centroidEmbedding`。いずれも `Unsupported("vector(1536)")`（1536 次元）。Mermaid の `erDiagram` は型に `()` を使えないため、図上は `vector embedding` のように次元を省略して表記している
 - pgvector 拡張を追加したマイグレーション: `prisma/migrations/20251018154552_add_article_embeddings/migration.sql`
 - **`ArticleChunk` は現行パイプラインでは書き込まれない**: embedding 生成の実装 `lib/rag/article-embedding-pipeline.ts` が書き込むのは `ArticleEmbedding` のみで、`ArticleChunk` への `create`/`upsert`/`INSERT` はリポジトリ内に存在しない（`grep -rn 'articleChunk\.(create|upsert)|INSERT INTO "ArticleChunk"' lib app scripts` で確認）。スキーマ上は将来のチャンク分割 RAG 用に残っている
-- model 総数: **32**（2026-10-25 時点）。取得コマンド: `grep -c '^model ' prisma/schema.prisma`
+- model 総数: **33**（2026-10-25 時点）。取得コマンド: `grep -c '^model ' prisma/schema.prisma`
 - 全 33 model の完全な列挙・カラム定義は `prisma/schema.prisma` を参照
 
 ---
