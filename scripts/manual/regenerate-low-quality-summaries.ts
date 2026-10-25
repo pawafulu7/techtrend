@@ -71,8 +71,11 @@ interface RegenerationResult {
   status: 'success' | 'failed' | 'skipped';
   error?: string;
   attempts: number;
-  /** 要約を保存したか。作り直した要約が基準を満たして保存したときだけ true にする。dry-run では設定しない */
-  saved?: boolean;
+  /**
+   * 記事を DB で更新したか（要約の保存と、スキップ理由・エラーの記録）。skipReason と qualityScore は
+   * 一覧の表示条件に使うので、要約を保存しなかった記事もキャッシュを消す対象にする。dry-run では設定しない
+   */
+  updated?: boolean;
 }
 
 interface Statistics {
@@ -269,6 +272,7 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
               summaryComputedAt: new Date()
             }
           });
+          result.updated = true;
         }
         results.push(result);
         continue;
@@ -277,7 +281,8 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
       
       // 再生成試行（最大3回）
       const MAX_ATTEMPTS = 3;
-      let regenerated = false;
+      // 生成を試みた記事は、要約を保存できた（success）かサービスがスキップした（skipped）とき以外は失敗に数える
+      result.status = 'failed';
       
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         result.attempts = attempt;
@@ -347,12 +352,11 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
               });
               // 埋め込みのジョブは、要約を保存した後に積む（ワーカーは保存済みの要約を埋め込む）
               await embeddingScheduler.enqueue(article.id);
-              result.saved = true;
+              result.updated = true;
             }
 
             console.error(`   ✅ 再生成成功! スコア: ${beforeScore} → ${result.afterScore}点`);
             result.status = 'success';
-            regenerated = true;
             break;
           } else {
             console.error(`   ⚠️  品質基準未達: ${newQualityCheck.score}点`);
@@ -378,6 +382,7 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                   summaryComputedAt: new Date()
                 }
               });
+              result.updated = true;
             }
             break;
           }
@@ -396,12 +401,12 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
                 summaryComputedAt: new Date()
               }
             });
+            result.updated = true;
           }
         }
       }
 
-      if (!regenerated && result.status !== 'skipped') {
-        result.status = 'failed';
+      if (result.status === 'failed') {
         console.error(`   ❌ 再生成失敗（${MAX_ATTEMPTS}回試行）`);
       }
       
@@ -569,8 +574,8 @@ async function main() {
     // レポート出力
     printReport(stats, results);
     
-    // キャッシュ無効化（本番実行時のみ）。要約を保存した記事があれば消す
-    if (!isDryRun && results.some((r) => r.saved)) {
+    // キャッシュ無効化（本番実行時のみ）。DB で更新した記事があれば消す
+    if (!isDryRun && results.some((r) => r.updated)) {
       console.error('\n🔄 キャッシュを無効化中...');
       await cacheInvalidator.onBulkImport();
       console.error('✅ キャッシュ無効化完了');
