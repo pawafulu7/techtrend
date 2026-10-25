@@ -9,7 +9,7 @@ import {
   QueryExpansionResult,
 } from './query-expansion-service';
 import { env } from '@/lib/config/env';
-import { supportsIterativeScan } from '@/lib/personalization/filters/pgvector-capabilities';
+import { supportsIterativeScan } from '@/lib/rag/pgvector-capabilities';
 import { runArticleKnn } from './article-knn';
 
 /**

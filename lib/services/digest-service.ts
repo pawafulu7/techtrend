@@ -10,10 +10,8 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { measureAsync, hrtimeDiffMs } from '@/lib/personalization/tracing';
 import { RedisCache } from '@/lib/cache/redis-cache';
-import {
-  CategoryFilterService,
-  categoryFilterService,
-} from '@/lib/personalization/category-filter-service';
+import { CACHE_NAMESPACES } from '@/lib/cache/constants';
+import { getActiveInterestCategories } from '@/lib/personalization/categories';
 import type { InterestCategoryWithCount } from '@/lib/personalization/types';
 
 // =============================================================================
@@ -23,23 +21,20 @@ import type { InterestCategoryWithCount } from '@/lib/personalization/types';
 export const DIGEST_CONFIG = {
   QUALITY_THRESHOLD: 70, // qualityScore is 0-100 scale
   MISSED_DAYS: 7,
-  PERSONALIZED_LIMIT: 50,
   CACHE_TTL: 1800, // 30 minutes
   MUST_READ_LIMIT: 10,
   MISSED_LIMIT: 10,
   PERSONALIZED_RESULT_LIMIT: 10,
   OVERFETCH_MULTIPLIER: 3,
   NEGATIVE_CACHE_TTL: 300, // 5 minutes
-  DIGEST_TOP_K: 300,
-  DIGEST_MAX_CONCURRENCY: 5,
 } as const;
 
 /**
- * ダイジェストのキャッシュのキー。v2 は分野の設定をホームと共通にした後の形（Issue #709）。
- * 前の形のキャッシュはダイジェストだけの分野を持っていて、それを編集して保存するとホームの分野が消えるので読まない
+ * ダイジェストのキャッシュのキー。v3 は「あなたへのおすすめ」を記事の興味の分野の点数で選ぶようにした後の形。
+ * v2（分野の設定をホームと共通にした後の形。Issue #709）は前の推薦の結果を持つので読まない
  */
 function digestCacheKey(userId: string, period: DigestPeriod): string {
-  return `digest:v2:${userId}:${period}`;
+  return `digest:v3:${userId}:${period}`;
 }
 
 // =============================================================================
@@ -100,6 +95,10 @@ interface RawMustReadRow extends RawArticleRow {
   viewer_count: bigint;
 }
 
+interface RawPersonalizedRow extends RawArticleRow {
+  category_name: string;
+}
+
 // =============================================================================
 // Helpers
 // =============================================================================
@@ -135,7 +134,7 @@ function toDigestArticle(
 
 const digestCache = new RedisCache({
   ttl: DIGEST_CONFIG.CACHE_TTL,
-  namespace: 'techtrend:digest',
+  namespace: CACHE_NAMESPACES.DIGEST,
 });
 
 // =============================================================================
@@ -145,8 +144,7 @@ const digestCache = new RedisCache({
 export class DigestService {
   constructor(
     private readonly db: PrismaClient = prisma,
-    private readonly cache: RedisCache = digestCache,
-    private readonly filterService: CategoryFilterService = categoryFilterService
+    private readonly cache: RedisCache = digestCache
   ) {}
 
   /**
@@ -319,9 +317,10 @@ export class DigestService {
   }
 
   /**
-   * Get personalized articles based on user's category preferences.
-   * Uses CategoryFilterService for embedding-based candidate retrieval,
-   * then filters for unread articles within the period.
+   * 選んだ分野の点数（ArticleInterestScore。lib/personalization/interest-scores.ts）が高い順に、
+   * 期間内の未読の記事を返す。複数の分野に入る記事は点数の高い分野で数え、その分野の名前を理由に出す。
+   * 記事の側（公開日のインデックス）から絞り、点数は記事ごとに主キーで引く（点数の表を全部読まない）。
+   * 要約の処理済みと技術者向けでない記事の扱いは、ホームの既定の一覧に合わせる
    */
   private async getPersonalizedArticles(
     userId: string,
@@ -330,31 +329,10 @@ export class DigestService {
     limit: number
   ): Promise<SectionResult> {
     try {
-      // Get candidates via CategoryFilterService with digest-optimized topK
-      const { articles: candidates, meta } =
-        await this.filterService.filterArticles({
-          categoryIds,
-          periodMonths: 12,
-          limit: DIGEST_CONFIG.PERSONALIZED_LIMIT,
-          topK: DIGEST_CONFIG.DIGEST_TOP_K,
-          maxConcurrency: DIGEST_CONFIG.DIGEST_MAX_CONCURRENCY,
-        });
-
-      // Detect if filterArticles fell back internally (centroid/embedding failure)
-      const filterFellBack =
-        categoryIds.length > 0 && (meta?.appliedCategories?.length ?? 0) === 0;
-
-      if (candidates.length === 0) {
-        return { articles: [], ok: !filterFellBack };
-      }
-
-      const candidateIds = candidates.map((c) => c.articleId);
       const cutoff = getPeriodCutoff(period);
 
-      // Filter for unread articles within period, with source enabled and content not null
-      const rows = await measureAsync('digest.post_filter', async (span) => {
-        span.setAttribute('articleIdCount', candidateIds.length);
-        const result = await this.db.$queryRaw<RawArticleRow[]>`
+      const rows = await measureAsync('digest.personalized', async (span) => {
+        const result = await this.db.$queryRaw<RawPersonalizedRow[]>`
           SELECT
             a.id,
             a.title,
@@ -363,44 +341,42 @@ export class DigestService {
             a.thumbnail,
             a."publishedAt",
             a."qualityScore",
-            a."sourceId"
+            a."sourceId",
+            best.category_name
           FROM "Article" a
           JOIN "Source" s ON a."sourceId" = s.id AND s.enabled = true
-          WHERE a.id = ANY(${candidateIds})
+          CROSS JOIN LATERAL (
+            SELECT c.name AS category_name, sc.score
+            FROM "ArticleInterestScore" sc
+            JOIN "InterestCategory" c ON c.id = sc."categoryId"
+            WHERE sc."articleId" = a.id
+              AND sc."categoryId" = ANY(${categoryIds})
+            ORDER BY sc.score DESC
+            LIMIT 1
+          ) best
+          WHERE a."publishedAt" >= ${cutoff}
             AND a.content IS NOT NULL
             AND a."isHidden" = false
-            AND a."publishedAt" >= ${cutoff}
+            AND a."isOffTopic" = false
+            AND a."summaryComputedAt" IS NOT NULL
             AND NOT EXISTS (
               SELECT 1 FROM "ArticleView" av
               WHERE av."userId" = ${userId}
                 AND av."articleId" = a.id
                 AND av."isRead" = true
             )
-          ORDER BY array_position(${candidateIds}, a.id)
+          ORDER BY best.score DESC, a.id
           LIMIT ${limit}
         `;
-        span.setAttribute('filteredCount', result.length);
+        span.setAttribute('resultCount', result.length);
         return result;
       });
 
-      if (rows.length === 0) {
-        return { articles: [], ok: !filterFellBack };
-      }
-
-      // Get matching category names for recommendation reason
-      const categories = await this.db.interestCategory.findMany({
-        where: { id: { in: categoryIds } },
-        select: { name: true },
-      });
-      const categoryNames = categories.map((c) => c.name);
-      const reason =
-        categoryNames.length > 0
-          ? `あなたの興味: ${categoryNames.slice(0, 2).join('・')}`
-          : 'おすすめ記事';
-
       return {
-        articles: rows.map((row) => toDigestArticle(row, reason)),
-        ok: !filterFellBack,
+        articles: rows.map((row) =>
+          toDigestArticle(row, `あなたの興味: ${row.category_name}`)
+        ),
+        ok: true,
       };
     } catch (error) {
       logger.error(
@@ -534,12 +510,10 @@ export class DigestService {
    */
   private async getActiveCategoriesWithTiming(
     userId: string
-  ): Promise<
-    Awaited<ReturnType<CategoryFilterService['getActiveCategories']>>
-  > {
+  ): Promise<InterestCategoryWithCount[]> {
     const t0 = process.hrtime.bigint();
     try {
-      const result = await this.filterService.getActiveCategories();
+      const result = await getActiveInterestCategories(this.db);
       logger.info(
         { timing: { activeCategoriesFetchMs: hrtimeDiffMs(t0) } },
         'getActiveCategories timing'

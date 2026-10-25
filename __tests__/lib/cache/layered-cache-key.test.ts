@@ -196,6 +196,16 @@ describe('LayeredCache cache key generation', () => {
     ['excludeUnprocessed', {}, { excludeUnprocessed: true }],
     ['excludeLowQuality', {}, { excludeLowQuality: true }],
     ['includeOffTopic', {}, { includeOffTopic: true }],
+    ['interestCategoryIds', {}, { interestCategoryIds: 'cat-1' }],
+    // 値が「指定なし」の置き換えの文字列と同じでも、指定なしとは別のキーにする
+    ['tag (sentinel)', {}, { tag: 'none' }],
+    ['tags (sentinel)', {}, { tags: 'none' }],
+    ['interestCategoryIds (sentinel)', {}, { interestCategoryIds: 'none' }],
+    [
+      'periodMonths',
+      { interestCategoryIds: 'cat-1', periodMonths: 12 },
+      { periodMonths: 3 },
+    ],
   ];
 
   async function actualWhere(params: ArticleCacheParams) {
@@ -204,7 +214,11 @@ describe('LayeredCache cache key generation', () => {
       params,
       params.userId,
       new MetricsCollector(),
-      params.sortBy
+      params.sortBy,
+      {
+        categoryIds: params.interestCategoryIds?.split(',') ?? [],
+        periodMonths: params.periodMonths ?? 0,
+      }
     );
   }
 

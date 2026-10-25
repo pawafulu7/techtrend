@@ -8,7 +8,7 @@ set -euo pipefail
 #
 # Usage:
 #   bash scripts/db/with-prod-db.sh <command...>
-#     PROD_DATABASE_URL を渡して実行する（例: npx tsx scripts/perf/explain-stage2.ts --env prod）
+#     PROD_DATABASE_URL を渡して実行する（例: bash -c 'psql "$PROD_DATABASE_URL" -At -c "SELECT ..."'）
 #   bash scripts/db/with-prod-db.sh --as-database-url <command...>
 #     DATABASE_URL も本番に向けて実行する（Prisma CLI など DATABASE_URL を読むコマンド用）
 

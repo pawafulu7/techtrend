@@ -17,7 +17,7 @@ import {
   parsePgvectorVersion,
   resetPgvectorCapabilitiesForTest,
   supportsIterativeScan,
-} from '@/lib/personalization/filters/pgvector-capabilities';
+} from '@/lib/rag/pgvector-capabilities';
 
 function createDb(queryRaw: jest.Mock) {
   return { $queryRaw: queryRaw } as any;

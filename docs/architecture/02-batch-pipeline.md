@@ -1,6 +1,6 @@
 # バッチ・データパイプライン
 
-記事が収集されてから要約・タグ付け・品質スコア・embedding・トレンドレポートになるまでの流れと、GitHub Actions の定期実行（13 本）を示す。図は主経路（02-A）と派生バッチ・オンデマンド処理（02-B）に分けている。凡例は [索引](./README.md#凡例全図共通) を参照。
+記事が収集されてから要約・タグ付け・品質スコア・embedding・トレンドレポートになるまでの流れと、GitHub Actions の定期実行（14 本）を示す。図は主経路（02-A）と派生バッチ・オンデマンド処理（02-B）に分けている。凡例は [索引](./README.md#凡例全図共通) を参照。
 
 ## 02-A 記事収集の主経路
 
@@ -63,11 +63,13 @@ flowchart LR
     Changelog["collect-changelog.ts<br/>1 日 1 回"]
     CleanTags["clean-tags.ts<br/>週次"]
     OffTopic["classify-off-topic.ts<br/>毎時"]
+    RefreshPersonalization["refresh-personalization.ts<br/>週次"]
 
     TagDB[("Tag / _ArticleToTag")]
     TrendReportDB[("TrendReport")]
     DiffSummaryDB[("DiffSummary")]
     ChangelogDB[("ChangelogProject<br/>Version / Entry")]
+    InterestScoreDB[("InterestCategory の重心<br/>ArticleInterestScore")]
 
     Digest{{"ダイジェスト<br/>app/api/digest"}}
     Rag{{"RAG 検索<br/>app/api/rag"}}
@@ -83,6 +85,9 @@ flowchart LR
     DiffSummary --> DiffSummaryDB
     Changelog --> ChangelogDB
     OffTopic -->|"isOffTopic"| ArticleDB
+    TagDB --> RefreshPersonalization
+    RefreshPersonalization --> InterestScoreDB
+    InterestScoreDB --> Digest
     Regenerate --> ArticleDB
 
     ArticleDB --> Digest
@@ -90,7 +95,7 @@ flowchart LR
     ArticleDB --> SocialPost
 ```
 
-ここでは省略しているが、**13 本のワークフローはすべて失敗時に Slack へ通知する**（`if: failure()` ステップ。02-A に矢印で示したのと同じ仕組み）。各スクリプトの差分判定条件・出力マーカーは下の表を参照。
+ここでは省略しているが、**14 本のワークフローはすべて失敗時に Slack へ通知する**（`if: failure()` ステップ。02-A に矢印で示したのと同じ仕組み）。各スクリプトの差分判定条件・出力マーカーは下の表を参照。
 
 ---
 
@@ -104,19 +109,20 @@ flowchart LR
 | `GenerateTags` | `scripts/scheduled/generate-tags.ts` | `scheduler-tags`（1 日 2 回） | 2 種類を取得して処理する: ①`tags: { none: {} }`（タグ未付与）最大 25 件（`generate-tags.ts:91-101`）②`article` タグのみが付いた記事 最大 25 件（`:103-127`）。1 回の実行で最大 50 件 |
 | `QualityCheck`、`AutoRegen` | `scripts/scheduled/quality-check.ts --days 7`、`scripts/scheduled/auto-regenerate-low-quality.ts --threshold 70 --limit 10` | `scheduler-quality-auto`（1 日 1 回、別のステップ） | `QualityCheck` は過去 7 日分の要約を要約生成と同じ判定（`lib/ai/service/quality-checker.ts`）で採点し、分布と 70 点未満の記事をログに出すだけで、DB には書かない。`AutoRegen` は「`qualityScore < 70` かつ版が古い」記事を抽出して作り直す。2 つの間にデータの受け渡しは無い（#833） |
 | `FixTranslations` | `scripts/maintenance/fix-missing-translations.ts` | `scheduler-translation-fix`（4 時間毎） | `translatedTitle IS NULL` の記事のみ処理 |
-| `EmbeddingWorker` | `scripts/dev/run-embedding-worker.ts`（`lib/workers/embedding-worker.ts` → `lib/workers/job-processor.ts` 経由で `lib/rag/article-embedding-pipeline.ts` を実行） | `scheduler-embedding-worker`（30 分毎） | `EmbeddingJob` の PENDING を処理し、`INSERT INTO "ArticleEmbedding"`（title/summary のみ）を実行。`ArticleChunk` へは書き込まない（注記参照） |
+| `EmbeddingWorker` | `scripts/dev/run-embedding-worker.ts`（`lib/workers/embedding-worker.ts` → `lib/workers/job-processor.ts` 経由で `lib/rag/article-embedding-pipeline.ts` を実行） | `scheduler-embedding-worker`（30 分毎） | `EmbeddingJob` の PENDING を処理し、`INSERT INTO "ArticleEmbedding"`（title/summary のみ）を実行。要約の埋め込みを書いた記事は、興味の分野の点数（`ArticleInterestScore`）も書き直し（`lib/personalization/interest-scores.ts`。書けなければジョブを失敗にして再試行する）、1 件以上書いたら一覧とダイジェストのキャッシュを捨てる。`ArticleChunk` へは書き込まない（注記参照） |
 | `TrendReport` | `scripts/scheduled/generate-trend-report.ts` | `scheduler-trend-report`（1 日 1 回） | `TrendReportGenerator` サービスが `TrendReport` を生成 |
 | `DiffSummary` | `scripts/ai/generate-diff-summaries.ts --week <ISO週> --force` | `scheduler-diff-summary`（週次、月曜 JST 06:00） | 対象週の記事から差分要約を `DiffSummary` に upsert。実行後 Redis の `@techtrend/cache:diff-summary*` キーを削除 |
 | `Changelog` | `scripts/scheduled/collect-changelog.ts` | `scheduler-changelog`（1 日 1 回） | `ChangelogProject` → `ChangelogVersion`（upsert）→ `ChangelogEntry`（createMany）の順に書き込み |
 | `CleanTags` | `scripts/scheduled/clean-tags.ts` | `scheduler-cleanup`（週次、土曜 JST 02:00） | ①**名前が空文字（`name: ''`）の Tag** を `_ArticleToTag` ごと削除（`clean-tags.ts:60-84`。「記事 0 件のタグ」ではない）②スクリプト内に定義された固定の `tagMappings`（`:88-103`）に従ってタグを統合し、統合元の `TagCategoryMapping` を統合先へ移送する（`mergeTagInto`、`:16-54`） |
 | `AssignStories` | `scripts/scheduled/assign-stories.ts`（`lib/services/story-clustering.ts`） | `scheduler-embedding-worker`（ワーカーの後。ワーカーが失敗しても走る） | 埋め込みの近い記事を同じ出来事としてまとめ、`Article.storyId`・`storySize` を書く。記事詳細の「同じ出来事の記事」（`/api/stories/[id]`）が読む |
 | `OffTopic` | `scripts/scheduled/classify-off-topic.ts`（`lib/services/off-topic-classifier.ts`） | `scheduler-off-topic`（毎時 40 分） | タイトルと一覧要約を Gemini に渡して判定し、`Article.isOffTopic`・`offTopicCheckedAt` を書く。ホームは既定で `isOffTopic` の記事を出さない |
+| `RefreshPersonalization` | `scripts/scheduled/refresh-personalization.ts`（`lib/personalization/tag-category-mapping.ts`・`centroid-service.ts`） | `scheduler-personalization`（週次、月曜 JST 04:45） | ①`TagCategoryMapping` を `lib/personalization/constants.ts` のパターンに合わせる（合うのに無い組を足し、合わなくなった組を消す）②分野の重心を「分野の記事の平均 − 全記事の平均」で作り直し、全記事の `ArticleInterestScore` を書き直す（同じトランザクション）③`/api/articles` の一覧のキャッシュ（L1・L3）とダイジェストのキャッシュを捨てる。ホームの「興味の分野で絞り込む」とダイジェストの「あなたへのおすすめ」がこの点数を読む |
 
 ---
 
 ## 定期実行ワークフロー一覧
 
-2026-10-25 時点、`.github/workflows/scheduler-*.yml` 全 13 本。
+2026-10-25 時点、`.github/workflows/scheduler-*.yml` 全 14 本。
 
 | workflow | cron (UTC) | JST | 実行スクリプト（YAML の実行順） | 主な書き込み先 |
 |----------|-----------|-----|--------------------------------|----------------|
@@ -133,8 +139,9 @@ flowchart LR
 | `scheduler-changelog` | `15 3 * * *` | 12:15 | `collect-changelog.ts` | `ChangelogProject`, `ChangelogVersion`, `ChangelogEntry` |
 | `scheduler-diff-summary` | `0 21 * * 0`（日曜） | 月曜06:00 | `generate-diff-summaries.ts --week <ISO週> --force` | `DiffSummary`（+ Redis `diff-summary*` キー削除） |
 | `scheduler-cleanup` | `0 17 * * 5`（金曜） | 土曜02:00 | `clean-tags.ts` | `Tag`, `_ArticleToTag`（空文字名タグの削除・タグ統合）, `TagCategoryMapping`（統合先へ移送） |
+| `scheduler-personalization` | `45 19 * * 0`（日曜） | 月曜04:45 | `refresh-personalization.ts` | `TagCategoryMapping`（パターンに合わせる）, `InterestCategory`（重心）, `ArticleInterestScore`（全件の書き直し） |
 
-全 13 本とも `workflow_dispatch`（`confirm: YES` 入力必須）で手動起動も可能。全ワークフローに `if: failure()` の Slack 通知ステップがある。
+全 14 本とも `workflow_dispatch`（`confirm: YES` 入力必須）で手動起動も可能。全ワークフローに `if: failure()` の Slack 通知ステップがある。
 
 ---
 

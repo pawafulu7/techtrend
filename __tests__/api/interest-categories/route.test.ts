@@ -4,12 +4,10 @@
 
 import { GET } from '@/app/api/interest-categories/route';
 
-// Mock the category filter service
+// Mock the category lookup
 const mockGetActiveCategories = jest.fn();
-jest.mock('@/lib/personalization/category-filter-service', () => ({
-  categoryFilterService: {
-    getActiveCategories: () => mockGetActiveCategories(),
-  },
+jest.mock('@/lib/personalization/categories', () => ({
+  getActiveInterestCategories: () => mockGetActiveCategories(),
 }));
 
 // Mock logger

@@ -30,15 +30,13 @@ import {
   searchCacheKey,
 } from '@/app/api/articles/lib/where-clause-predicates';
 
+import { cacheKeyValue } from '@/lib/cache/constants';
 import { countCache } from './cache-config';
 
 type ArticleWhereInput = Prisma.ArticleWhereInput;
 
 /**
  * Valid sort fields for the list API.
- * Note: This excludes 'finalScore' which is included in VALID_SORT_FIELDS
- * (app/api/articles/lib/types.ts) for the general articles API, but is not
- * applicable to the lightweight list API which does not compute final scores.
  */
 export const LIST_SORT_FIELDS = [
   'publishedAt',
@@ -356,8 +354,8 @@ export async function fetchTotalCount(params: CountParams): Promise<number> {
     params: {
       sources: params.normalizedSources,
       excludeSources: params.normalizedExcludeSources,
-      tag: params.tag || 'all',
-      tags: params.tags || 'none',
+      tag: cacheKeyValue(params.tag, 'all'),
+      tags: cacheKeyValue(params.tags, 'none'),
       tagMode: params.tagMode,
       search: params.normalizedSearch,
       dateRange: params.dateRange || 'all',

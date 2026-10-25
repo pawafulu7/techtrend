@@ -1,25 +1,21 @@
 /**
  * GET Handler for Articles API
  *
- * Handles article listing with pagination, filtering, caching,
- * personalization, and user-specific data overlays.
+ * Handles article listing with pagination, filtering (including interest
+ * categories), caching, and user-specific data overlays.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { ArticleWithRelations } from '@/types/models';
 import { DatabaseError, formatErrorResponse } from '@/lib/errors';
-import {
-  LayeredCache,
-  type ArticleQueryParams,
-} from '@/lib/cache/layered-cache';
+import { LayeredCache } from '@/lib/cache/layered-cache';
 import { getSession } from '@/lib/auth/get-session';
 import {
   MetricsCollector,
   withDbTiming,
   withCacheTiming,
 } from '@/lib/metrics/performance';
-import { getPeriodCutoffDate } from '@/lib/personalization/category-filter-service';
 import logger from '@/lib/logger';
 
 import {
@@ -44,10 +40,29 @@ import {
   searchCacheKey,
   validateTagFilter,
 } from '../lib/where-clause-predicates';
-import { executePersonalizedQuery } from './personalized-query';
 
 /** パーソナライズの期間（periodMonths）の上限（100 年） */
 const MAX_PERIOD_MONTHS = 1200;
+
+/** 興味の分野（categoryIds）の数の上限（有効な分野は 7 つ） */
+const MAX_CATEGORY_IDS = 20;
+
+/** 興味の分野の ID の形（cuid。テストの `cat-1` のような ID も通す） */
+const CATEGORY_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * 興味の分野の ID を検証する。問題があればエラーメッセージを、無ければ null を返す。
+ * ID は IN の条件とキャッシュキーに入るので、キャッシュキーを作る前に呼ぶ（validateTagFilter と同じ）
+ */
+function validateCategoryIds(categoryIds: string[]): string | null {
+  if (categoryIds.length > MAX_CATEGORY_IDS) {
+    return `categoryIds must be at most ${MAX_CATEGORY_IDS} items`;
+  }
+  if (!categoryIds.every((id) => CATEGORY_ID_PATTERN.test(id))) {
+    return 'categoryIds must be IDs of letters, digits, hyphens or underscores';
+  }
+  return null;
+}
 
 // Initialize Layered cache system for articles
 const cache = new LayeredCache();
@@ -123,8 +138,8 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
     : [];
   const periodMonthsParam = searchParams.get('periodMonths');
   const parsedPeriodMonths = Number.parseInt(periodMonthsParam ?? '0', 10);
-  // 上限は 100 年。期間の下限の日時が PostgreSQL の扱える範囲を外れると、推薦から
-  // 切り替えた通常検索が 500 になるため（画面の選択肢は 0・3・6・12 か月）
+  // 上限は 100 年。期間の下限の日時が PostgreSQL の扱える範囲を外れると 500 になるため
+  // （画面の選択肢は 0・3・6・12 か月）
   const periodMonths =
     Number.isFinite(parsedPeriodMonths) && parsedPeriodMonths >= 0
       ? Math.min(parsedPeriodMonths, MAX_PERIOD_MONTHS)
@@ -175,7 +190,11 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
     fields,
     includeUserData,
   };
-  const personalization: PersonalizationParams = { categoryIds, periodMonths };
+  // 同じ分野の組み合わせを同じキャッシュキーにするため、重複を除いて並べる
+  const personalization: PersonalizationParams = {
+    categoryIds: [...new Set(categoryIds)].sort(),
+    periodMonths,
+  };
 
   return {
     pagination,
@@ -188,15 +207,6 @@ function parseQueryParams(request: NextRequest): ParsedQueryParams {
 }
 
 /**
- * 通常検索の並べ替えの列。Article に finalScore 列はない（推薦のスコア）ので公開日で並べる
- */
-function standardSortBy(
-  sortBy: PaginationParams['sortBy']
-): Exclude<PaginationParams['sortBy'], 'finalScore'> {
-  return sortBy === 'finalScore' ? 'publishedAt' : sortBy;
-}
-
-/**
  * Build cache parameters from parsed query params
  */
 function buildCacheParams(
@@ -204,13 +214,20 @@ function buildCacheParams(
   userId: string | undefined,
   hasUserScopedQuery: boolean
 ): ArticleCacheParams {
-  const { pagination, filters, display, normalizedSearch, normalizedSources } =
-    params;
+  const {
+    pagination,
+    filters,
+    display,
+    personalization,
+    normalizedSearch,
+    normalizedSources,
+  } = params;
+  const hasInterestFilter = personalization.categoryIds.length > 0;
 
   return {
     page: pagination.page,
     limit: pagination.limit,
-    sortBy: standardSortBy(pagination.sortBy),
+    sortBy: pagination.sortBy,
     sortOrder: pagination.sortOrder,
     sources: normalizedSources,
     sourceId: filters.sourceId?.toLowerCase(),
@@ -225,6 +242,10 @@ function buildCacheParams(
     readFilter: userId ? filters.readFilter : undefined,
     userId: hasUserScopedQuery ? userId : undefined,
     category: filters.category,
+    interestCategoryIds: hasInterestFilter
+      ? personalization.categoryIds.join(',')
+      : undefined,
+    periodMonths: hasInterestFilter ? personalization.periodMonths : undefined,
     includeRelations: display.includeRelations,
     includeEmptyContent: display.includeEmptyContent,
     excludeUnprocessed: display.excludeUnprocessed,
@@ -238,20 +259,15 @@ function buildCacheParams(
 
 /**
  * Execute standard article query with caching
- *
- * @param publishedAfter - パーソナライズから切り替えたときの期間の下限（`periodMonths`）。
- *   件数キャッシュのキーに期間が入らないので、指定時は件数キャッシュを通さずに数える
  */
 async function executeStandardQuery(
   params: ParsedQueryParams,
   userId: string | undefined,
   hasUserScopedQuery: boolean,
-  metrics: MetricsCollector,
-  publishedAfter?: Date | null
+  metrics: MetricsCollector
 ): Promise<ArticleQueryResult> {
-  const { pagination, filters, display } = params;
-  const { page, limit, sortOrder } = pagination;
-  const sortBy = standardSortBy(pagination.sortBy);
+  const { pagination, filters, display, personalization } = params;
+  const { page, limit, sortBy, sortOrder } = pagination;
 
   // Early return for explicit 'none' filter
   if (filters.sources === 'none') {
@@ -259,16 +275,14 @@ async function executeStandardQuery(
   }
 
   // Build where clause
-  const { where: filterWhere, emptyResult } = await buildWhereClause(
+  const { where, emptyResult } = await buildWhereClause(
     filters,
     display,
     userId,
     metrics,
-    sortBy
+    sortBy,
+    personalization
   );
-  const where = publishedAfter
-    ? { AND: [filterWhere, { publishedAt: { gte: publishedAfter } }] }
-    : filterWhere;
 
   if (emptyResult) {
     return createEmptyResponse(page, limit);
@@ -285,7 +299,7 @@ async function executeStandardQuery(
     metrics,
     () =>
       Promise.all([
-        hasUserScopedQuery || publishedAfter
+        hasUserScopedQuery
           ? prisma.article.count({ where })
           : cache
               .getArticleCount(toArticleQueryParams(cacheParams), async () => {
@@ -333,6 +347,13 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
+    const categoryIdsError = validateCategoryIds(personalization.categoryIds);
+    if (categoryIdsError) {
+      return NextResponse.json(
+        { success: false, error: categoryIdsError },
+        { status: 400 }
+      );
+    }
 
     // Check if user session is required
     const requiresUserSession =
@@ -361,55 +382,29 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
       !!userId;
     const hasUserContext =
       (display.includeUserData && !!userId) || hasUserScopedQuery;
-    // Personalization does not support readFilter - skip personalization when readFilter is active
-    const shouldUsePersonalizedFilter =
-      personalization.categoryIds.length > 0 && !hasUserScopedQuery;
-
-    // Execute query
+    // Execute query（興味の分野の絞り込みも where の条件の 1 つで、通常の一覧と同じキャッシュを通す）
     let baseResult: ArticleQueryResult;
 
-    if (shouldUsePersonalizedFilter) {
-      // Try personalized query first
-      const personalizedResult = await executePersonalizedQuery(
+    if (hasUserScopedQuery) {
+      // User-scoped queries bypass cache
+      baseResult = await executeStandardQuery(
         params,
+        userId,
+        hasUserScopedQuery,
         metrics
       );
-      if (personalizedResult) {
-        baseResult = personalizedResult;
-      } else {
-        // Fall back to standard query（推薦の期間 periodMonths は保つ）
-        baseResult = await executeStandardQuery(
-          params,
-          userId,
-          hasUserScopedQuery,
-          metrics,
-          getPeriodCutoffDate(personalization.periodMonths)
-        );
-      }
     } else {
-      // Standard query with caching
+      // Use cache
       const cacheParams = buildCacheParams(params, userId, hasUserScopedQuery);
-
-      if (hasUserScopedQuery) {
-        // User-scoped queries bypass cache
-        baseResult = await executeStandardQuery(
-          params,
-          userId,
-          hasUserScopedQuery,
-          metrics
-        );
-      } else {
-        // Use cache
-        const cacheResult = await withCacheTiming(
-          metrics,
-          () =>
-            cache.getArticles(cacheParams as ArticleQueryParams, () =>
-              executeStandardQuery(params, userId, hasUserScopedQuery, metrics)
-            ),
-          'cache_articles'
-        );
-        baseResult = cacheResult ?? createEmptyResponse(page, limit);
-      }
+      const cacheResult = await withCacheTiming(
+        metrics,
+        () =>
+          cache.getArticles(cacheParams, () =>
+            executeStandardQuery(params, userId, hasUserScopedQuery, metrics)
+          ),
+        'cache_articles'
+      );
+      baseResult = cacheResult ?? createEmptyResponse(page, limit);
     }
 
     // Merge user data if needed
@@ -441,7 +436,7 @@ export async function handleGet(request: NextRequest): Promise<NextResponse> {
       hasUserId: !!userId,
       cacheOptions: {
         isUserDependent: hasUserContext,
-        hasPersonalization: shouldUsePersonalizedFilter,
+        hasPersonalization: personalization.categoryIds.length > 0,
         hasAuthorization: !!request.headers.get('Authorization'),
       },
       metrics,

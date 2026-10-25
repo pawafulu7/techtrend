@@ -10,11 +10,18 @@
 // モックを先に設定
 jest.mock('@/lib/prisma');
 
+const mockGenerateCacheKey = jest.fn(
+  (_base: string, _options?: { params?: Record<string, unknown> }) =>
+    'test-cache-key'
+);
 jest.mock('@/lib/cache', () => ({
   RedisCache: jest.fn().mockImplementation(() => ({
     get: jest.fn().mockResolvedValue(null),
     set: jest.fn().mockResolvedValue(undefined),
-    generateCacheKey: jest.fn().mockReturnValue('test-cache-key'),
+    generateCacheKey: (
+      base: string,
+      options?: { params?: Record<string, unknown> }
+    ) => mockGenerateCacheKey(base, options),
   })),
 }));
 
@@ -216,6 +223,40 @@ describe('/api/articles/list', () => {
       })
     );
   });
+
+  it.each([
+    ['tag', 'all'],
+    ['tags', 'none'],
+  ])(
+    '%s=%s を、指定なしの一覧・件数とは別のキャッシュキーにする',
+    async (name, value) => {
+      mockPrisma.article.count = jest.fn().mockResolvedValue(0);
+      mockPrisma.article.findMany = jest.fn().mockResolvedValue([]);
+      const keyParams = async (query: string) => {
+        mockGenerateCacheKey.mockClear();
+        await GET(
+          new NextRequest(`http://localhost:3000/api/articles/list?${query}`)
+        );
+        return Object.fromEntries(
+          mockGenerateCacheKey.mock.calls.map(([base, options]) => [
+            base,
+            options?.params?.[name],
+          ])
+        );
+      };
+
+      const withValue = await keyParams(`${name}=${value}`);
+      const withoutValue = await keyParams('');
+
+      expect(withValue['articles:lightweight']).toBeDefined();
+      expect(withValue['articles:lightweight']).not.toBe(
+        withoutValue['articles:lightweight']
+      );
+      expect(withValue['articles:count']).not.toBe(
+        withoutValue['articles:count']
+      );
+    }
+  );
 
   it('rejects more than 50 tags with 400 before querying (#681)', async () => {
     mockPrisma.article.count = jest.fn().mockResolvedValue(0);

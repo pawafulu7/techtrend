@@ -6,47 +6,10 @@
  */
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
-import {
-  INTEREST_CATEGORIES,
-  isGenericTag,
-} from '../../lib/personalization/constants';
-import { TagNormalizer } from '../../lib/services/tag-normalizer';
+import { INTEREST_CATEGORIES } from '../../lib/personalization/constants';
+import { syncTagCategoryMappings } from '../../lib/personalization/tag-category-mapping';
 
 const prisma = createPrismaClient();
-
-/**
- * Build a normalized pattern map for efficient matching
- * Maps normalized tag names to their category slugs
- */
-function buildNormalizedPatternMap(): Map<string, string[]> {
-  const patternMap = new Map<string, string[]>();
-
-  for (const category of INTEREST_CATEGORIES) {
-    for (const pattern of category.tagPatterns) {
-      // Normalize the pattern using TagNormalizer
-      const normalized = TagNormalizer.normalize(pattern);
-      const normalizedName = normalized.name.toLowerCase();
-
-      const existing = patternMap.get(normalizedName) || [];
-      if (!existing.includes(category.slug)) {
-        existing.push(category.slug);
-        patternMap.set(normalizedName, existing);
-      }
-
-      // Also add the original pattern (lowercase) for direct matches
-      const originalLower = pattern.toLowerCase();
-      if (originalLower !== normalizedName) {
-        const existingOriginal = patternMap.get(originalLower) || [];
-        if (!existingOriginal.includes(category.slug)) {
-          existingOriginal.push(category.slug);
-          patternMap.set(originalLower, existingOriginal);
-        }
-      }
-    }
-  }
-
-  return patternMap;
-}
 
 async function seedInterestCategories() {
   console.log('Seeding interest categories...');
@@ -78,75 +41,10 @@ async function seedInterestCategories() {
 
 async function seedTagCategoryMappings() {
   console.log('Seeding tag-category mappings...');
-
-  // Get all categories
-  const categories = await prisma.interestCategory.findMany();
-  const categoryMap = new Map(categories.map((c) => [c.slug, c.id]));
-
-  // Get all existing tags
-  const existingTags = await prisma.tag.findMany({
-    select: { id: true, name: true },
-  });
-
-  console.log(`  Found ${existingTags.length} existing tags`);
-
-  // Build normalized pattern map for efficient matching
-  const patternMap = buildNormalizedPatternMap();
-
-  const mappingsToCreate: { tagId: string; categoryId: string }[] = [];
-  let skippedGeneric = 0;
-
-  for (const tag of existingTags) {
-    // Skip generic tags
-    if (isGenericTag(tag.name)) {
-      skippedGeneric++;
-      continue;
-    }
-
-    // Normalize the tag name using TagNormalizer
-    const normalized = TagNormalizer.normalize(tag.name);
-    const normalizedName = normalized.name.toLowerCase();
-    const originalLower = tag.name.toLowerCase();
-
-    // Find matching categories (check both normalized and original)
-    const matchedSlugs = new Set<string>();
-
-    // Check normalized name
-    const normalizedMatches = patternMap.get(normalizedName);
-    if (normalizedMatches) {
-      normalizedMatches.forEach((slug) => matchedSlugs.add(slug));
-    }
-
-    // Check original name (for cases where normalization differs)
-    if (originalLower !== normalizedName) {
-      const originalMatches = patternMap.get(originalLower);
-      if (originalMatches) {
-        originalMatches.forEach((slug) => matchedSlugs.add(slug));
-      }
-    }
-
-    // Create mappings for all matched categories
-    for (const slug of matchedSlugs) {
-      const categoryId = categoryMap.get(slug);
-      if (!categoryId) continue;
-
-      mappingsToCreate.push({
-        tagId: tag.id,
-        categoryId: categoryId,
-      });
-    }
-  }
-
-  // Bulk create mappings (skip duplicates)
-  if (mappingsToCreate.length > 0) {
-    await prisma.tagCategoryMapping.createMany({
-      data: mappingsToCreate,
-      skipDuplicates: true,
-    });
-  }
-
-  console.log(`  Skipped ${skippedGeneric} generic tags`);
-  console.log(`  Created ${mappingsToCreate.length} tag-category mappings`);
+  const { created, deleted } = await syncTagCategoryMappings(prisma);
+  console.log(
+    `  Created ${created} and deleted ${deleted} tag-category mappings`
+  );
 }
 
 async function printStats() {

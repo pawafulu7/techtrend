@@ -18,7 +18,7 @@ flowchart LR
     end
 
     subgraph gha["GitHub Actions"]
-        gha_sched["スケジューラ<br/>13 本"]
+        gha_sched["スケジューラ<br/>14 本"]
         gha_ci["CI<br/>ci.yml / CodeQL / AI regression / tag-quality"]
     end
 
@@ -72,7 +72,7 @@ flowchart LR
 |----------------|------|-------------------|
 | ブラウザ | エンドユーザーのクライアント | - |
 | RSS フィード / スクレイピング / API 提供ソース / ニュースレター | `Source` テーブル（2026-10-25 時点の dev DB で 87 件・全件 enabled）+ `lib/fetchers/` 各 fetcher。ニュースレターは `lib/fetchers/curated-newsletter/`。フィード・記事ページの取得は SSRF の検証（`lib/utils/url/safe-redirect.ts`）を通す（API の fetcher の一部は直接取得。[05](./05-features.md#8-記事ソースの取得方式)） | - |
-| GitHub Actions スケジューラ 13 本 | `.github/workflows/scheduler-*.yml`（`npx tsx scripts/...` を本番 DB に対して直接実行、失敗時 Slack 通知）。収集・要約の後に Redis のキャッシュも消す | `DATABASE_URL`, `REDIS_URL`, `SLACK_WEBHOOK_URL`, `SLACK_NOTIFICATION_ENABLED`, `GEMINI_API_KEY`, `OPENAI_API_KEY`、vars の `GEMINI_SUMMARY_SERVICE_TIER` など |
+| GitHub Actions スケジューラ 14 本 | `.github/workflows/scheduler-*.yml`（`npx tsx scripts/...` を本番 DB に対して直接実行、失敗時 Slack 通知）。収集・要約の後に Redis のキャッシュも消す | `DATABASE_URL`, `REDIS_URL`, `SLACK_WEBHOOK_URL`, `SLACK_NOTIFICATION_ENABLED`, `GEMINI_API_KEY`, `OPENAI_API_KEY`、vars の `GEMINI_SUMMARY_SERVICE_TIER` など |
 | GitHub Actions CI | `ci.yml` / `codeql.yml` / `ai-regression-test.yml` / `tag-quality-check.yml` | - |
 | proxy.ts | Next.js middleware（Basic 認証ゲート / NUL バイトの拒否 / CSRF / メンテナンスモード / 保護パスのセッションゲート） | `MAINTENANCE_MODE`, `BASIC_AUTH_ENABLED`/`BASIC_AUTH_USER`/`BASIC_AUTH_PASS`（旧名 `BASIC_PASSWORD`）, `BASIC_AUTH_GATE_SECRET`, `CRON_TOKEN`（旧名 `CRON_SECRET`） |
 | RSC Pages | `app/` 配下の公開・認証必須・管理者ページ | - |
@@ -135,7 +135,7 @@ flowchart LR
 - **Upstash は使っていない**。レート制限の実体は `lib/rate-limiter.ts` で、`REDIS_URL` の ioredis クライアント（未設定時はメモリ）を使う。したがってキャッシュとレート制限は同じ Redis 1 ノードを共有している（Upstash 用の env の定義は使われていなかったので削除した）
 - Source 87 件は 2026-10-25 時点の **dev DB** の値（本番の件数は未確認）。取得コマンド: `docker exec techtrend-postgres psql -U postgres -d techtrend_dev -c 'SELECT COUNT(*), COUNT(*) FILTER (WHERE enabled) FROM "Source";'`
 - API routes 62 件の取得コマンド: `find app/api -name route.ts | wc -l`
-- GitHub Actions スケジューラ 13 本の取得コマンド: `ls .github/workflows/scheduler-*.yml | wc -l`
+- GitHub Actions スケジューラ 14 本の取得コマンド: `ls .github/workflows/scheduler-*.yml | wc -l`
 
 ---
 2026-08-15 時点のコードをもとに作成し、2026-10-25 時点のコードに合わせて更新。更新ルールは [索引](./README.md) を参照。

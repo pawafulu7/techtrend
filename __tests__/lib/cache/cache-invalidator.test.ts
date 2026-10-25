@@ -169,6 +169,23 @@ describe('CacheInvalidator', () => {
     });
   });
 
+  describe('onInterestScoresUpdated', () => {
+    it('興味の分野の点数を読む一覧（L1・L3）とダイジェストのキャッシュを捨てる', async () => {
+      await cacheInvalidator.onInterestScoresUpdated();
+
+      for (const namespace of [
+        CACHE_NAMESPACES.L1_PUBLIC,
+        CACHE_NAMESPACES.L3_SEARCH,
+        CACHE_NAMESPACES.DIGEST,
+      ]) {
+        expect(mockRedisService.clearPattern).toHaveBeenCalledWith(
+          createCachePattern(namespace)
+        );
+      }
+      expect(mockRedisService.clearPattern).toHaveBeenCalledTimes(3);
+    });
+  });
+
   describe('onBulkImport', () => {
     it('should invalidate LayeredCache L1 PUBLIC namespace', async () => {
       await cacheInvalidator.onBulkImport();

@@ -4,12 +4,10 @@
  * キャッシュ、プリファレンス判定、重複排除、各セクション生成をテスト
  */
 
-jest.mock('@/lib/personalization/category-filter-service', () => ({
-  CategoryFilterService: jest.fn(),
-  categoryFilterService: {
-    filterArticles: jest.fn(),
-    getActiveCategories: jest.fn(),
-  },
+const mockGetActiveInterestCategories = jest.fn();
+jest.mock('@/lib/personalization/categories', () => ({
+  getActiveInterestCategories: (...args: unknown[]) =>
+    mockGetActiveInterestCategories(...args),
 }));
 
 jest.mock('@/lib/logger', () => ({
@@ -24,12 +22,14 @@ jest.mock('@/lib/logger', () => ({
 import { DigestService, DIGEST_CONFIG } from '@/lib/services/digest-service';
 import type { DigestResponse } from '@/lib/services/digest-service';
 import { prisma } from '@/lib/prisma';
-import { categoryFilterService } from '@/lib/personalization/category-filter-service';
 
 const prismaMock = prisma as any;
-const filterServiceMock = categoryFilterService as jest.Mocked<
-  typeof categoryFilterService
->;
+
+/** $queryRaw に渡した SQL の文字列 */
+const sqlOf = (query: any): string =>
+  Array.isArray(query)
+    ? query.join('')
+    : (query?.strings?.join('') ?? String(query));
 
 // テスト用のカテゴリデータ
 const mockAllCategories = [
@@ -57,11 +57,7 @@ describe('DigestService', () => {
       delete: jest.fn().mockResolvedValue(undefined),
     };
 
-    service = new DigestService(
-      prismaMock,
-      mockCache,
-      filterServiceMock as any
-    );
+    service = new DigestService(prismaMock, mockCache);
 
     // デフォルトのPrismaモック設定（mockDeepのメソッドに直接設定）
     prismaMock.userCategoryPreference.count.mockResolvedValue(0);
@@ -71,11 +67,7 @@ describe('DigestService', () => {
     ]);
     prismaMock.$queryRaw.mockResolvedValue([]);
 
-    // filterArticles / getActiveCategories のデフォルトモック（各テストで上書き可能）
-    // jest.clearAllMocks() は実装をクリアしないが、明示的に再設定することで確実に初期化する
-    (filterServiceMock as any).filterArticles = jest.fn();
-    (filterServiceMock as any).getActiveCategories = jest.fn();
-    filterServiceMock.getActiveCategories.mockResolvedValue(mockAllCategories);
+    mockGetActiveInterestCategories.mockResolvedValue(mockAllCategories);
   });
 
   describe('getDigest', () => {
@@ -97,7 +89,7 @@ describe('DigestService', () => {
       const result = await service.getDigest('user-1', 'daily');
 
       expect(result).toEqual(cachedResponse);
-      expect(mockCache.get).toHaveBeenCalledWith('digest:v2:user-1:daily');
+      expect(mockCache.get).toHaveBeenCalledWith('digest:v3:user-1:daily');
       // キャッシュヒット時はDBアクセスしない
       expect(prismaMock.userCategoryPreference.count).not.toHaveBeenCalled();
     });
@@ -132,21 +124,6 @@ describe('DigestService', () => {
         { categoryId: 'cat-2' },
       ]);
 
-      // filterArticles結果（personalizedセクション用）
-      filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [
-          { articleId: 'article-1', score: 0.9 },
-          { articleId: 'article-2', score: 0.8 },
-        ],
-        meta: {
-          filterMode: 'category',
-          appliedCategories: ['cat-1'],
-          periodMonths: 12,
-          totalMatched: 2,
-          queryMs: 10,
-        },
-        total: 2,
-      } as any);
 
       // personalized記事のクエリ結果
       const personalizedRows = [
@@ -159,6 +136,7 @@ describe('DigestService', () => {
           publishedAt: new Date('2026-02-28'),
           qualityScore: 85,
           sourceId: 'source-1',
+          category_name: 'フロントエンド',
         },
       ];
 
@@ -194,10 +172,8 @@ describe('DigestService', () => {
       // $queryRawは3回呼ばれる（personalized, mustRead, missed）
       // Promise.allによる並列実行のため、クエリ内容でセクションを識別して返す
       prismaMock.$queryRaw.mockImplementation((query: any) => {
-        const sql = Array.isArray(query)
-          ? query.join('')
-          : (query?.strings?.join('') ?? String(query));
-        if (sql.includes('array_position'))
+        const sql = sqlOf(query);
+        if (sql.includes('ArticleInterestScore'))
           return Promise.resolve(personalizedRows);
         if (sql.includes('viewer_count') || sql.includes('COUNT(DISTINCT'))
           return Promise.resolve(mustReadRows);
@@ -233,14 +209,20 @@ describe('DigestService', () => {
       expect(result.sections[2].title).toBe('見逃した注目記事');
       expect(result.sections[2].articles).toHaveLength(1);
 
-      // filterArticlesの呼び出し確認（topK, maxConcurrencyが追加されたことを確認）
-      expect(filterServiceMock.filterArticles).toHaveBeenCalledWith({
-        categoryIds: ['cat-1', 'cat-2'],
-        periodMonths: 12,
-        limit: DIGEST_CONFIG.PERSONALIZED_LIMIT,
-        topK: DIGEST_CONFIG.DIGEST_TOP_K,
-        maxConcurrency: DIGEST_CONFIG.DIGEST_MAX_CONCURRENCY,
-      });
+      // おすすめは選んだ分野の点数（ArticleInterestScore）から、期間内（日次は 24 時間）の記事を選ぶ
+      const personalizedCall = prismaMock.$queryRaw.mock.calls.find(
+        ([query]: [any]) => sqlOf(query).includes('ArticleInterestScore')
+      );
+      expect(personalizedCall).toBeDefined();
+      const values = personalizedCall.slice(1);
+      expect(values).toContainEqual(['cat-1', 'cat-2']);
+      const cutoff = values.find((v: unknown) => v instanceof Date) as Date;
+      expect(Date.now() - cutoff.getTime()).toBeGreaterThanOrEqual(
+        24 * 60 * 60 * 1000 - 1000
+      );
+      expect(Date.now() - cutoff.getTime()).toBeLessThanOrEqual(
+        24 * 60 * 60 * 1000 + 1000
+      );
     });
 
     it('重複排除: overfetchで取得した結果が優先順位通りにdedupeされる', async () => {
@@ -249,24 +231,11 @@ describe('DigestService', () => {
         { categoryId: 'cat-1' },
       ]);
 
-      filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [{ articleId: 'article-1', score: 0.9 }],
-        meta: {
-          filterMode: 'category',
-          appliedCategories: ['cat-1'],
-          periodMonths: 12,
-          totalMatched: 1,
-          queryMs: 10,
-        },
-        total: 1,
-      } as any);
 
       // Promise.allによる並列実行のため、クエリ内容でセクションを識別して返す
       prismaMock.$queryRaw.mockImplementation((query: any) => {
-        const sql = Array.isArray(query)
-          ? query.join('')
-          : (query?.strings?.join('') ?? String(query));
-        if (sql.includes('array_position'))
+        const sql = sqlOf(query);
+        if (sql.includes('ArticleInterestScore'))
           return Promise.resolve([
             {
               id: 'article-1',
@@ -302,17 +271,6 @@ describe('DigestService', () => {
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
       ]);
-      filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [{ articleId: 'article-1', score: 0.9 }],
-        meta: {
-          filterMode: 'category',
-          appliedCategories: ['cat-1'],
-          periodMonths: 12,
-          totalMatched: 1,
-          queryMs: 10,
-        },
-        total: 1,
-      } as any);
       // personalized: 1記事, mustRead: 空, missed: 空
       prismaMock.$queryRaw
         .mockResolvedValueOnce([
@@ -334,7 +292,7 @@ describe('DigestService', () => {
 
       expect(mockCache.set).toHaveBeenCalledTimes(1);
       const [cacheKey, cacheValue] = mockCache.set.mock.calls[0];
-      expect(cacheKey).toBe('digest:v2:user-1:weekly');
+      expect(cacheKey).toBe('digest:v3:user-1:weekly');
       expect(cacheValue.period).toBe('weekly');
       expect(cacheValue.hasPreferences).toBe(true);
       expect(cacheValue.sections).toHaveLength(3);
@@ -345,17 +303,6 @@ describe('DigestService', () => {
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
       ]);
-      filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [],
-        meta: {
-          filterMode: 'category',
-          appliedCategories: ['cat-1'],
-          periodMonths: 12,
-          totalMatched: 0,
-          queryMs: 10,
-        },
-        total: 0,
-      } as any);
       prismaMock.$queryRaw.mockResolvedValue([]);
 
       await service.getDigest('user-1', 'daily');
@@ -384,17 +331,6 @@ describe('DigestService', () => {
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
       ]);
-      filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [{ articleId: 'article-1', score: 0.9 }],
-        meta: {
-          filterMode: 'category',
-          appliedCategories: ['cat-1'],
-          periodMonths: 12,
-          totalMatched: 1,
-          queryMs: 10,
-        },
-        total: 1,
-      } as any);
       // personalized: 1記事, mustRead: 空, missed: 空
       prismaMock.$queryRaw
         .mockResolvedValueOnce([
@@ -421,17 +357,14 @@ describe('DigestService', () => {
       expect(mockCache.set).toHaveBeenCalled();
     });
 
-    it('filterArticlesがエラーを返す場合、personalizedセクションは空になる', async () => {
+    it('おすすめの問い合わせが失敗した場合、personalizedセクションは空になる', async () => {
       prismaMock.userCategoryPreference.count.mockResolvedValue(1);
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
       ]);
-      filterServiceMock.filterArticles.mockRejectedValue(
-        new Error('Embedding service unavailable')
-      );
-      // filterArticles失敗時、personalized用$queryRawは呼ばれない
-      // mustRead → 実データを返す
+      // personalized → 失敗、mustRead → 実データを返す
       prismaMock.$queryRaw
+        .mockRejectedValueOnce(new Error('DB unavailable'))
         .mockResolvedValueOnce([
           {
             id: 'article-must-1',
@@ -463,9 +396,8 @@ describe('DigestService', () => {
 
       expect(result.sections[0].type).toBe('personalized');
       expect(result.sections[0].articles).toHaveLength(0);
-      // filterArticles失敗時はpersonalized用$queryRawは呼ばれない（mustRead+missedの2回のみ）
-      expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(2);
-      // mustRead/missedはfilterArticles失敗に関わらず独立して取得される
+      expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(3);
+      // mustRead/missedはおすすめの失敗に関わらず独立して取得される
       expect(result.sections).toHaveLength(3);
       expect(result.sections[1].articles).toHaveLength(1);
       expect(result.sections[1].articles[0].articleId).toBe('article-must-1');
@@ -482,17 +414,6 @@ describe('DigestService', () => {
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
       ]);
-      filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [{ articleId: 'article-1', score: 0.9 }],
-        meta: {
-          filterMode: 'category',
-          appliedCategories: ['cat-1'],
-          periodMonths: 12,
-          totalMatched: 1,
-          queryMs: 10,
-        },
-        total: 1,
-      } as any);
 
       const callOrder: string[] = [];
 
@@ -540,21 +461,6 @@ describe('DigestService', () => {
         { categoryId: 'cat-1' },
       ]);
 
-      // personalizedとmustRead両方に article-dup が含まれる
-      filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [
-          { articleId: 'article-dup', score: 0.9 },
-          { articleId: 'article-only-p', score: 0.8 },
-        ],
-        meta: {
-          filterMode: 'category',
-          appliedCategories: ['cat-1'],
-          periodMonths: 12,
-          totalMatched: 2,
-          queryMs: 10,
-        },
-        total: 2,
-      } as any);
 
       const dupArticle = {
         id: 'article-dup',
@@ -594,10 +500,8 @@ describe('DigestService', () => {
 
       // Promise.allによる並列実行のため、クエリ内容でセクションを識別して返す
       prismaMock.$queryRaw.mockImplementation((query: any) => {
-        const sql = Array.isArray(query)
-          ? query.join('')
-          : (query?.strings?.join('') ?? String(query));
-        if (sql.includes('array_position'))
+        const sql = sqlOf(query);
+        if (sql.includes('ArticleInterestScore'))
           return Promise.resolve([dupArticle, onlyPArticle]);
         if (sql.includes('viewer_count') || sql.includes('COUNT(DISTINCT'))
           return Promise.resolve([mustReadDupArticle, mustReadOnlyArticle]);
@@ -631,17 +535,6 @@ describe('DigestService', () => {
         { categoryId: 'cat-1' },
       ]);
 
-      filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [{ articleId: 'article-shared', score: 0.9 }],
-        meta: {
-          filterMode: 'category',
-          appliedCategories: ['cat-1'],
-          periodMonths: 12,
-          totalMatched: 1,
-          queryMs: 10,
-        },
-        total: 1,
-      } as any);
 
       const sharedArticle = {
         id: 'article-shared',
@@ -656,10 +549,8 @@ describe('DigestService', () => {
 
       // Promise.allによる並列実行のため、クエリ内容でセクションを識別して返す
       prismaMock.$queryRaw.mockImplementation((query: any) => {
-        const sql = Array.isArray(query)
-          ? query.join('')
-          : (query?.strings?.join('') ?? String(query));
-        if (sql.includes('array_position'))
+        const sql = sqlOf(query);
+        if (sql.includes('ArticleInterestScore'))
           return Promise.resolve([sharedArticle]);
         if (sql.includes('viewer_count') || sql.includes('COUNT(DISTINCT'))
           return Promise.resolve([]);
@@ -702,17 +593,6 @@ describe('DigestService', () => {
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
       ]);
-      filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [],
-        meta: {
-          filterMode: 'category',
-          appliedCategories: ['cat-1'],
-          periodMonths: 12,
-          totalMatched: 0,
-          queryMs: 10,
-        },
-        total: 0,
-      } as any);
       // 全セクション空（ok: true）
       prismaMock.$queryRaw.mockResolvedValue([]);
 
@@ -720,7 +600,7 @@ describe('DigestService', () => {
 
       expect(mockCache.set).toHaveBeenCalledTimes(1);
       const [cacheKey, , ttl] = mockCache.set.mock.calls[0];
-      expect(cacheKey).toBe('digest:v2:user-1:daily');
+      expect(cacheKey).toBe('digest:v3:user-1:daily');
       expect(ttl).toBe(DIGEST_CONFIG.NEGATIVE_CACHE_TTL);
       expect(DIGEST_CONFIG.NEGATIVE_CACHE_TTL).toBe(300);
     });
@@ -730,12 +610,12 @@ describe('DigestService', () => {
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
       ]);
-      // filterArticles がエラー → personalizedResult.ok = false
-      filterServiceMock.filterArticles.mockRejectedValue(
-        new Error('Embedding service unavailable')
+      // おすすめの問い合わせがエラー → personalizedResult.ok = false。mustRead, missed は空（正常）
+      prismaMock.$queryRaw.mockImplementation((query: any) =>
+        sqlOf(query).includes('ArticleInterestScore')
+          ? Promise.reject(new Error('DB unavailable'))
+          : Promise.resolve([])
       );
-      // mustRead, missed は空（正常）
-      prismaMock.$queryRaw.mockResolvedValue([]);
 
       await service.getDigest('user-1', 'daily');
 
@@ -753,17 +633,6 @@ describe('DigestService', () => {
         { categoryId: 'cat-1' },
         { categoryId: 'cat-2' },
       ]);
-      filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [],
-        meta: {
-          filterMode: 'category',
-          appliedCategories: ['cat-1', 'cat-2'],
-          periodMonths: 12,
-          totalMatched: 0,
-          queryMs: 10,
-        },
-        total: 0,
-      } as any);
       prismaMock.$queryRaw.mockResolvedValue([]);
 
       const result = await service.getDigest('user-1', 'daily');
@@ -790,17 +659,6 @@ describe('DigestService', () => {
       prismaMock.userCategoryPreference.findMany.mockResolvedValue([
         { categoryId: 'cat-1' },
       ]);
-      filterServiceMock.filterArticles.mockResolvedValue({
-        articles: [],
-        meta: {
-          filterMode: 'category',
-          appliedCategories: ['cat-1'],
-          periodMonths: 12,
-          totalMatched: 0,
-          queryMs: 10,
-        },
-        total: 0,
-      } as any);
       prismaMock.$queryRaw.mockResolvedValue([]);
 
       await service.getDigest('user-1', 'daily');
@@ -833,8 +691,8 @@ describe('DigestService', () => {
     it('daily/weeklyの両方のキャッシュを削除する', async () => {
       await service.invalidateUserCache('user-1');
       expect(mockCache.delete).toHaveBeenCalledTimes(2);
-      expect(mockCache.delete).toHaveBeenCalledWith('digest:v2:user-1:daily');
-      expect(mockCache.delete).toHaveBeenCalledWith('digest:v2:user-1:weekly');
+      expect(mockCache.delete).toHaveBeenCalledWith('digest:v3:user-1:daily');
+      expect(mockCache.delete).toHaveBeenCalledWith('digest:v3:user-1:weekly');
     });
 
     it('キャッシュ削除失敗時もエラーを投げない', async () => {

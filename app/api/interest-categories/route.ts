@@ -8,7 +8,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { categoryFilterService } from '@/lib/personalization/category-filter-service';
+import { getActiveInterestCategories } from '@/lib/personalization/categories';
 import { logger, sanitizeError } from '@/lib/logger';
 import type { InterestCategoryWithCount } from '@/lib/personalization/types';
 import { publicCacheHeaders } from '@/lib/api/cache-headers';
@@ -39,7 +39,7 @@ interface ErrorResponse {
  */
 export async function GET(): Promise<NextResponse<CategoriesResponse | ErrorResponse>> {
   try {
-    const categories = await categoryFilterService.getActiveCategories();
+    const categories = await getActiveInterestCategories();
 
     logger.info(
       { categoryCount: categories.length },
