@@ -120,6 +120,11 @@ describe('email verification on sign-up (#832)', () => {
     });
   });
 
+  it('sends the verification email after responding to sign-up', () => {
+    // 送信を待つと、メールを送らない登録済みのアドレスとの応答時間の差で、有無が分かる
+    expect(options.advanced?.backgroundTasks?.handler).toEqual(expect.any(Function));
+  });
+
   it('keeps the verification link valid for 24 hours as the email says', () => {
     // メール本文（buildVerificationEmailHtml）と画面に「24時間有効」と書いている
     expect(options.emailVerification?.expiresIn).toBe(24 * 60 * 60);

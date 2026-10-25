@@ -1,6 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from '@better-auth/prisma-adapter';
 import { admin } from 'better-auth/plugins';
+import { waitUntil } from '@vercel/functions';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/config/env';
 import logger from '@/lib/logger';
@@ -206,6 +207,10 @@ export const auth = betterAuth({
 
   advanced: {
     useSecureCookies: isProduction,
+    // 確認メールの送信などを、応答を返した後に回す（Vercel の外では何もせず、そのまま走る）。
+    // 送信を待つと、メールを送らない登録済みのアドレスとの応答時間の差で、アカウントの有無が分かる。
+    // 送信の失敗は Better Auth がログに出す
+    backgroundTasks: { handler: waitUntil },
   },
 
   rateLimit: {

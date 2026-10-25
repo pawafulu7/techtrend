@@ -19,6 +19,10 @@ describe('sanitizeCallbackUrl', () => {
     ['/\\/evil.example'],
     ['/\t/evil.example'],
     ['/\n/evil.example'],
+    // ドットセグメントを除くと `//evil.example` になる
+    ['/.//evil.example'],
+    ['/a/..//evil.example'],
+    ['/%2e//evil.example'],
     ['/auth/login'],
     ['/auth/verify?success=true'],
   ])('falls back to / for %j', (raw) => {
