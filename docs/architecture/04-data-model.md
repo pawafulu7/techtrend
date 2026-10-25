@@ -1,6 +1,6 @@
 # データモデル概要
 
-32 model（2026-10-25 時点）のうち、`Article` を中心に実際の Prisma `@relation` でつながるものだけを抜き出し、コア記事系（04-A）とユーザー・パーソナライズ系（04-B）の 2 図に分けて示す。関係を持たない/薄い独立系テーブルは図に含めず、末尾の表にまとめた。
+33 model（2026-10-25 時点）のうち、`Article` を中心に実際の Prisma `@relation` でつながるものだけを抜き出し、コア記事系（04-A）とユーザー・パーソナライズ系（04-B）の 2 図に分けて示す。関係を持たない/薄い独立系テーブルは図に含めず、末尾の表にまとめた。
 
 ---
 
@@ -104,6 +104,8 @@ erDiagram
     InterestCategory ||--o{ UserCategoryPreference : "categoryId"
     Tag ||--o{ TagCategoryMapping : "tagId"
     InterestCategory ||--o{ TagCategoryMapping : "categoryId"
+    Article ||--o{ ArticleInterestScore : "articleId"
+    InterestCategory ||--o{ ArticleInterestScore : "categoryId"
     User |o--o{ Inquiry : "userId（任意・SetNull）"
 
     User {
@@ -162,6 +164,12 @@ erDiagram
         string tagId FK
         string categoryId FK
     }
+    ArticleInterestScore {
+        string articleId PK
+        string categoryId PK
+        string embeddingId FK
+        float score
+    }
     Inquiry {
         string id PK
         string userId FK
@@ -184,9 +192,10 @@ erDiagram
 - **ArticleView**: 既読/閲覧履歴。`isRead` で既読フラグを持つ
 - **Comment**: 記事への個人メモ。`visibility` で公開/非公開を区別
 - **UserSourcePreset**: ユーザーが保存したソースフィルタ設定。`sourceIds` は `String[]`（**`Source` への Prisma `@relation` ではなく ID 配列を保持するだけの論理参照**）。そのため本図では `Source` への関係線を引いていない
-- **InterestCategory**: パーソナライズ用の興味カテゴリ。`centroidEmbedding` は pgvector の `vector(1536)` 型（カテゴリの重心ベクトル）
+- **InterestCategory**: パーソナライズ用の興味カテゴリ。`centroidEmbedding` は pgvector の `vector(1536)` 型で、「分野の記事（`TagCategoryMapping` のタグを持つ記事）の要約の埋め込みの平均 − 全記事の平均」（`lib/personalization/centroid-service.ts`。週 1 回作り直す）
 - **UserCategoryPreference**: ユーザーごとの興味の分野（`weight` で重み付け、`userId`+`categoryId` で一意）。ホームとダイジェストで同じ設定を使う。ホームの一覧を分野で絞るかどうかは `User.homePersonalizationEnabled` が持つ
-- **TagCategoryMapping**: `Tag`—`InterestCategory` の中間テーブル（`schema.prisma:418-429`）
+- **TagCategoryMapping**: `Tag`—`InterestCategory` の中間テーブル（`schema.prisma:422-433`）。`lib/personalization/constants.ts` のパターンに週 1 回合わせる（`lib/personalization/tag-category-mapping.ts`）
+- **ArticleInterestScore**: 記事が興味の分野に入るときの点数（要約の埋め込みと分野の重心の cos 類似度）。しきい値（0.3）以上の組だけを持つ（`lib/personalization/interest-scores.ts`）。ホームの「興味の分野で絞り込む」とダイジェストの「あなたへのおすすめ」が読む。点数の元の `ArticleEmbedding` にも外部キー（`embeddingId`、`onDelete: Cascade`）を持ち、要約を消して埋め込みが消えると点数も消える
 - **Inquiry**: 問い合わせ（`/contact` → `POST /api/inquiries`、管理は `/admin/inquiries`）。ログイン中に送ったときだけ `userId` が入り、ユーザーが消えても問い合わせは残す（`onDelete: SetNull`）
 - **Article** / **Tag**: 04-A の実体を参照用に再掲（属性は PK のみ）
 
@@ -215,8 +224,8 @@ erDiagram
 - **pgvector を使うフィールドは 3 つ**: `ArticleEmbedding.embedding`、`ArticleChunk.embedding`、`InterestCategory.centroidEmbedding`。いずれも `Unsupported("vector(1536)")`（1536 次元）。Mermaid の `erDiagram` は型に `()` を使えないため、図上は `vector embedding` のように次元を省略して表記している
 - pgvector 拡張を追加したマイグレーション: `prisma/migrations/20251018154552_add_article_embeddings/migration.sql`
 - **`ArticleChunk` は現行パイプラインでは書き込まれない**: embedding 生成の実装 `lib/rag/article-embedding-pipeline.ts` が書き込むのは `ArticleEmbedding` のみで、`ArticleChunk` への `create`/`upsert`/`INSERT` はリポジトリ内に存在しない（`grep -rn 'articleChunk\.(create|upsert)|INSERT INTO "ArticleChunk"' lib app scripts` で確認）。スキーマ上は将来のチャンク分割 RAG 用に残っている
-- model 総数: **32**（2026-10-25 時点）。取得コマンド: `grep -c '^model ' prisma/schema.prisma`
-- 全 32 model の完全な列挙・カラム定義は `prisma/schema.prisma` を参照
+- model 総数: **33**（2026-10-25 時点）。取得コマンド: `grep -c '^model ' prisma/schema.prisma`
+- 全 33 model の完全な列挙・カラム定義は `prisma/schema.prisma` を参照
 
 ---
 

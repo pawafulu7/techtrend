@@ -277,6 +277,25 @@ export class CacheInvalidator {
   }
 
   /**
+   * 記事の興味の分野の点数（ArticleInterestScore）を書いた後に、点数を読むキャッシュを捨てる。
+   * /api/articles の一覧と件数（L1・L3。どちらも分野で絞ったものとそうでないものを分けずに名前空間ごと捨てる。
+   * ユーザーごとの一覧はキャッシュを通らない）と、ダイジェスト
+   */
+  async onInterestScoresUpdated(): Promise<void> {
+    await Promise.all([
+      this.redisService.clearPattern(
+        createCachePattern(CACHE_NAMESPACES.L1_PUBLIC)
+      ),
+      this.redisService.clearPattern(
+        createCachePattern(CACHE_NAMESPACES.L3_SEARCH)
+      ),
+      this.redisService.clearPattern(
+        createCachePattern(CACHE_NAMESPACES.DIGEST)
+      ),
+    ]);
+  }
+
+  /**
    * 技術者向けでない記事の判定（Article.isOffTopic）が変わったときに、
    * 既定の表示から外す一覧（記事一覧・検索・人気）と件数のキャッシュを捨てる（issue #722）。
    * 件数を残すと、一覧の total が古いまま一覧のキャッシュに入り直す

@@ -107,6 +107,10 @@ export interface ArticleCacheParams {
   readFilter?: string;
   userId?: string;
   category?: string;
+  /** 興味の分野の ID（並べ替えてカンマでつないだもの。選んでいなければ undefined） */
+  interestCategoryIds?: string;
+  /** 興味の分野の期間（月数。分野を選んだときだけ） */
+  periodMonths?: number;
   includeRelations: boolean;
   includeEmptyContent: boolean;
   excludeUnprocessed: boolean;
@@ -164,7 +168,6 @@ export const VALID_SORT_FIELDS = [
   'qualityScore',
   'bookmarks',
   'userVotes',
-  'finalScore',
 ] as const;
 
 export type ValidSortField = (typeof VALID_SORT_FIELDS)[number];
@@ -191,6 +194,8 @@ export function toArticleQueryParams(
     readFilter: cacheParams.readFilter,
     userId: cacheParams.userId,
     category: cacheParams.category,
+    interestCategoryIds: cacheParams.interestCategoryIds,
+    periodMonths: cacheParams.periodMonths,
     includeEmptyContent: cacheParams.includeEmptyContent,
     excludeUnprocessed: cacheParams.excludeUnprocessed,
     excludeLowQuality: cacheParams.excludeLowQuality,

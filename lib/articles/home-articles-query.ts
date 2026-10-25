@@ -191,7 +191,7 @@ export function buildArticlesRequest(
     searchParams.set('lightweight', 'true');
   }
 
-  // パーソナライズフィルタがある場合は /api/articles を使用（categoryFilterServiceが必要）
+  // 既読・興味の分野・期間で絞るときは /api/articles を使う（/api/articles/list はこれらの条件を持たない）
   const hasCategoryIds =
     normalizedFilters.categoryIds &&
     String(normalizedFilters.categoryIds).length > 0;

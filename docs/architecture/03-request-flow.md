@@ -56,7 +56,7 @@ flowchart TD
 ホームの一覧は、条件によって 2 つの API を使い分けます（`lib/articles/home-articles-query.ts:194-204`）。
 
 - **既定**: `/api/articles/list`（軽量版）。`RedisCache`（namespace `@techtrend/cache:api:lightweight`、`app/api/articles/list/cache-config.ts`）を使う
-- **既読・興味の分野・期間で絞るとき**: `/api/articles`。下の図はこちらの流れ。興味の分野（`categoryIds`）があれば `executePersonalizedQuery` に進み、既読の絞り込みはキャッシュを通らない
+- **既読・興味の分野・期間で絞るとき**: `/api/articles`。下の図はこちらの流れ。興味の分野（`categoryIds`）は「選んだ分野の点数（`ArticleInterestScore`）を持つ」条件と期間として where に足し（`app/api/articles/lib/query-builder.ts` の `withInterestFilter`）、通常の一覧と同じキャッシュを通る。既読の絞り込みはキャッシュを通らない
 
 ホームの 1 ページ目は、RSC が同じプロセスの中で route handler を直接呼ぶので、`proxy.ts` を通りません（`app/components/home/prefetch-home-articles.ts:144-146`）。
 
@@ -96,10 +96,10 @@ sequenceDiagram
 | 管理者ページの DB-backed role 検証 | `lib/auth/admin-check.ts:12-26`（`requireAdmin()`） |
 | Better Auth 設定本体 | `lib/auth/auth.ts:51-191` |
 | API 用ラッパー | `lib/middleware/with-admin-auth.ts:41`、`lib/middleware/with-user-validation.ts:77`、`lib/middleware/with-rate-limit.ts:75`、`lib/middleware/csrf-protection.ts:295` |
-| `LayeredCache`（L1/L2/L3 = 用途別 Redis） | `lib/cache/layered-cache.ts:39-75` |
+| `LayeredCache`（L1/L2/L3 = 用途別 Redis） | `lib/cache/layered-cache.ts:50-79` |
 | 軽量版の記事一覧（ホームの既定） | `app/api/articles/list/route.ts`、キャッシュは `app/api/articles/list/cache-config.ts` |
-| 記事一覧キャッシュ呼び出し | `app/api/articles/handlers/get.ts:406-408`（`cache.getArticles(params, () => executeStandardQuery(...))`）。興味の分野で絞るときは `:373` の `executePersonalizedQuery` |
-| ユーザー情報オーバーレイ（DataLoader） | `app/api/articles/handlers/get.ts:423`（`fetchUserSpecificData`） |
+| 記事一覧キャッシュ呼び出し | `app/api/articles/handlers/get.ts:419-421`（`cache.getArticles(cacheParams, () => executeStandardQuery(...))`）。興味の分野で絞るときも同じ |
+| ユーザー情報オーバーレイ（DataLoader） | `app/api/articles/handlers/get.ts:435`（`fetchUserSpecificData`） |
 | DataLoader ファクトリ | `lib/dataloader/index.ts:10-19`（`createLoaders()`） |
 | ユーザー情報の DataLoader（オーバーレイで使うのはこの 2 つ） | `lib/dataloader/favorite-loader.ts:221`（`cache: true`）、`lib/dataloader/article-view-loader.ts:135`（`cache: false`）。呼び出しは `app/api/articles/lib/user-data.ts:37-53` |
 | 記事詳細キャッシュ | `lib/cache/article-detail-cache.ts:10-18` |

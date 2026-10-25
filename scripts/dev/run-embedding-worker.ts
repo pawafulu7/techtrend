@@ -2,6 +2,8 @@ import { EmbeddingWorker } from '@/lib/workers/embedding-worker';
 import { logger } from '@/lib/logger';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
+const CACHE_INVALIDATION_TIMEOUT_MS = 30_000;
+
 /**
  * Embedding worker entry point.
  *
@@ -73,6 +75,29 @@ async function runWorker() {
       'Worker execution completed'
     );
 
+    // 要約の埋め込みを書いた記事には興味の分野の点数も書いたので、点数を読む一覧とダイジェストの
+    // キャッシュを捨てる（捨てないと、分野で絞った一覧に新しい記事が TTL の 1 時間ほど出ない）。
+    // 捨てられなくても書き込みは済んでいるので失敗にはしない
+    if (!skipEmbedding && (result.succeeded ?? 0) > 0) {
+      try {
+        // 読み込んだだけで Redis につなぐので、要るときだけ読み込む（assign-stories.ts と同じ）
+        const { cacheInvalidator } = await import('@/lib/cache/cache-invalidator');
+        await Promise.race([
+          cacheInvalidator.onInterestScoresUpdated(),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error('Cache invalidation timed out')),
+              CACHE_INVALIDATION_TIMEOUT_MS
+            ).unref()
+          ),
+        ]);
+      } catch (error) {
+        logger.warn(
+          { errorSummary: summarizeError(error) },
+          'Failed to invalidate caches after embedding'
+        );
+      }
+    }
   } catch (error) {
     console.error();
     console.error('Worker execution failed:', summarizeError(error, { stack: true }));

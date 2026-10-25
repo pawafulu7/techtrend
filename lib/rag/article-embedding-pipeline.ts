@@ -2,6 +2,7 @@ import { PrismaClient, Article } from '@/lib/prisma-exports';
 import { EmbeddingService } from './embedding-service';
 import { logger } from '@/lib/logger';
 import { env } from '@/lib/config/env';
+import { refreshInterestScoresForArticle } from '@/lib/personalization/interest-scores';
 
 /**
  * Article Embedding Pipeline
@@ -99,6 +100,12 @@ export class ArticleEmbeddingPipeline {
         `;
 
         embeddingsCreated.push(key);
+      }
+
+      // 興味の分野の点数は要約の埋め込みから計算する。書けなければ下の catch でジョブを失敗にし、
+      // 再試行させる（成功にすると、次の週 1 回の書き直しまでその記事に点数が付かない）
+      if (embeddingsCreated.includes('summary')) {
+        await refreshInterestScoresForArticle(this.prisma, article.id);
       }
 
       logger.info(

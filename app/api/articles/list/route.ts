@@ -8,6 +8,7 @@ import { getSession } from '@/lib/auth/get-session';
 import { getCursorManager } from '@/lib/pagination/cursor-manager';
 
 import type { LightweightArticle } from './types';
+import { cacheKeyValue } from '@/lib/cache/constants';
 import { cache } from './cache-config';
 import {
   resolveTagIdGroups,
@@ -219,8 +220,8 @@ export async function GET(request: NextRequest) {
         sortOrder,
         sources: normalizedSources,
         excludeSources: normalizedExcludeSources,
-        tag: tag || 'all',
-        tags: tags || 'none',
+        tag: cacheKeyValue(tag, 'all'),
+        tags: cacheKeyValue(tags, 'none'),
         tagMode: tagMode,
         search: normalizedSearch,
         dateRange: dateRange || 'all',

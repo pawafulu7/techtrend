@@ -199,4 +199,4 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 | API（route.ts） | 62 | `find app/api -name route.ts \| wc -l` |
 | 定期実行 | 13 | `ls .github/workflows/scheduler-*.yml \| wc -l` |
 | `createFetcher` のソース名 | 87 | `grep -cE "^\s+case '" lib/fetchers/index.ts` |
-| model | 32 | `grep -c '^model ' prisma/schema.prisma` |
+| model | 33 | `grep -c '^model ' prisma/schema.prisma` |

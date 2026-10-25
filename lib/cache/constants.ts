@@ -32,6 +32,7 @@ export const CACHE_NAMESPACES = {
   // User-specific caches (non-namespaced for backward compatibility)
   USER: 'user',
   RECOMMENDATIONS: 'recommendations',
+  DIGEST: 'techtrend:digest',
 } as const;
 
 /**
@@ -109,4 +110,16 @@ export function createUserCacheKey(userId: string, type?: string): string {
 export function createL2UserCacheKey(userId: string, type?: string): string {
   const baseKey = `${CACHE_NAMESPACES.L2_USER}:${userId}`;
   return type ? `${baseKey}:${type}` : baseKey;
+}
+
+/**
+ * 利用者が渡した文字列をキャッシュのキーに入れるときの形。値は JSON の文字列（引用符つき）にし、
+ * 無いときの `absent`（引用符なし）とぶつからないようにする。
+ * `tag=none` のような値が「指定なし」と同じキーになると、違う条件の結果が指定なしの一覧に入るため
+ */
+export function cacheKeyValue(
+  value: string | null | undefined,
+  absent: string
+): string {
+  return value ? JSON.stringify(value) : absent;
 }

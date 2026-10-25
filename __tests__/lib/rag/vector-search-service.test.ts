@@ -19,7 +19,7 @@ jest.mock('@/lib/logger', () => ({
 }));
 // pgvector の版の判定はプロセス内で保持されるので、テストごとに返す値を決める
 const mockSupportsIterativeScan = jest.fn().mockResolvedValue(false);
-jest.mock('@/lib/personalization/filters/pgvector-capabilities', () => ({
+jest.mock('@/lib/rag/pgvector-capabilities', () => ({
   supportsIterativeScan: (...args: unknown[]) =>
     mockSupportsIterativeScan(...args),
 }));

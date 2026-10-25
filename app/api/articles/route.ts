@@ -16,7 +16,7 @@ import { handleGet } from './handlers';
  * Query Parameters:
  * - page: Page number (default: 1)
  * - limit: Items per page (default: 20, max: 100)
- * - sortBy: Sort field (publishedAt, createdAt, qualityScore, bookmarks, userVotes, finalScore)
+ * - sortBy: Sort field (publishedAt, createdAt, qualityScore, bookmarks, userVotes)
  * - sortOrder: Sort direction (asc, desc)
  * - sources: Comma-separated source IDs
  * - sourceId: Single source ID (deprecated, use sources)

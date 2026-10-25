@@ -4,7 +4,7 @@
  * Category definitions and tag mappings for article personalization.
  */
 
-import type { InterestCategoryDefinition, InterestCategorySlug } from './types';
+import type { InterestCategoryDefinition } from './types';
 
 // =============================================================================
 // Interest Category Definitions
@@ -53,6 +53,10 @@ export const INTEREST_CATEGORIES: InterestCategoryDefinition[] = [
       'Astro',
       'SolidJS',
       'Web Components',
+      'Frontend',
+      'Web Development',
+      'Webdev',
+      'UI/UX',
     ],
   },
   {
@@ -120,6 +124,13 @@ export const INTEREST_CATEGORIES: InterestCategoryDefinition[] = [
       'Netlify',
       'Heroku',
       'DigitalOcean',
+      'Cloud',
+      'Cloud Computing',
+      'CloudNative',
+      'Cloud Native',
+      'CNCF',
+      'Serverless',
+      'Cloudflare Workers',
     ],
   },
   {
@@ -178,6 +189,26 @@ export const INTEREST_CATEGORIES: InterestCategoryDefinition[] = [
       'DALL-E',
       'Midjourney',
       'Copilot',
+      'GitHub Copilot',
+      'AI Agent',
+      'AI Agents',
+      'AIエージェント',
+      'Agent',
+      'MCP',
+      'Codex',
+      'Prompt Engineering',
+      'AI Engineering',
+      'AI Models',
+      'AI Safety',
+      'AI Infrastructure',
+      'Code Generation',
+      'Natural Language Processing',
+      'Computer Vision',
+      'Reinforcement Learning',
+      'Amazon Bedrock',
+      'Bedrock',
+      'Qwen',
+      'Gemma',
     ],
   },
   {
@@ -206,6 +237,9 @@ export const INTEREST_CATEGORIES: InterestCategoryDefinition[] = [
       'SAST',
       'DAST',
       'WAF',
+      'セキュリティ',
+      'CVE',
+      'Cloud Security',
     ],
   },
   {
@@ -296,22 +330,6 @@ export const DEFAULT_PERIOD_MONTHS = 12;
 // =============================================================================
 
 /**
- * Get category definition by slug
- */
-export function getCategoryBySlug(
-  slug: InterestCategorySlug
-): InterestCategoryDefinition | undefined {
-  return INTEREST_CATEGORIES.find((c) => c.slug === slug);
-}
-
-/**
- * Get all category slugs
- */
-export function getAllCategorySlugs(): InterestCategorySlug[] {
-  return INTEREST_CATEGORIES.map((c) => c.slug);
-}
-
-/**
  * Check if a tag name is in the generic stop list (case-insensitive)
  */
 export function isGenericTag(tagName: string): boolean {
@@ -319,18 +337,4 @@ export function isGenericTag(tagName: string): boolean {
   return GENERIC_TAG_STOP_LIST.some(
     (stopTag) => stopTag.toLowerCase() === lowerTagName
   );
-}
-
-/**
- * Find matching categories for a tag name (case-insensitive)
- */
-export function findCategoriesForTag(
-  tagName: string
-): InterestCategorySlug[] {
-  const lowerTagName = tagName.toLowerCase();
-  return INTEREST_CATEGORIES.filter((category) =>
-    category.tagPatterns.some(
-      (pattern) => pattern.toLowerCase() === lowerTagName
-    )
-  ).map((c) => c.slug);
 }

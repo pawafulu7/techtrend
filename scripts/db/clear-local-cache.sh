@@ -5,7 +5,7 @@ set -euo pipefail
 # scripts/db/sync-prod.sh が DB の中身を本番のデータに置き換えた後に呼ぶ（古い一覧や件数が残らないように）。
 #
 # この Redis はキャッシュだけを置く（docker-compose.dev.yml の allkeys-lru）ので、名前空間を選ばずに FLUSHDB で消す
-# （アプリのキャッシュは @techtrend/cache・personalization・techtrend:digest などの名前空間に分かれている）。
+# （アプリのキャッシュは @techtrend/cache・techtrend:digest などの名前空間に分かれている）。
 # アプリのコードは NODE_ENV=test では実物の Redis に繋がないので使わない。コンテナの中の redis-cli で消すので、
 # 手元のポートや .env の REDIS_URL（本番の値が入っていることがある）も使わない。
 # パスワードはコンテナの起動引数（--requirepass）から取る。compose はコンテナを作ったときのシェルの

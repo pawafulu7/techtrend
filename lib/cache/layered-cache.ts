@@ -3,6 +3,7 @@ import type { PaginatedResponse } from '@/lib/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import logger from '@/lib/logger';
 import { env } from '@/lib/config/env';
+import { cacheKeyValue } from './constants';
 
 /**
  * 記事クエリパラメータの型定義
@@ -25,6 +26,10 @@ export interface ArticleQueryParams {
   readFilter?: string;
   userId?: string;
   category?: string;
+  /** 興味の分野の ID（並べ替えてカンマでつないだもの） */
+  interestCategoryIds?: string;
+  /** 興味の分野の期間（月数） */
+  periodMonths?: number;
   includeRelations?: boolean;
   includeEmptyContent?: boolean;
   excludeUnprocessed?: boolean;
@@ -212,11 +217,13 @@ export class LayeredCache {
   private getFilterKeyParams(params: ArticleQueryParams) {
     return {
       category: params.category || 'all',
+      interestCategoryIds: cacheKeyValue(params.interestCategoryIds, 'none'),
+      periodMonths: params.periodMonths ?? 0,
       sources: params.sources || 'all',
       sourceId: params.sourceId || 'none',
       excludeSources: params.excludeSources || 'none',
-      tag: params.tag || 'none',
-      tags: params.tags || 'none',
+      tag: cacheKeyValue(params.tag, 'none'),
+      tags: cacheKeyValue(params.tags, 'none'),
       tagMode: params.tagMode || 'OR',
       dateRange: params.dateRange || 'all',
       dateFrom: params.dateFrom || 'none',

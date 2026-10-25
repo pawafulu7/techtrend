@@ -43,45 +43,46 @@ enum CommentVisibility {
 }
 
 model Article {
-  id                     String             @id @default(cuid())
+  id                     String                 @id @default(cuid())
   title                  String
   translatedTitle        String? // 日本語翻訳タイトル
-  url                    String             @unique
+  url                    String                 @unique
   summary                String?
   thumbnail              String?
   content                String?
   contentLength          Int? // DB trigger maintained: CHAR_LENGTH(content)
-  publishedAt            DateTime           @db.Timestamptz(6)
+  publishedAt            DateTime               @db.Timestamptz(6)
   sourceId               String
-  bookmarks              Int                @default(0)
-  qualityScore           Float              @default(0)
-  userVotes              Int                @default(0)
-  createdAt              DateTime           @default(now()) @db.Timestamptz(6)
-  updatedAt              DateTime           @updatedAt @db.Timestamptz(6)
+  bookmarks              Int                    @default(0)
+  qualityScore           Float                  @default(0)
+  userVotes              Int                    @default(0)
+  createdAt              DateTime               @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime               @updatedAt @db.Timestamptz(6)
   difficulty             String?
   detailedSummary        String?
   articleType            String?
-  summaryVersion         Int                @default(8)
+  summaryVersion         Int                    @default(8)
   category               ArticleCategory?
-  contentUpdatedAt       DateTime?          @db.Timestamptz(6)
-  qualityScoreComputedAt DateTime?          @db.Timestamptz(6)
-  summaryComputedAt      DateTime?          @db.Timestamptz(6)
+  contentUpdatedAt       DateTime?              @db.Timestamptz(6)
+  qualityScoreComputedAt DateTime?              @db.Timestamptz(6)
+  summaryComputedAt      DateTime?              @db.Timestamptz(6)
   skipReason             SkipReason? // スキップ理由（NULL = 正常生成）
-  isHidden               Boolean            @default(false)
+  isHidden               Boolean                @default(false)
   summaryError           String? // エラーメッセージ（NULL = エラーなし）
   storyId                String? // 同じ出来事をまとめたストーリーの代表記事ID（NULL = まとめていない）。scripts/scheduled/assign-stories.ts が設定
   storySize              Int? // 同じストーリーの記事数（2以上。storyId が NULL なら NULL）
-  isOffTopic             Boolean            @default(false) // 技術者向けでない記事（一般の経済・政治・事件など）。一覧の既定の表示から外す。scripts/scheduled/classify-off-topic.ts が設定
-  offTopicCheckedAt      DateTime?          @db.Timestamptz(6) // isOffTopic を判定した時刻（NULL = 未判定）
-  source                 Source             @relation(fields: [sourceId], references: [id])
+  isOffTopic             Boolean                @default(false) // 技術者向けでない記事（一般の経済・政治・事件など）。一覧の既定の表示から外す。scripts/scheduled/classify-off-topic.ts が設定
+  offTopicCheckedAt      DateTime?              @db.Timestamptz(6) // isOffTopic を判定した時刻（NULL = 未判定）
+  source                 Source                 @relation(fields: [sourceId], references: [id])
   articleViews           ArticleView[]
   favorites              Favorite[]
-  tags                   Tag[]              @relation("ArticleToTag")
+  tags                   Tag[]                  @relation("ArticleToTag")
   embeddings             ArticleEmbedding[]
   chunks                 ArticleChunk[]
   embeddingJob           EmbeddingJob?
   comments               Comment[]
   codeTips               CodeTip[]
+  interestScores         ArticleInterestScore[]
 
   @@index([publishedAt(sort: Desc)], map: "idx_article_published_at")
   @@index([sourceId], map: "idx_article_source_id")
@@ -295,14 +296,15 @@ model UserDeletionLog {
 }
 
 model ArticleEmbedding {
-  id           String                      @id @default(cuid())
-  articleId    String
-  embeddingKey EmbeddingKey
-  embedding    Unsupported("vector(1536)")
-  model        String                      @default("text-embedding-3-small")
-  version      Int                         @default(1)
-  computedAt   DateTime                    @default(now()) @db.Timestamptz(6)
-  article      Article                     @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  id             String                      @id @default(cuid())
+  articleId      String
+  embeddingKey   EmbeddingKey
+  embedding      Unsupported("vector(1536)")
+  model          String                      @default("text-embedding-3-small")
+  version        Int                         @default(1)
+  computedAt     DateTime                    @default(now()) @db.Timestamptz(6)
+  article        Article                     @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  interestScores ArticleInterestScore[]
 
   @@unique([articleId, embeddingKey, model, version])
   @@index([articleId], map: "idx_article_embedding_article_id")
@@ -403,12 +405,14 @@ model InterestCategory {
   icon               String?
   sortOrder          Int                          @default(0)
   isActive           Boolean                      @default(true)
+  /// 分野の記事の要約の埋め込みの平均から、全記事の平均を引いたもの（lib/personalization/centroid-service.ts）
   centroidEmbedding  Unsupported("vector(1536)")?
   centroidComputedAt DateTime?                    @db.Timestamptz(6)
   createdAt          DateTime                     @default(now()) @db.Timestamptz(6)
   updatedAt          DateTime                     @updatedAt @db.Timestamptz(6)
   tagMappings        TagCategoryMapping[]
   userPreferences    UserCategoryPreference[]
+  articleScores      ArticleInterestScore[]
 
   @@index([slug], map: "idx_interest_category_slug")
   @@index([sortOrder], map: "idx_interest_category_sort_order")
@@ -426,6 +430,24 @@ model TagCategoryMapping {
   @@unique([tagId, categoryId], map: "uq_tag_category_mapping")
   @@index([tagId], map: "idx_tag_category_mapping_tag")
   @@index([categoryId], map: "idx_tag_category_mapping_category")
+}
+
+/// 記事が興味の分野に入るときの点数（要約の埋め込みと分野の重心の cos 類似度）。
+/// しきい値（INTEREST_SCORE_THRESHOLD）以上の組だけを持つ。lib/personalization/interest-scores.ts が書く。
+/// 生の SQL の INSERT … SELECT でまとめて書くので、cuid の id は持たず (articleId, categoryId) を主キーにする
+model ArticleInterestScore {
+  articleId   String
+  categoryId  String
+  /// 点数の元の要約の埋め込み。要約を消して埋め込みが消えたら、点数も消える
+  embeddingId String
+  score       Float
+  article     Article          @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  category    InterestCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  embedding   ArticleEmbedding @relation(fields: [embeddingId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, categoryId])
+  @@index([categoryId], map: "idx_article_interest_score_category")
+  @@index([embeddingId], map: "idx_article_interest_score_embedding")
 }
 
 model UserCategoryPreference {

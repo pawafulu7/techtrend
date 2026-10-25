@@ -10,12 +10,14 @@ import { sourceCache } from '@/lib/cache/source-cache';
 import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import { MetricsCollector, withCacheTiming } from '@/lib/metrics/performance';
 import logger from '@/lib/logger';
+import { getPeriodCutoffDate } from '@/lib/personalization/period';
 import {
   ALLOWED_SELECTABLE_FIELDS,
   type ArticleWhereInput,
   type ArticleSelect,
   type FilterParams,
   type DisplayOptions,
+  type PersonalizationParams,
 } from './types';
 import {
   pushLowQualityFilter,
@@ -385,6 +387,28 @@ export class ArticleWhereClauseBuilder {
   }
 
   /**
+   * 興味の分野で絞り込む。選んだ分野のどれかの点数を持つ記事（点数はしきい値以上の組だけを持つ。
+   * lib/personalization/interest-scores.ts）に絞り、期間（月数。0 なら無し）を公開日に掛ける。
+   * 分野を選んでいなければ何もしない（期間も分野と一緒のときだけ掛ける）
+   */
+  withInterestFilter(personalization: PersonalizationParams | undefined): this {
+    if (!personalization || personalization.categoryIds.length === 0) {
+      return this;
+    }
+    const and = this.where.AND as ArticleWhereInput[];
+    and.push({
+      interestScores: {
+        some: { categoryId: { in: personalization.categoryIds } },
+      },
+    });
+    const cutoff = getPeriodCutoffDate(personalization.periodMonths);
+    if (cutoff) {
+      and.push({ publishedAt: { gte: cutoff } });
+    }
+    return this;
+  }
+
+  /**
    * Build and return the final where clause
    */
   build(): ArticleWhereInput {
@@ -400,7 +424,8 @@ export async function buildWhereClause(
   display: DisplayOptions,
   userId: string | undefined,
   metrics: MetricsCollector,
-  sortBy?: string
+  sortBy?: string,
+  personalization?: PersonalizationParams
 ): Promise<{ where: ArticleWhereInput; emptyResult: boolean }> {
   const builder = new ArticleWhereClauseBuilder(metrics);
   const tagIdGroups = await resolveTagIdGroups(filters.tag, filters.tags);
@@ -423,7 +448,8 @@ export async function buildWhereClause(
       dateFrom: filters.dateFrom,
       dateTo: filters.dateTo,
       sortBy,
-    });
+    })
+    .withInterestFilter(personalization);
 
   // Source filter is async
   const { emptyResult } = await builder.withSourceFilter(
