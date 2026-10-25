@@ -314,6 +314,34 @@ describe('User Category Preferences API', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Maximum 20 categories allowed');
+      expect(data.details).toBe('Received 25 categories');
+      expect(prismaMock.interestCategory.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should count the selections after removing duplicates', async () => {
+      // 23 件送っても、重複を除くと 20 件なので上限内
+      const ids = Array.from({ length: 20 }, (_, i) => `cat-${i}`);
+      prismaMock.interestCategory.findMany.mockResolvedValue(
+        ids.map((id) => ({ id }))
+      );
+
+      const response = await callPost({
+        categoryIds: [...ids, 'cat-0', 'cat-1', 'cat-2'],
+      });
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.selectedCategories).toEqual(ids);
+    });
+
+    it('should reject null categoryIds', async () => {
+      // null は省略（今の分野を保つ）とは扱わない
+      const response = await callPost({ categoryIds: null });
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('categoryIds must be an array of strings');
+      expect(data.details).toBeUndefined();
     });
 
     it('should reject non-array categoryIds', async () => {
