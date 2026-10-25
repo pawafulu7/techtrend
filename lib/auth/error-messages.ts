@@ -7,10 +7,16 @@ type AuthClientError = {
   status?: number;
 };
 
+const TOO_MANY_REQUESTS_MESSAGE =
+  'リクエストが多すぎます。しばらくしてからもう一度お試しください。';
+
+export function getSignInErrorMessage(error: AuthClientError): string {
+  if (error.status === 429) return TOO_MANY_REQUESTS_MESSAGE;
+  return 'メールアドレスまたはパスワードが正しくありません';
+}
+
 export function getSignUpErrorMessage(error: AuthClientError): string {
-  if (error.status === 429) {
-    return 'リクエストが多すぎます。しばらくしてからもう一度お試しください。';
-  }
+  if (error.status === 429) return TOO_MANY_REQUESTS_MESSAGE;
   switch (error.code) {
     case 'INVALID_EMAIL':
       return '有効なメールアドレスを入力してください';

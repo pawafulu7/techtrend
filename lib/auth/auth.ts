@@ -48,6 +48,8 @@ const nodemailerTransporter = createNodemailerTransporter();
 
 const isProduction = env.NODE_ENV === 'production';
 
+const DEFAULT_ROLE = 'user';
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   secret: env.AUTH_SECRET,
@@ -56,15 +58,29 @@ export const auth = betterAuth({
     env.NEXT_PUBLIC_APP_URL ||
     `http://localhost:${env.PORT}`,
 
-  // メールアドレスの確認が済むまでログインさせない。確認リンクを開くとログインする（#832）
+  // メールアドレスの確認が済むまでログインさせない。確認リンクを開いた後、パスワードでログインする（#832）
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    // 登録済みのアドレスで登録すると、Better Auth はアカウントの有無を明かさないよう偽の応答を返す。
+    // admin プラグインが作成時に入れる値をここでも入れないと role が null になり、有無が分かる
+    customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
+      ...coreFields,
+      role: DEFAULT_ROLE,
+      banned: false,
+      banReason: null,
+      banExpires: null,
+      ...additionalFields,
+      id,
+    }),
   },
 
   emailVerification: {
     sendOnSignUp: true,
-    autoSignInAfterVerification: true,
+    // 確認リンクではログインさせない。自動でログインすると、他人が先に同じアドレスを
+    // 自分のパスワードで登録していたとき、本人がそのアカウントに入ってしまう。
+    // また、他人に自分の確認リンクを踏ませて、自分のアカウントにログインさせられる
+    autoSignInAfterVerification: false,
     // メール本文と画面に「リンクは24時間有効」と書いている。既定は1時間
     expiresIn: 24 * 60 * 60,
     sendVerificationEmail: async (
@@ -105,13 +121,17 @@ export const auth = betterAuth({
       }
       if (resend) {
         try {
-          await resend.emails.send({
+          const { error: sendError } = await resend.emails.send({
             from,
             to: data.user.email,
             subject,
             html: htmlContent,
             text: textContent,
           });
+          // Resend は送信の失敗を例外にせず、戻り値の error で返す
+          if (sendError) {
+            throw new Error(`Resend error: ${sendError.name}`);
+          }
         } catch (error) {
           logger.error(
             { err: error },
@@ -163,7 +183,7 @@ export const auth = betterAuth({
 
   plugins: [
     admin({
-      defaultRole: 'user',
+      defaultRole: DEFAULT_ROLE,
       adminRoles: ['admin'],
     }),
   ],

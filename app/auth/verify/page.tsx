@@ -1,8 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { authClient } from '@/lib/auth/auth-client';
+import { useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -11,7 +9,7 @@ import {
 } from '@/components/ui-v2/card-v2';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle, XCircle, Mail } from 'lucide-react';
+import { CheckCircle, XCircle, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 type VerificationState = 'verified' | 'sent' | 'expired' | 'error';
@@ -19,6 +17,7 @@ type VerificationState = 'verified' | 'sent' | 'expired' | 'error';
 // 確認メールのリンク（Better Auth の /api/auth/verify-email）からの戻り先は
 // EMAIL_VERIFICATION_CALLBACK_URL（?success=true）。確認に失敗すると Better Auth は
 // 同じ戻り先に `&error=<コード>` を付けて返すので、error を success より先に見る。
+// 確認が済んでもログインはしない（lib/auth/auth.ts の autoSignInAfterVerification）。
 function getVerificationState(
   searchParams: Pick<URLSearchParams, 'get'>
 ): VerificationState {
@@ -45,22 +44,7 @@ const MESSAGES: Record<VerificationState, string> = {
 
 export default function VerifyPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const { data: session, isPending: sessionIsPending } =
-    authClient.useSession();
   const verificationState = getVerificationState(searchParams);
-  // 確認が済むと、Better Auth がログインした状態で戻す（autoSignInAfterVerification）
-  const isSignedIn = !!session;
-
-  useEffect(() => {
-    if (verificationState !== 'verified' || !isSignedIn) return;
-    // 3秒後にホームへリダイレクト
-    const timer = setTimeout(() => {
-      router.push('/');
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [verificationState, isSignedIn, router]);
 
   const getIcon = () => {
     switch (verificationState) {
@@ -91,46 +75,24 @@ export default function VerifyPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {verificationState === 'verified' &&
-            (sessionIsPending ? (
-              <div className="flex justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-[var(--tt-color-info)]" />
+          {verificationState === 'verified' && (
+            <div className="space-y-4">
+              <Alert className="border-[var(--tt-color-positive-border)] bg-[var(--tt-color-positive-bg)]">
+                <CheckCircle className="h-4 w-4 text-[var(--tt-color-positive)]" />
+                <AlertDescription className="text-[var(--tt-color-positive)]">
+                  アカウントが有効化されました。ログインしてTechTrendをお楽しみください。
+                </AlertDescription>
+              </Alert>
+              <div className="flex flex-col gap-2">
+                <Button asChild className="w-full">
+                  <Link href="/auth/login">ログインページへ</Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/">ホームへ戻る</Link>
+                </Button>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <Alert className="border-[var(--tt-color-positive-border)] bg-[var(--tt-color-positive-bg)]">
-                  <CheckCircle className="h-4 w-4 text-[var(--tt-color-positive)]" />
-                  <AlertDescription className="text-[var(--tt-color-positive)]">
-                    {isSignedIn
-                      ? 'ログインしました。まもなくホームページへ移動します...'
-                      : 'アカウントが有効化されました。ログインしてTechTrendをお楽しみください。'}
-                  </AlertDescription>
-                </Alert>
-
-                {isSignedIn ? (
-                  <div className="space-y-4">
-                    <div className="flex justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-[var(--tt-color-info)]" />
-                    </div>
-                    <p className="text-muted-foreground text-center text-sm">
-                      リダイレクト中...
-                    </p>
-                    <Button asChild variant="outline" className="w-full">
-                      <Link href="/">今すぐホームへ移動</Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <Button asChild className="w-full">
-                      <Link href="/auth/login">ログインページへ</Link>
-                    </Button>
-                    <Button asChild variant="outline" className="w-full">
-                      <Link href="/">ホームへ戻る</Link>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
+            </div>
+          )}
 
           {verificationState === 'sent' && (
             <Button asChild variant="outline" className="w-full">

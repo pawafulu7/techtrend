@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { LoginForm } from '@/components/auth/LoginForm';
@@ -199,6 +199,29 @@ describe('LoginForm', () => {
       });
     });
 
+    it('tells the user to wait when sign-in is rate limited', async () => {
+      const user = userEvent.setup();
+      mockedSignInEmail.mockResolvedValue({
+        data: null,
+        error: { message: 'Too many requests', status: 429 },
+      } as any);
+
+      render(<LoginForm />);
+
+      await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com');
+      await user.type(screen.getByLabelText('パスワード'), 'password123');
+      await user.click(screen.getByRole('button', { name: 'ログイン' }));
+
+      expect(
+        await screen.findByText(
+          'リクエストが多すぎます。しばらくしてからもう一度お試しください。'
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('メールアドレスまたはパスワードが正しくありません')
+      ).not.toBeInTheDocument();
+    });
+
     it('handles network error gracefully', async () => {
       const user = userEvent.setup();
       mockedSignInEmail.mockRejectedValue(new Error('Network error'));
@@ -276,6 +299,41 @@ describe('LoginForm', () => {
           screen.getByText('確認メールを再送信しました。')
         ).toBeInTheDocument();
       });
+    });
+
+    it('does not allow logging in again while the resend is in flight', async () => {
+      let resolveResend: (value: unknown) => void = () => {};
+      mockedSendVerificationEmail.mockReturnValue(
+        new Promise((resolve) => {
+          resolveResend = resolve;
+        }) as any
+      );
+      const user = await submitUnverified();
+      await user.click(
+        screen.getByRole('button', { name: '確認メールを再送信' })
+      );
+
+      // 通信中にログインし直せると、古い再送の結果が別のアドレスの案内に出る
+      expect(screen.getByRole('button', { name: 'ログイン' })).toBeDisabled();
+
+      await act(async () => {
+        resolveResend({ data: { status: true }, error: null });
+      });
+      expect(screen.getByRole('button', { name: 'ログイン' })).toBeEnabled();
+      expect(screen.getByText('確認メールを再送信しました。')).toBeInTheDocument();
+    });
+
+    it('tells the user when the resend request throws', async () => {
+      mockedSendVerificationEmail.mockRejectedValue(new Error('Network error'));
+      const user = await submitUnverified();
+
+      await user.click(
+        screen.getByRole('button', { name: '確認メールを再送信' })
+      );
+
+      expect(
+        await screen.findByText(/確認メールを再送信できませんでした/)
+      ).toBeInTheDocument();
     });
 
     it('tells the user when resending fails', async () => {

@@ -1,16 +1,18 @@
 /**
  * 認証関連のルート生成ヘルパー
  */
+import { toInternalPath } from './internal-path';
 
 /**
  * callbackUrlを検証し、内部相対パスのみ許可する。
- * 外部URL（//プロトコル相対）や/auth/*自己参照をブロック。
+ * 外部URL（//プロトコル相対、`/\evil.example` など）や/auth/*自己参照をブロック。
  */
 export function sanitizeCallbackUrl(raw?: string): string {
   if (!raw || typeof raw !== 'string') return '/';
-  const startsWithSingleSlash = raw.startsWith('/') && !raw.startsWith('//');
-  const notAuthPath = !raw.startsWith('/auth/');
-  return startsWithSingleSlash && notAuthPath ? raw : '/';
+  if (!raw.startsWith('/')) return '/';
+  const path = toInternalPath(raw);
+  if (!path || path.startsWith('/auth/')) return '/';
+  return path;
 }
 
 /**

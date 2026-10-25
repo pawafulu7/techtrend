@@ -39,7 +39,7 @@ export function SignupForm() {
     setError(null);
 
     try {
-      // メールアドレスの確認が済むまでログインしない。確認リンクを開くとログインする
+      // メールアドレスの確認が済むまでログインしない。確認した後にパスワードでログインする
       const { error: signUpError } = await authClient.signUp.email({
         name: data.name,
         email: data.email,

@@ -2,8 +2,9 @@
  * メールアドレスでの新規登録 → 確認メールのリンク → ログイン（#832）
  *
  * 登録フォームは Better Auth の /api/auth/sign-up/email を呼ぶ。メールアドレスの確認が
- * 済むまでログインできず、確認リンク（/api/auth/verify-email）を開くとログインした状態で
- * /auth/verify に戻る（lib/auth/auth.ts の requireEmailVerification・autoSignInAfterVerification）。
+ * 済むまでログインできない。確認リンク（/api/auth/verify-email）を開くと確認済みになって
+ * /auth/verify に戻り、その後パスワードでログインする（lib/auth/auth.ts の
+ * requireEmailVerification・autoSignInAfterVerification）。
  *
  * e2e では確認メールを送らない（docker-compose.test.yml の SKIP_EMAIL_SEND）。そのため
  * リンクのトークンは、Better Auth と同じ形（HS256 の JWT。payload は email）で
@@ -46,6 +47,13 @@ function verificationLink(token: string): string {
   return `/api/auth/verify-email?${params.toString()}`;
 }
 
+async function logIn(page: Page, email: string) {
+  await page.goto('/auth/login');
+  await page.getByLabel('メールアドレス').fill(email);
+  await page.getByLabel('パスワード').fill(PASSWORD);
+  await page.getByRole('button', { name: 'ログイン' }).click();
+}
+
 async function signUpWithEmailTab(page: Page, email: string) {
   await page.goto('/auth/signup');
   // 既定のタブは「メールで登録」
@@ -66,7 +74,7 @@ async function getSessionUser(page: Page) {
 }
 
 test.describe('メールアドレスでの新規登録（#832）', () => {
-  test('登録後は確認が済むまでログインできず、確認リンクを開くとログインする', async ({
+  test('登録後は確認が済むまでログインできず、確認リンクを開いた後にパスワードでログインできる', async ({
     page,
   }) => {
     const email = `signup-832-${Date.now()}@example.com`;
@@ -75,28 +83,27 @@ test.describe('メールアドレスでの新規登録（#832）', () => {
     expect(await getSessionUser(page)).toBeNull();
 
     // 確認前のログインは、未確認の案内を出して止まる
-    await page.goto('/auth/login');
-    await page.getByLabel('メールアドレス').fill(email);
-    await page.getByLabel('パスワード').fill(PASSWORD);
-    await page.getByRole('button', { name: 'ログイン' }).click();
+    await logIn(page, email);
     await expect(
       page.getByText(/メールアドレスの確認が済んでいません/)
     ).toBeVisible({ timeout: TIMEOUTS.medium });
     await expect(page).toHaveURL(/\/auth\/login/);
     expect(await getSessionUser(page)).toBeNull();
 
-    // 確認メールのリンクを開く
+    // 確認メールのリンクを開く。確認済みになるが、ログインはしない
     await page.goto(verificationLink(createVerificationToken(email, 60 * 60)));
     await expect(page).toHaveURL(/\/auth\/verify\?success=true$/);
     await expect(
-      page.getByText('ログインしました。まもなくホームページへ移動します...')
+      page.getByRole('heading', { level: 1, name: '確認完了！' })
     ).toBeVisible({ timeout: TIMEOUTS.medium });
+    expect(await getSessionUser(page)).toBeNull();
 
+    // パスワードでログインできる
+    await logIn(page, email);
+    await expect(page).toHaveURL(/\/$/, { timeout: TIMEOUTS.medium });
     const user = await getSessionUser(page);
     expect(user?.email).toBe(email);
     expect(user?.emailVerified).toBe(true);
-
-    await expect(page).toHaveURL(/\/$/, { timeout: TIMEOUTS.medium });
   });
 
   test('期限切れのリンクは期限切れの表示になり、ログインしない', async ({

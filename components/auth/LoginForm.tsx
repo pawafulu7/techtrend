@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
+import { getSignInErrorMessage } from '@/lib/auth/error-messages';
 import { useRouter } from 'next/navigation';
 import {
   EMAIL_VERIFICATION_CALLBACK_URL,
@@ -56,7 +57,7 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
       if (signInError?.code === 'EMAIL_NOT_VERIFIED') {
         setUnverifiedEmail(data.email);
       } else if (signInError) {
-        setError('メールアドレスまたはパスワードが正しくありません');
+        setError(getSignInErrorMessage(signInError));
       } else {
         router.push(safeUrl);
         router.refresh();
@@ -94,7 +95,7 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
         <Alert className="border-[var(--tt-color-warning-border)] bg-[var(--tt-color-warning-bg)]">
           <AlertDescription className="space-y-3 text-[var(--tt-color-text)]">
             <p>
-              メールアドレスの確認が済んでいません。確認メールのリンクを開くと確認が完了し、ログインした状態になります。
+              メールアドレスの確認が済んでいません。確認メールのリンクを開いて確認を済ませてから、もう一度ログインしてください。
             </p>
             {resendState === 'sent' ? (
               <p>確認メールを再送信しました。</p>
@@ -171,7 +172,12 @@ export function LoginForm({ callbackUrl = '/' }: LoginFormProps) {
         )}
       </div>
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
+      {/* 再送の通信中にログインし直すと、古い再送の結果が新しい案内に出てしまうので止める */}
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={isLoading || resendState === 'sending'}
+      >
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
