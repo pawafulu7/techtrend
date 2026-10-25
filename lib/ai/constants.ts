@@ -218,11 +218,13 @@ export function getSummaryLengthBand(
 
 /**
  * 本文の長さから、要約の検証（service/quality-checker.ts の checkQuality）に渡す contentAnalysis を作る。
- * 要約生成（unified-summary-service.ts）と定期の品質チェック（scripts/scheduled/quality-check.ts）で
- * 短記事の判定を揃えるため、ここだけで組み立てる。短記事の判定は getSummaryLengthBand と同じく、
+ * 要約生成（unified-summary-service.ts）と、要約を採点するスクリプト（定期の品質チェック・手動の作り直し・
+ * ベンチマーク）で短記事の判定を揃えるため、ここだけで組み立てる。短記事の判定は getSummaryLengthBand と同じく、
  * 本文の長さが分かる（1 以上）ときだけ行う
  */
-export function contentAnalysisForLength(contentLength: number): ContentAnalysis {
+export function contentAnalysisForLength(
+  contentLength: number
+): ContentAnalysis {
   return {
     totalLength: contentLength,
     contentLength,

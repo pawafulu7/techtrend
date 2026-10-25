@@ -71,7 +71,7 @@ interface RegenerationResult {
   status: 'success' | 'failed' | 'skipped';
   error?: string;
   attempts: number;
-  /** 要約を保存したか。再生成後も短くて skipped にした記事も、要約は保存している */
+  /** 要約を保存したか。作り直した要約が基準を満たして保存したときだけ true にする。dry-run では設定しない */
   saved?: boolean;
 }
 
