@@ -151,7 +151,8 @@ async function generateAndScore(
       const qualityResult = qualityChecker.checkQuality(
         output.headline,
         output.detailedSummary,
-        contentAnalysisForLength(article.content_len)
+        // 要約生成と同じく content.length で数える（content_len は SQL の LENGTH でコードポイント数）
+        contentAnalysisForLength(article.content.length)
       );
 
       results.push({

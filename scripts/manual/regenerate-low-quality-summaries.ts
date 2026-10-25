@@ -173,8 +173,9 @@ async function detectLowQualityArticles(): Promise<LowQualityArticle[]> {
   for (const article of articles) {
     if (!article.summary) continue;
 
-    // 検出では本文を読まないので、長さは contentLength（CHAR_LENGTH）で数える。
-    // 生成時（content.length）と絵文字などで食い違うことがあるが、作り直した要約は content.length で判定し直す
+    // 検出では本文を読まない（全記事の本文をメモリに載せないため）ので、長さは contentLength（CHAR_LENGTH）で
+    // 数える。生成時は content.length（UTF-16）なので、絵文字などを含み長さの帯の境目（400 字など）にある
+    // 記事では点数が食い違い、作り直しの対象から漏れることも、余分に入ることもある
     const qualityCheck = qualityChecker.checkQuality(
       article.summary,
       article.detailedSummary || '',
