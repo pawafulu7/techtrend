@@ -177,7 +177,7 @@ export const THIN_CONTENT_MAX_LENGTH = 400;
 /**
  * 保存済みの一覧要約を採点するときの長さ帯
  *
- * 記事スコア（quality-score.ts）と定期の品質チェック（quality-scorer.ts）が使う。
+ * 記事スコア（quality-score.ts）が使う。
  * min〜max が目標帯、penaltyMin・absoluteMin は検証側（service/quality-checker.ts）の
  * 減点しきい値と同じ値。
  */

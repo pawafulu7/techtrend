@@ -213,7 +213,7 @@ describe('GeminiClient.generateSummaryWithTags の出力トークン', () => {
     });
     mockGetGenerativeModel.mockReturnValue({ generateContent });
 
-    await new GeminiClient('test-api-key').generateSummaryWithTags('t', 'c', 0);
+    await new GeminiClient('test-api-key').generateSummaryWithTags('t', 'c');
 
     expect(generateContent.mock.calls[0][0].generationConfig.maxOutputTokens).toBe(
       GEMINI_API.DETAILED_MAX_TOKENS

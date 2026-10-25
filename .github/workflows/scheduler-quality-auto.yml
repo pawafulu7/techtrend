@@ -35,7 +35,7 @@ jobs:
           REDIS_URL: ${{ secrets.REDIS_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          npx tsx scripts/scheduled/quality-check.ts --days 7 --auto-regenerate
+          npx tsx scripts/scheduled/quality-check.ts --days 7
           npx tsx scripts/scheduled/auto-regenerate-low-quality.ts --threshold 70 --limit 10
       # 直近3日で要約の無い記事を補う（収集時の要約生成に失敗した記事。
       # 旧 pm2 scheduler.ts の 15:30 の処理を移した。issue #710）

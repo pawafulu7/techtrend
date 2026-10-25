@@ -1,6 +1,6 @@
 /**
  * 再生成スクリプト共通ユーティリティ
- * auto-regenerate-low-quality.ts / regenerate-summaries.ts で共有
+ * auto-regenerate-low-quality.ts で使う
  */
 
 export interface RegenerationStats {

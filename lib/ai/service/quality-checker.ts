@@ -37,6 +37,21 @@ const SPECULATIVE_PATTERNS = [
   '多分',
 ];
 
+/**
+ * 本文の長さから checkQuality に渡す contentAnalysis を作る。
+ * 要約生成（unified-summary-service.ts）と定期の品質チェック（scripts/scheduled/quality-check.ts）で
+ * 短い記事の判定を揃えるため、ここだけで組み立てる
+ */
+export function contentAnalysisForLength(
+  contentLength: number
+): ContentAnalysis {
+  return {
+    totalLength: contentLength,
+    contentLength,
+    isThinContent: contentLength < THIN_CONTENT_MAX_LENGTH,
+  };
+}
+
 export class SummaryQualityChecker implements QualityChecker {
   checkQuality(
     summary: string,

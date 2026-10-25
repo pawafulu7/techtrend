@@ -76,8 +76,7 @@ flowchart LR
 
     GenerateTags --> TagDB
     CleanTags --> TagDB
-    QualityCheck --> ArticleDB
-    QualityCheck --> AutoRegen
+    ArticleDB --> QualityCheck
     AutoRegen --> ArticleDB
     FixTranslations --> ArticleDB
     TrendReport --> TrendReportDB
@@ -103,7 +102,7 @@ flowchart LR
 | `ManageSummaries` | `scripts/scheduled/manage-summaries.ts generate` | scraping/qiita ワークフローのみ、`collect-feeds.ts` の**後に追加で**呼ばれ、収集時に要約が付かなかった記事を埋める | `summaryComputedAt >= 実行開始時刻` の記事を「今回処理した記事」として抽出し、Slack 通知の対象マーカーに使う（`manage-summaries.ts:161-165`） |
 | `ManageQuality` | `scripts/scheduled/manage-quality-scores.ts calculate` | ①`scheduler-daily-quality`（単独、日次）②scraping/qiita ワークフロー内（`ManageSummaries` 直後） | `ProcessingLog` の前回実行時刻（`getLastProcessedTime`）をチェックポイントにし、`qualityScoreComputedAt IS NULL` または `qualityScore = 0` または `contentUpdatedAt > 前回実行時刻` の記事のみを処理対象にする（`manage-quality-scores.ts:112-125`） |
 | `GenerateTags` | `scripts/scheduled/generate-tags.ts` | `scheduler-tags`（1 日 2 回） | 2 種類を取得して処理する: ①`tags: { none: {} }`（タグ未付与）最大 25 件（`generate-tags.ts:91-101`）②`article` タグのみが付いた記事 最大 25 件（`:103-127`）。1 回の実行で最大 50 件 |
-| `QualityCheck` → `AutoRegen` | `scripts/scheduled/quality-check.ts --days 7 --auto-regenerate` → `scripts/scheduled/auto-regenerate-low-quality.ts --threshold 70 --limit 10` | `scheduler-quality-auto`（1 日 1 回） | `QualityCheck` は過去 7 日分を走査し、要約の文面に問題がある記事に `summaryVersion = 0` の印を付ける。`AutoRegen` は「`qualityScore < 70` かつ版が古い」記事を抽出するので、記事スコアが 70 以上の記事は印が付いても作り直されない（#833） |
+| `QualityCheck` → `AutoRegen` | `scripts/scheduled/quality-check.ts --days 7` → `scripts/scheduled/auto-regenerate-low-quality.ts --threshold 70 --limit 10` | `scheduler-quality-auto`（1 日 1 回） | `QualityCheck` は過去 7 日分の要約を要約生成と同じ判定（`lib/ai/service/quality-checker.ts`）で採点し、分布と生成時の合格点に届かない記事をログに出すだけで、DB には書かない。`AutoRegen` は「`qualityScore < 70` かつ版が古い」記事を抽出して作り直す（#833） |
 | `FixTranslations` | `scripts/maintenance/fix-missing-translations.ts` | `scheduler-translation-fix`（4 時間毎） | `translatedTitle IS NULL` の記事のみ処理 |
 | `EmbeddingWorker` | `scripts/dev/run-embedding-worker.ts`（`lib/workers/embedding-worker.ts` → `lib/workers/job-processor.ts` 経由で `lib/rag/article-embedding-pipeline.ts` を実行） | `scheduler-embedding-worker`（30 分毎） | `EmbeddingJob` の PENDING を処理し、`INSERT INTO "ArticleEmbedding"`（title/summary のみ）を実行。`ArticleChunk` へは書き込まない（注記参照） |
 | `TrendReport` | `scripts/scheduled/generate-trend-report.ts` | `scheduler-trend-report`（1 日 1 回） | `TrendReportGenerator` サービスが `TrendReport` を生成 |
@@ -126,7 +125,7 @@ flowchart LR
 | `scheduler-qiita` | `5 20 * * *`, `5 8 * * *` | 05:05, 17:05 | `collect-feeds.ts`（Qiita Popular）→ 同上 2 本（同順） | `Article`, `EmbeddingJob` |
 | `scheduler-tags` | `30 23 * * *`, `30 11 * * *` | 08:30, 20:30 | `generate-tags.ts` | `Tag`, `_ArticleToTag` |
 | `scheduler-daily-quality` | `0 2 * * *` | 11:00 | `manage-quality-scores.ts calculate` | `Article`（qualityScore と qualityScoreComputedAt） |
-| `scheduler-quality-auto` | `30 6 * * *` | 15:30 | `quality-check.ts --days 7 --auto-regenerate` → `auto-regenerate-low-quality.ts --threshold 70 --limit 10` → `manage-summaries.ts missing --days 3 --batch 10` | `Article`（品質フラグ・再生成後の要約/スコア・欠けていた要約） |
+| `scheduler-quality-auto` | `30 6 * * *` | 15:30 | `quality-check.ts --days 7` → `auto-regenerate-low-quality.ts --threshold 70 --limit 10` → `manage-summaries.ts missing --days 3 --batch 10` | `Article`（再生成後の要約/スコア・欠けていた要約） |
 | `scheduler-translation-fix` | `30 */4 * * *` | 4時間毎（01:30, 05:30, 09:30, 13:30, 17:30, 21:30） | `fix-missing-translations.ts` | `Article`（translatedTitle 等） |
 | `scheduler-embedding-worker` | `*/30 * * * *` | 30分毎（UTC と同一パターン） | `recover-stuck-embeddings.ts --age=30 --limit=100` → `run-embedding-worker.ts` → `assign-stories.ts` | `EmbeddingJob`（止まったジョブを PENDING に戻す）, `ArticleEmbedding`, `Article`（storyId・storySize） |
 | `scheduler-off-topic` | `40 * * * *` | 毎時40分 | `classify-off-topic.ts` | `Article`（isOffTopic・offTopicCheckedAt） |
