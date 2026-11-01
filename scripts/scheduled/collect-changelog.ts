@@ -3,7 +3,11 @@ import { parseChangelog } from '../../lib/changelog/parser';
 import { RedisCache } from '../../lib/cache';
 import { env } from '@/lib/config/env';
 import { getGeminiModel } from '@/scripts/lib/gemini-endpoint';
-import { createGeminiClient, generateGeminiText } from '@/lib/ai/gemini-sdk';
+import {
+  createGeminiClient,
+  generateGeminiTextResult,
+  isCompleteFinish,
+} from '@/lib/ai/gemini-sdk';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 const FETCH_TIMEOUT_MS = 30_000;
@@ -80,13 +84,19 @@ ${numberedEntries}`;
     const MAX_ATTEMPTS = 3;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
-        const responseText = await generateGeminiText(client, {
-          model: GEMINI_MODEL,
-          prompt,
-          maxOutputTokens: 8192,
-          temperature: 0.3,
-          timeoutMs: GEMINI_TIMEOUT_MS,
-        });
+        const { text: responseText, finishReason } =
+          await generateGeminiTextResult(client, {
+            model: GEMINI_MODEL,
+            prompt,
+            maxOutputTokens: 8192,
+            temperature: 0.3,
+            timeoutMs: GEMINI_TIMEOUT_MS,
+          });
+        // 上限などで止まると最後の行の訳が途中で切れるが、番号はそろって成功に見える。
+        // 保存した訳は次回から使い回されるので、試し直しに回す
+        if (!isCompleteFinish(finishReason)) {
+          throw new Error(`Translation response did not finish: ${finishReason}`);
+        }
         const lines = responseText.split('\n').filter((l) => l.trim());
         const attemptTranslations = new Map<string, TranslatedEntry>();
         const translatedIndexes = new Set<number>();

@@ -44,9 +44,21 @@ export type GeminiTextRequest = {
 
 export type GeminiTextResult = {
   text: string;
-  /** 最初の候補の終了理由。上限で切れたか（MAX_TOKENS）を呼び出し側が見るため */
+  /** 最初の候補の終了理由。最後まで出力されたかを呼び出し側が isCompleteFinish で見るため */
   finishReason?: FinishReason;
 };
+
+/**
+ * 生成が最後まで終わったか。STOP だけを完了とみなす。
+ * MAX_TOKENS・CONTINUATION（上限で切れた）や BLOCKLIST・OTHER などで止まった本文は途中までなので、
+ * 応答をそのまま保存する経路はこれで確かめる。終了理由が無い応答（付けないプロキシなど）は、
+ * 判断できないので完了とみなす（本文の長さや形式の検査に任せる）
+ */
+export function isCompleteFinish(
+  finishReason: FinishReason | undefined
+): boolean {
+  return finishReason === undefined || finishReason === FinishReason.STOP;
+}
 
 /**
  * 1 つのプロンプトを 1 回のリクエストで送り、本文を返す。

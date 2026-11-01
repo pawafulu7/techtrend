@@ -1,10 +1,11 @@
 import { sanitizeTrendAiText } from '@/lib/trends/report/trend-ai-text';
 import { PrismaClient, TrendPeriodType } from '@/lib/prisma-exports';
-import { FinishReason, type GoogleGenAI } from '@google/genai';
+import type { GoogleGenAI } from '@google/genai';
 import logger from '@/lib/logger';
 import {
   generateGeminiText,
   generateGeminiTextResult,
+  isCompleteFinish,
 } from '@/lib/ai/gemini-sdk';
 import { extractFirstJsonObject } from '@/lib/trends/report/trend-ai-summary-types';
 import type {
@@ -362,11 +363,11 @@ async function generateAISummaryLegacyPlainText(
     timeoutMs: GEMINI_TIMEOUT_MS,
   });
 
-  // 上限で切れた本文は途中で終わっているので、長さが足りても保存しない
+  // 上限などで止まった本文は途中で終わっているので、長さが足りても保存しない
   // （構造化の経路は切れた JSON が検証で落ちて修復に進むので、ここだけで見る）
-  if (finishReason === FinishReason.MAX_TOKENS) {
+  if (!isCompleteFinish(finishReason)) {
     throw new Error(
-      `Legacy AI summary was truncated at the output limit (${text.trim().length} chars)`
+      `Legacy AI summary did not finish (${finishReason}, ${text.trim().length} chars)`
     );
   }
 

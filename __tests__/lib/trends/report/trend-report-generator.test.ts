@@ -65,6 +65,10 @@ describe('TrendReportGenerator の AI 要約', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // 前のテストが読み込んだ SDK を捨てる（残ると次の読み込みでモックのファクトリが呼ばれず、
+    // mockSdkLoaded で「読み込まない」を確かめられない）
+    jest.resetModules();
+    mockFetch.mockReset();
     mockSdkLoaded = false;
     process.env = { ...originalEnv, GEMINI_API_KEY: 'test-api-key' };
     delete process.env.GEMINI_BASE_URL;
@@ -98,7 +102,6 @@ describe('TrendReportGenerator の AI 要約', () => {
       const generator = await freshGenerator(prisma);
       await generator.generateDailyReport(TARGET_DATE);
 
-      expect(create).toHaveBeenCalledTimes(1);
       expect(savedAiFields(create)).toEqual({
         aiSummary: undefined,
         aiModel: undefined,
@@ -112,28 +115,37 @@ describe('TrendReportGenerator の AI 要約', () => {
   describe('legacy 要約', () => {
     // 構造化要約（JSON 指定のリクエスト）は JSON にならない本文を返して 4 回とも失敗させ、
     // legacy 要約（JSON 指定なし）に legacyResponse を返す
+    const isJsonRequest = (init: RequestInit) =>
+      JSON.parse(String(init.body)).generationConfig?.responseMimeType ===
+      'application/json';
     const routeFetch = (legacyResponse: () => Response) => {
-      mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
-        const body = JSON.parse(String(init.body));
-        return body.generationConfig?.responseMimeType === 'application/json'
+      mockFetch.mockImplementation(async (_url: string, init: RequestInit) =>
+        isJsonRequest(init)
           ? textResponse('JSON ではない本文', 'STOP')
-          : legacyResponse();
-      });
+          : legacyResponse()
+      );
     };
+    /** legacy 要約（JSON 指定なし）のリクエストの数 */
+    const legacyRequestCount = () =>
+      (mockFetch.mock.calls as [string, RequestInit][]).filter(
+        ([, init]) => !isJsonRequest(init)
+      ).length;
     const LEGACY_TEXT =
       '[注目トピック]\n(1) TypeScript: 型推論の改善が公開された。'.repeat(5);
 
-    it('出力の上限で切れた本文は、長さが足りても保存しない', async () => {
-      routeFetch(() => textResponse(LEGACY_TEXT, 'MAX_TOKENS'));
-      const { prisma, create } = createTrendReportPrismaMock();
+    it.each(['MAX_TOKENS', 'CONTINUATION', 'OTHER'])(
+      '最後まで出力されなかった本文（%s）は、長さが足りても保存しない',
+      async (finishReason) => {
+        routeFetch(() => textResponse(LEGACY_TEXT, finishReason));
+        const { prisma, create } = createTrendReportPrismaMock();
 
-      await (await freshGenerator(prisma)).generateDailyReport(TARGET_DATE);
+        await (await freshGenerator(prisma)).generateDailyReport(TARGET_DATE);
 
-      // 構造化 4 回 + legacy 1 回
-      expect(mockFetch).toHaveBeenCalledTimes(5);
-      expect(LEGACY_TEXT.length).toBeGreaterThanOrEqual(100);
-      expect(savedAiFields(create).aiSummary).toBeUndefined();
-    });
+        expect(legacyRequestCount()).toBe(1);
+        expect(LEGACY_TEXT.length).toBeGreaterThanOrEqual(100);
+        expect(savedAiFields(create).aiSummary).toBeUndefined();
+      }
+    );
 
     it('最後まで出力された本文は、プレーンテキストの要約として保存する', async () => {
       routeFetch(() => textResponse(LEGACY_TEXT, 'STOP'));

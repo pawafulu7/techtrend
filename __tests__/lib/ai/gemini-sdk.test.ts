@@ -16,6 +16,7 @@ import {
   createGeminiClient,
   generateGeminiText,
   generateGeminiTextResult,
+  isCompleteFinish,
   getGeminiResponseText,
 } from '@/lib/ai/gemini-sdk';
 
@@ -175,6 +176,19 @@ describe('generateGeminiText', () => {
       );
     }
   );
+});
+
+describe('isCompleteFinish', () => {
+  it.each([
+    [FinishReason.STOP, true],
+    [undefined, true],
+    [FinishReason.MAX_TOKENS, false],
+    [FinishReason.CONTINUATION, false],
+    [FinishReason.BLOCKLIST, false],
+    [FinishReason.OTHER, false],
+  ])('終了理由 %s は完了=%s', (finishReason, expected) => {
+    expect(isCompleteFinish(finishReason)).toBe(expected);
+  });
 });
 
 describe('getGeminiResponseText', () => {

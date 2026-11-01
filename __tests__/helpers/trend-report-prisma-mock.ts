@@ -30,8 +30,9 @@ export function createTrendReportPrismaMock() {
   return { prisma, create };
 }
 
-/** 保存したレポートの AI 要約まわりの値 */
+/** 保存したレポートの AI 要約まわりの値（レポートを 1 回保存したことも確かめる） */
 export function savedAiFields(create: jest.Mock) {
+  expect(create).toHaveBeenCalledTimes(1);
   const { data } = create.mock.calls[0][0] as {
     data: { aiSummary?: string; aiModel?: string; promptVersion?: string };
   };
