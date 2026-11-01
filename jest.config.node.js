@@ -53,7 +53,6 @@ const customJestConfig = {
     // Order matters: specific create-client mock MUST precede the wildcard
     '^@/lib/prisma/create-client$': '<rootDir>/__mocks__/lib/prisma/create-client.ts',
     '^@/lib/prisma/(.*)$': '<rootDir>/__mocks__/lib/prisma.ts',
-    '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
     '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
     '^@/lib/redis/factory$': '<rootDir>/__mocks__/lib/redis/factory.ts',
     '^@/lib/cache/redis-cache$': '<rootDir>/__mocks__/lib/cache/redis-cache.ts',

@@ -10,7 +10,7 @@ jest.mock('@/lib/services/tag-service', () => ({
   findTagIdGroupsByNames: async (names: string[]) =>
     names.map((name) => [`tag-${name.toLowerCase()}`]),
 }));
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 jest.mock('@/lib/cache/cache-invalidator');
 
 // LayeredCacheを直接モック
@@ -49,7 +49,7 @@ jest.mock('@/lib/metrics/performance', () => ({
 
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/articles/route';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { getRedisClient } from '@/lib/redis/client';
 
 // Inline test utilities to avoid CI module resolution issues

@@ -55,9 +55,6 @@ jest.mock('@/lib/auth/auth', () => ({
 jest.mock('@/lib/prisma', () => ({
   prisma: {},
 }));
-jest.mock('@/lib/database', () => ({
-  prisma: {},
-}));
 jest.mock('@/lib/logger', () => ({
   logger: {
     info: jest.fn(),

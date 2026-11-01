@@ -26,16 +26,6 @@ jest.mock('@/lib/prisma', () => ({
     article: {
       findUnique: jest.fn(),
       update: jest.fn(),
-    },
-  },
-}));
-
-// ---- @/lib/database モック（GET /api/articles/[id] で使用） ----
-jest.mock('@/lib/database', () => ({
-  prisma: {
-    article: {
-      findUnique: jest.fn(),
-      update: jest.fn(),
       delete: jest.fn(),
     },
   },
@@ -113,12 +103,10 @@ jest.mock('@/lib/utils/quality-score', () => ({
 
 // ---- インポート（モック定義後） ----
 import { prisma } from '@/lib/prisma';
-import { prisma as prismaFromDatabase } from '@/lib/database';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 
 const mockPrisma = prisma as any;
-const mockPrismaDb = prismaFromDatabase as any;
 const mockGetAppDependencies = getAppDependencies as jest.MockedFunction<typeof getAppDependencies>;
 const mockWithAdminAuth = withAdminAuth as jest.MockedFunction<typeof withAdminAuth>;
 
@@ -574,7 +562,7 @@ describe('GET /api/articles/[id] - hidden article', () => {
   });
 
   it('isHidden=true の記事でGETすると404を返すこと', async () => {
-    (mockPrismaDb.article.findUnique as jest.Mock).mockResolvedValue({
+    (mockPrisma.article.findUnique as jest.Mock).mockResolvedValue({
       ...mockArticleDetail,
       isHidden: true,
       source: {
@@ -600,7 +588,7 @@ describe('GET /api/articles/[id] - hidden article', () => {
   });
 
   it('isHidden=false の記事でGETすると通常通り200を返すこと', async () => {
-    (mockPrismaDb.article.findUnique as jest.Mock).mockResolvedValue({
+    (mockPrisma.article.findUnique as jest.Mock).mockResolvedValue({
       ...mockArticleDetail,
       isHidden: false,
       source: {

@@ -9,7 +9,7 @@ jest.mock('@/lib/services/tag-service', () => ({
   findTagIdGroupsByNames: async (names: string[]) =>
     names.map((name) => [`tag-${name.toLowerCase()}`]),
 }));
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 jest.mock('@/lib/cache/cache-invalidator');
 
 // LayeredCacheを直接モック
@@ -49,7 +49,7 @@ jest.mock('@/lib/metrics/performance', () => ({
 // CacheMockFactoryは使用しない（LayeredCacheモックで対応）
 
 import { GET } from '@/app/api/articles/route';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
 // NextRequestを作成するヘルパー関数

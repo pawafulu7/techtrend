@@ -3,7 +3,7 @@
  */
 
 // モック設定（インポート前に宣言）
-jest.mock('@/lib/database', () => ({
+jest.mock('@/lib/prisma', () => ({
   prisma: {
     user: {
       findUnique: jest.fn(),
@@ -31,7 +31,7 @@ import {
   createUserDeletedResponse,
   withUserValidation,
 } from '@/lib/middleware/with-user-validation';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { prisma as appPrisma } from '@/lib/prisma';
 import { resolveSessionFromRequest } from '@/lib/middleware/session-context';
 import { logger } from '@/lib/logger';

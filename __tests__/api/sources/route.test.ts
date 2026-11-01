@@ -7,13 +7,13 @@ jest.mock('@/lib/middleware/with-admin-auth', () => ({ withAdminAuth: (fn: any) 
 jest.mock('@/lib/middleware/with-rate-limit', () => ({ withRateLimit: (_key: any, fn: any) => fn }));
 
 // モックの設定
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 
 // sourceCacheのモックを手動で設定
 jest.mock('@/lib/cache/source-cache');
 
 import { GET } from '@/app/api/sources/route';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { sourceCache } from '@/lib/cache/source-cache';
 import { NextRequest } from 'next/server';
 
@@ -362,7 +362,7 @@ describe('GET /api/sources - 認可テスト', () => {
           { status: 401, headers: { 'Content-Type': 'application/json' } }
         ),
     }));
-    jest.doMock('@/lib/database', () => ({ prisma: {} }));
+    jest.doMock('@/lib/prisma', () => ({ prisma: {} }));
     jest.doMock('@/lib/cache/source-cache', () => ({ sourceCache: {} }));
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports

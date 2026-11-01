@@ -5,7 +5,7 @@
 import { createRedisCacheMock } from '../../helpers/cache-mock-helpers';
 
 // モックの設定
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 jest.mock('@/lib/logger', () => ({
   __esModule: true,
   default: {
@@ -38,7 +38,7 @@ jest.mock('@/lib/cache', () => ({
 }));
 
 import { GET } from '@/app/api/changelog/route';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
 const prismaMock = prisma as any;

@@ -49,12 +49,6 @@ const eslintConfig = defineConfig([
       // Note: Hardcoded Tailwind color detection is handled by grep in CI
       // See: npm run lint:colors (uses grep to find bg-/text-/border- patterns)
       // ESLint's no-restricted-syntax cannot reliably detect class names in strings
-      'no-restricted-imports': ['error', {
-        paths: [{
-          name: '@/lib/database',
-          message: "Use '@/lib/prisma' instead. @/lib/database is deprecated.",
-        }],
-      }],
     },
   },
   // Enforce centralized env access (only direct process.env.NODE_ENV and NEXT_PUBLIC_* allowed, no destructuring)
@@ -119,10 +113,9 @@ const eslintConfig = defineConfig([
         checkGlobalObject: true,
         globalObjects: ['global'],
       }],
-      // 別名の import で取得の関数を持ち込むのも止める（共通の @/lib/database の制限は保つ。ESLint は規則の配列を置き換えるため）
+      // 別名の import で取得の関数を持ち込むのも止める
       'no-restricted-imports': ['error', {
         paths: [
-          { name: '@/lib/database', message: "Use '@/lib/prisma' instead. @/lib/database is deprecated." },
           ...['undici', 'node-fetch', 'axios', 'got', 'cross-fetch', 'http', 'https', 'node:http', 'node:https'].map((name) => ({
             name,
             message: 'Use fetchWithValidatedRedirects from @/lib/utils/url/safe-redirect so every redirect hop is SSRF-checked.',

@@ -15,7 +15,7 @@ jest.mock('@/lib/cache', () => ({
   })),
 }));
 
-const { prisma, resetPrismaMock } = require('@/lib/database');
+const { prisma, resetPrismaMock } = require('@/lib/prisma');
 
 describe('/api/articles/list with user data', () => {
   const mockUserId = 'test-user-id';

@@ -14,8 +14,6 @@ import { Page, Locator } from '@playwright/test';
  * - waitForTimeout() の使用は意図的です（CI環境での安定性のため）
  * - 複雑な waitForFunction は CI環境で不安定になる傾向があります
  * - 理想的な実装より、安定して動作することを優先しています
- * 
- * 参考：__tests__/e2e/IMPROVEMENT-STRATEGY.md
  */
 
 /**

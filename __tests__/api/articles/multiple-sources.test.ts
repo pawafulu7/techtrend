@@ -1,6 +1,6 @@
 import { GET } from '@/app/api/articles/route';
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { getRedisClient } from '@/lib/redis/client';
 
 // Mock dependencies
@@ -10,7 +10,7 @@ jest.mock('@/lib/services/tag-service', () => ({
   findTagIdGroupsByNames: async (names: string[]) =>
     names.map((name) => [`tag-${name.toLowerCase()}`]),
 }));
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 jest.mock('@/lib/redis/client');
 jest.mock('@/lib/cache/cache-invalidator');
 

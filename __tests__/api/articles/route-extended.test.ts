@@ -15,7 +15,7 @@ jest.mock('@/lib/services/tag-service', () => ({
   findTagIdGroupsByNames: async (names: string[]) =>
     names.map((name) => [`tag-${name.toLowerCase()}`]),
 }));
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/cache/cache-invalidator');
 
@@ -66,7 +66,7 @@ jest.mock('@/lib/cache', () => {
 });
 
 import { GET } from '@/app/api/articles/route';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth/get-session';
 import { RedisCache } from '@/lib/cache';
 import { NextRequest } from 'next/server';

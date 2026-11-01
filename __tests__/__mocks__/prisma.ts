@@ -4,11 +4,6 @@ import { DeepMockProxy, mockDeep, mockReset } from 'jest-mock-extended';
 // Prismaクライアントのモック
 export const prismaMock = mockDeep<PrismaClient>() as unknown as DeepMockProxy<PrismaClient>;
 
-// jestのグローバル設定
-jest.mock('@/lib/database', () => ({
-  prisma: prismaMock,
-}));
-
 // テスト用のデフォルトデータ生成ヘルパー
 export const createMockArticle = (overrides?: Partial<any>) => ({
   id: 'test-article-id',

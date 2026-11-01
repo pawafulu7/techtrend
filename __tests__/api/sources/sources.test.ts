@@ -8,7 +8,7 @@ jest.mock('@/lib/middleware/with-admin-auth', () => ({ withAdminAuth: (fn: any) 
 jest.mock('@/lib/middleware/with-rate-limit', () => ({ withRateLimit: (_key: any, fn: any) => fn }));
 
 // モックを先に設定
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 jest.mock('@/lib/redis/client');
 jest.mock('@/lib/cache/source-cache', () => ({
   sourceCache: {
@@ -21,7 +21,7 @@ jest.mock('@/lib/cache/source-cache', () => ({
 
 import { NextRequest } from 'next/server';
 import { GET as getSourcesHandler } from '@/app/api/sources/route';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { getRedisClient } from '@/lib/redis/client';
 
 const prismaMock = prisma as any;
