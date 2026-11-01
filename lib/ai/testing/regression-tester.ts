@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { performance } from 'node:perf_hooks';
 import { buildAppDependencies } from '@/lib/di/bootstrap';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
+import { isInsufficientQuotaError } from '@/lib/rag/openai-errors';
 import { cosineSimilarity } from '@/lib/utils/vector-math';
 import type {
   SummaryServiceResult,
@@ -81,6 +82,17 @@ class PromisePool<T> {
     }
 
     return results;
+  }
+}
+
+/**
+ * すべての例が同じ理由で失敗する外部 API のエラー（OpenAI の残高不足など）。
+ * 残りを流しても時間がかかるだけなので、回帰テスト全体を止める
+ */
+export class RegressionAbortedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RegressionAbortedError';
   }
 }
 
@@ -263,6 +275,12 @@ export class GoldenSetRegressionTester {
         },
       };
     } catch (error) {
+      if (isInsufficientQuotaError(error)) {
+        throw new RegressionAbortedError(
+          `OpenAI credit balance is exhausted (429 insufficient_quota), so semantic similarity cannot be computed. ` +
+            `Add credits to the account of OPENAI_API_KEY and re-run. (${(error as Error).message})`
+        );
+      }
       const executionTime = performance.now() - startTime;
 
       return {
@@ -300,6 +318,9 @@ export class GoldenSetRegressionTester {
       try {
         return await this.testExampleOnce(example, summaryService, embeddingService);
       } catch (error) {
+        if (error instanceof RegressionAbortedError) {
+          throw error;
+        }
         // Defensive: Convert unexpected rejection into synthetic failure
         // (testExampleOnce already handles expected errors)
         return {
@@ -363,6 +384,11 @@ export class GoldenSetRegressionTester {
         `Semantic similarity too low: ${avgSimilarity.toFixed(3)} < ${adjustedThreshold.toFixed(3)} (avg of ${runs} runs)`
       );
     }
+    // 各回の実行エラー（API の失敗など）を残す。平均だけだと「類似度 0」としか分からない
+    const runErrors = [
+      ...new Set(results.flatMap((r) => r.issues.filter((issue) => /execution error/i.test(issue)))),
+    ];
+    issues.push(...runErrors);
     if (!qualityPassed) {
       issues.push(
         `Quality score too low: ${avgQuality.toFixed(3)} < ${example.acceptanceThreshold.minimumQuality.toFixed(3)} (avg of ${runs} runs)`

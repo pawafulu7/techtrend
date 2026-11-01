@@ -288,6 +288,30 @@ describe('EmbeddingService retry', () => {
     expect(twoSlotMockCreate).toHaveBeenCalledTimes(4);
   });
 
+  it.each([
+    ['embedText', (svc: EmbeddingService) => svc.embedText('hello world')],
+    ['embedBatch', (svc: EmbeddingService) => svc.embedBatch(['hello world'])],
+  ])('should not retry %s on 429 insufficient_quota (credit balance exhausted)', async (_name, call) => {
+    mockCreate.mockRejectedValueOnce(
+      APIError.generate(
+        429,
+        {
+          error: {
+            type: 'insufficient_quota',
+            code: 'credit_balance_exhausted',
+            message: 'You have no credits remaining.',
+          },
+        },
+        undefined,
+        new Headers()
+      )
+    );
+
+    await expect(call(service)).rejects.toBeInstanceOf(APIError);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(sleepSpy).not.toHaveBeenCalled();
+  });
+
   it('should not retry on 4xx client errors other than 429', async () => {
     mockCreate.mockRejectedValueOnce(
       APIError.generate(400, undefined, 'Bad request', new Headers())

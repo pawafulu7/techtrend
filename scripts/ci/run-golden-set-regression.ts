@@ -1,5 +1,5 @@
 import { writeFile } from 'fs/promises';
-import { GoldenSetRegressionTester } from '@/lib/ai/testing/regression-tester';
+import { GoldenSetRegressionTester, RegressionAbortedError } from '@/lib/ai/testing/regression-tester';
 
 async function main() {
   const regressionMode = process.env.REGRESSION_MODE === 'true';
@@ -53,7 +53,15 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
+  if (error instanceof RegressionAbortedError) {
+    // ワークフローは失敗時に regression-report.md を PR のコメントに載せるので、止めた理由を書いておく
+    const markdown = `## Regression test aborted\n\n${error.message}\n`;
+    await writeFile('regression-report.md', markdown);
+    await writeFile('regression-report.json', JSON.stringify({ aborted: true, reason: error.message }, null, 2));
+    console.error(`\nERROR: ${error.message}`);
+    process.exit(1);
+  }
   console.error('Fatal error:', error);
   process.exit(1);
 });
