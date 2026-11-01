@@ -46,14 +46,10 @@ const customJestConfig = {
     '<rootDir>/__tests__/integration/',
     '<rootDir>/__tests__/performance/',
     // Enricher/Fetcherテスト: Cheerio（Node専用）使用のためDOM環境では除外
-    '<rootDir>/__tests__/enrichers/',
+    '<rootDir>/__tests__/lib/enrichers/',
     '<rootDir>/lib/enrichers/__tests__/',
-    '<rootDir>/__tests__/fetchers/',
+    '<rootDir>/__tests__/lib/fetchers/',
     '<rootDir>/lib/fetchers/__tests__/',
-    '<rootDir>/__tests__/manual/',
-    // Service/DB/Cacheテスト: Node環境専用
-    '<rootDir>/__tests__/services/',
-    '<rootDir>/lib/services/__tests__/',
     // __tests__/security/ は除外しない。headers.test.ts は testMatch（*.test.tsx）に当たらず Node 環境で走り、
     // markdown-xss.test.tsx は DOM 環境が要る（除外していた間はどの設定でも走っていなかった）
     '<rootDir>/__tests__/middleware.node.test.ts',

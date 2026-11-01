@@ -1,7 +1,7 @@
 /**
  * 毎時の収集で、既存記事を出し手のソースへ付け替える処理（scripts/scheduled/utils/source-transfer.ts）
  *
- * 付け替えるかの判定は lib/fetchers/source-transfer.ts（__tests__/fetchers/newsletter-sources.test.ts）。
+ * 付け替えるかの判定は lib/fetchers/source-transfer.ts（__tests__/lib/fetchers/newsletter-sources.test.ts）。
  * ここでは、読んだ時点の sourceId のままのときだけ書き換えることと、品質スコアを採点し直す対象に
  * 戻すことを確かめる。
  */

@@ -69,4 +69,4 @@ npm run techtrend -- db stats   # 主要テーブルの件数と最新記事日�
 
 1. `lib/cli/commands/` にコマンドのファイルを作る（Commander の `Command` を export する）
 2. `lib/cli/index.ts` で `program.addCommand()` に登録する
-3. テストは `__tests__/unit/lib/cli.test.ts`・`__tests__/lib/cli/commands/` にある
+3. テストは `__tests__/lib/cli/run.test.ts`・`__tests__/lib/cli/commands/` にある

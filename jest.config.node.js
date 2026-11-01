@@ -18,7 +18,7 @@ const createJestConfig = nextJest({
 // interest-scores.db.test.ts は CentroidService.refreshCentroidsAndScores() でテスト DB の
 // ArticleInterestScore を全件書き直すので、同じ表を使う他の DB テストと並列にしない
 const SERIAL_DB_TEST_PATHS = [
-  '<rootDir>/__tests__/unit/services/embedding-scheduler\\.test\\.ts$',
+  '<rootDir>/__tests__/lib/rag/embedding-scheduler\\.test\\.ts$',
   '<rootDir>/__tests__/lib/personalization/interest-scores\\.db\\.test\\.ts$',
 ];
 const isSerialDbRun = process.env.JEST_SERIAL_DB === '1';

@@ -1,5 +1,5 @@
 // 色を直書きしたクラスとインライン style を探す。一覧の彩色はトークン（ブランド色・状態色）だけに
-// する方針（issue #702）を、テストで確かめるために使う。検出の範囲は __tests__/utils/palette-classes.test.tsx。
+// する方針（issue #702）を、テストで確かめるために使う。検出の範囲は __tests__/helpers/palette-classes.test.tsx。
 // （Tailwind はこのファイルのクラス名らしい文字列からも本番の CSS を作るので、ここには例を書かない）
 //
 // 検出するもの:
