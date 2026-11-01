@@ -19,7 +19,8 @@ const rssParseUrlRestriction = {
 // 依存の向き: lib/ と scripts/ は画面のコード（app/・components/）を import しない（docs/architecture/06-directory-structure.md）。
 // no-restricted-imports を上書きする設定（enricher）でも、この patterns を含める
 const uiLayerImportRestriction = {
-  group: ['@/app/*', '@/components/*'],
+  // 別名（@/app/...）と相対パス（../../app/...）の両方を止める
+  regex: '^(@/|(\\.\\./)+)(app|components)/',
   message: 'lib/ と scripts/ から画面のコード（app/・components/）を import しない。画面と共有するロジックは lib/ に置く（docs/architecture/06-directory-structure.md）',
 }
 

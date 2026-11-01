@@ -6,7 +6,7 @@
 
 1. **画面とロジックを分ける。** React に依存するもの（画面・部品・フック・Provider）は `app/` と `components/`、それ以外のロジックは `lib/` に置く
 2. **`lib/` は機能ごとに分ける。** 1 つの機能のサービス・定数・型・補助関数は、その機能のディレクトリにまとめる。`lib/utils/`・`lib/constants/`・`lib/config/` と `types/` には、複数の機能で使うものだけを置く
-3. **依存は画面 → ロジックの一方向。** `lib/` と `scripts/` から `app/`・`components/` を import しない（eslint の `no-restricted-imports` が止める。`eslint.config.mjs` の `uiLayerImportRestriction`）
+3. **依存は画面 → ロジックの一方向。** `lib/` と `scripts/` から `app/`・`components/` を import しない。eslint の `no-restricted-imports`（`eslint.config.mjs` の `uiLayerImportRestriction`。lint の対象のファイル）と、`__tests__/scripts/import-direction.test.ts`（`lib/`・`scripts/` の全ファイル）が止める
 4. **テストはソースと同じパスに置く。** `lib/tags/tag-service.ts` のテストは `__tests__/lib/tags/tag-service.test.ts`
 
 ## トップレベル

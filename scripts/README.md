@@ -37,6 +37,7 @@ npx dotenv run -- tsx scripts/<ディレクトリ>/<名前>.ts  # .env を読み
 |------|------|
 | `collect-feeds.ts` | `scheduler-rss-hourly.yml`・`scheduler-qiita.yml`・`scheduler-scraping.yml` |
 | `manage-summaries.ts` | `scheduler-qiita.yml`・`scheduler-scraping.yml`・`scheduler-quality-auto.yml` |
+| `generate-summaries.ts` | `collect-feeds.ts` が新着の記事の要約に呼ぶ（`npm run scripts:summarize` でも動かす） |
 | `manage-quality-scores.ts` | `scheduler-qiita.yml`・`scheduler-scraping.yml`・`scheduler-daily-quality.yml` |
 | `quality-check.ts`・`auto-regenerate-low-quality.ts` | `scheduler-quality-auto.yml` |
 | `generate-tags.ts` | `scheduler-tags.yml` |

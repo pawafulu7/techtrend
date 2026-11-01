@@ -141,11 +141,15 @@ test-results
 playwright-report
 .playwright-mcp
 
-# Claude/AI specific
+# Claude/AI specific（個人の作業ファイル。.workflow/tmp/ には本番 DB のコマンドの生の出力も残る）
 .claude
 .serena
 claudedocs
 CLAUDE.md
+.workflow
+.codex
+.kiro
+.aigne
 
 # Scripts that shouldn't be in the image
 scripts/test-*

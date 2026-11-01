@@ -28,9 +28,11 @@ const CONTENT_LENGTH_BINS = [
   { label: '10000+', min: 10000, max: 999999, count: 2 },
 ];
 
-const BENCHMARK_ARTICLES_FILE = 'benchmark-articles.json';
-const BASELINE_FILE = 'benchmark-baseline.json';
-const COMPARE_FILE = 'benchmark-current.json';
+// 計測の結果はほかの計測と同じ metrics-reports/（.gitignore 済み）に置く
+const REPORT_DIR = 'metrics-reports';
+const BENCHMARK_ARTICLES_FILE = `${REPORT_DIR}/benchmark-articles.json`;
+const BASELINE_FILE = `${REPORT_DIR}/benchmark-baseline.json`;
+const COMPARE_FILE = `${REPORT_DIR}/benchmark-current.json`;
 
 interface BenchmarkResult {
   articleId: string;
@@ -101,6 +103,7 @@ async function selectAndFixBenchmarkArticles(): Promise<
     );
   }
 
+  fs.mkdirSync(REPORT_DIR, { recursive: true });
   fs.writeFileSync(
     BENCHMARK_ARTICLES_FILE,
     JSON.stringify(
@@ -311,6 +314,7 @@ async function main(): Promise<void> {
   const results = await generateAndScore(articles);
 
   const outputPath = mode === 'baseline' ? BASELINE_FILE : COMPARE_FILE;
+  fs.mkdirSync(REPORT_DIR, { recursive: true });
   fs.writeFileSync(outputPath, JSON.stringify(results, null, 2));
   console.error(`Results saved to ${outputPath}`);
 

@@ -42,11 +42,11 @@ import {
   expectAnalysisPeriodSql,
   isStatsPeriodCountQuery,
   sqlFragmentsOf,
-} from '../../helpers/sql-fragments';
+} from '../../../helpers/sql-fragments';
 
 // lib/prisma は jest.setup.node.js がモックした PrismaClient（= prismaMock）を返す
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { prismaMock } = require('../../helpers/prisma-mock');
+const { prismaMock } = require('../../../helpers/prisma-mock');
 
 const ENABLED = `a."sourceId" ${ENABLED_SOURCE_SQL}`;
 

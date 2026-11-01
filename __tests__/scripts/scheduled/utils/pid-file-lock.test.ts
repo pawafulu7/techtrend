@@ -48,6 +48,23 @@ describe('createPidFileLock', () => {
     expect(fs.readFileSync(pidFile, 'utf-8')).toBe(String(process.pid));
   });
 
+  it('中身の読めない PID ファイルは作り直してロックを取る', () => {
+    fs.writeFileSync(pidFile, 'not-a-pid');
+    const lock = createPidFileLock(pidFile, 'job');
+
+    expect(lock.acquire()).toBe(true);
+    expect(fs.readFileSync(pidFile, 'utf-8')).toBe(String(process.pid));
+  });
+
+  it('2 つ目のロックは、1 つ目が持っている間は取れない', () => {
+    const first = createPidFileLock(pidFile, 'job');
+    const second = createPidFileLock(pidFile, 'job');
+
+    expect(first.acquire()).toBe(true);
+    // 1 つ目のプロセス（= このプロセス）は実行中なので、2 つ目は取らない
+    expect(second.acquire()).toBe(false);
+  });
+
   it('release は自分の PID のときだけ PID ファイルを消す', () => {
     const lock = createPidFileLock(pidFile, 'job');
 

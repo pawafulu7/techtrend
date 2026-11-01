@@ -2,7 +2,8 @@
  * PID ファイルによる多重起動の防止
  *
  * 同じジョブが前回の実行中に重ねて起動されたとき、後から起動した方を終わらせる。
- * PID ファイルが残っていても、そのプロセスが既に無ければ（異常終了の跡）上書きして続ける。
+ * PID ファイルは排他的に作る（flag: 'wx'）ので、同時に起動しても取れるのは 1 つだけ。
+ * PID ファイルが残っていても、そのプロセスが既に無ければ（異常終了の跡）作り直して続ける。
  */
 import * as fs from 'fs';
 import { summarizeError } from '@/lib/utils/sanitize-error';
@@ -17,11 +18,28 @@ export interface PidFileLock {
 }
 
 export function createPidFileLock(pidFile: string, jobName: string): PidFileLock {
-  function acquire(): boolean {
-    if (fs.existsSync(pidFile)) {
-      const oldPidStr = fs.readFileSync(pidFile, 'utf-8').trim();
-      const oldPid = parseInt(oldPidStr, 10);
+  /** PID ファイルを排他的に作る（既にあれば false）。存在の確認と作成を 1 回の操作で行う */
+  function tryCreate(): boolean {
+    try {
+      fs.writeFileSync(pidFile, process.pid.toString(), { flag: 'wx' });
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'EEXIST') return false;
+      throw error;
+    }
+  }
 
+  function readPid(): number {
+    try {
+      return parseInt(fs.readFileSync(pidFile, 'utf-8').trim(), 10);
+    } catch {
+      return NaN;
+    }
+  }
+
+  function acquire(): boolean {
+    if (!tryCreate()) {
+      const oldPid = readPid();
       if (!isNaN(oldPid)) {
         try {
           // Signal 0 checks if process exists without sending actual signal
@@ -33,9 +51,15 @@ export function createPidFileLock(pidFile: string, jobName: string): PidFileLock
           console.error(`[INFO] Removing stale PID file (old PID: ${oldPid})`);
         }
       }
+      // 残っていた PID ファイルを消して、もう一度排他的に作る。
+      // 同時に起動した別のプロセスが先に作っていれば、こちらは取らない
+      fs.rmSync(pidFile, { force: true });
+      if (!tryCreate()) {
+        console.error(`[WARN] ${jobName} already running (PID: ${readPid()}), exiting`);
+        return false;
+      }
     }
 
-    fs.writeFileSync(pidFile, process.pid.toString());
     console.error(`[INFO] Lock acquired (PID: ${process.pid})`);
     return true;
   }
