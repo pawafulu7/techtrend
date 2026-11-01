@@ -187,7 +187,7 @@ async function main() {
 タグ品質チェックスクリプト
 
 使用方法:
-  npm run tsx scripts/monitoring/check-tag-quality.ts [オプション]
+  npm run tsx scripts/scheduled/check-tag-quality.ts [オプション]
 
 オプション:
   --help     このヘルプを表示
@@ -201,10 +201,10 @@ async function main() {
 
 例:
   # 通常実行
-  npm run tsx scripts/monitoring/check-tag-quality.ts
+  npm run tsx scripts/scheduled/check-tag-quality.ts
 
   # JSON形式で出力
-  npm run tsx scripts/monitoring/check-tag-quality.ts --json
+  npm run tsx scripts/scheduled/check-tag-quality.ts --json
     `);
     process.exit(0);
   }

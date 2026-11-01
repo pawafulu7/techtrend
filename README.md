@@ -130,14 +130,14 @@ npm run dev:webpack
 
 ```bash
 # Compare Turbopack vs Webpack startup times
-npx tsx scripts/performance/measure-dev-startup.ts
+npx tsx scripts/dev/measure-dev-startup.ts
 
 # Measure specific mode only
-npx tsx scripts/performance/measure-dev-startup.ts --turbopack-only
-npx tsx scripts/performance/measure-dev-startup.ts --webpack-only
+npx tsx scripts/dev/measure-dev-startup.ts --turbopack-only
+npx tsx scripts/dev/measure-dev-startup.ts --webpack-only
 
 # Custom number of runs (default: 3)
-npx tsx scripts/performance/measure-dev-startup.ts --runs=5
+npx tsx scripts/dev/measure-dev-startup.ts --runs=5
 ```
 
 ### Known Limitations

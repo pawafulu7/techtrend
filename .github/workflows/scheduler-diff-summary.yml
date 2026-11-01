@@ -61,7 +61,7 @@ jobs:
           TARGET_WEEK: ${{ steps.week.outputs.target }}
         run: |
           echo "Generating diff summaries for week: $TARGET_WEEK"
-          npx tsx scripts/ai/generate-diff-summaries.ts --week "$TARGET_WEEK" --force
+          npx tsx scripts/scheduled/generate-diff-summaries.ts --week "$TARGET_WEEK" --force
       - name: Clear Redis cache
         env:
           REDIS_URL: ${{ secrets.REDIS_URL }}

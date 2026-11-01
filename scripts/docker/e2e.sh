@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/utils/docker-e2e.sh
+# scripts/docker/e2e.sh
 # Usage: npm run docker:e2e:quick -- <spec-file>
 # Note: docker:e2e:spec はコンテナ起動込み。quickはコンテナ起動済みを前提とする。
 set -euo pipefail

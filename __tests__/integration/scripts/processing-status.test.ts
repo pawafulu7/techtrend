@@ -4,7 +4,7 @@ import {
   saveProcessingStatus,
   shouldProcess,
   hasUpdatedArticlesSince
-} from '../../../scripts/utils/processing-status';
+} from '../../../scripts/lib/processing-status';
 
 // 接続先は DATABASE_URL だけから取る（テスト用の DB でなければ jest.setup.integration.js が止める）
 const prisma = createPrismaClient({

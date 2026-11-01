@@ -2,7 +2,7 @@
  * 薄いコンテンツの記事をContentEnricherで更新するスクリプト
  * 
  * 使用方法:
- * npx tsx scripts/manual/enrich-thin-content.ts [options]
+ * npx tsx scripts/maintenance/enrich-thin-content.ts [options]
  * 
  * オプション:
  * --dry-run        実際の更新を行わずにシミュレーション

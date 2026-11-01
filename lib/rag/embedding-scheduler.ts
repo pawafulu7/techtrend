@@ -10,7 +10,7 @@ import type {
 /**
  * 止まったジョブ（PROCESSING のまま cutoffTime より前に投入されたもの）の条件。
  * recoverable は試行上限に達していないもの、overMaxAttempts は達したもの。
- * 復旧の取得・件数・更新と、scripts/maintenance/recover-stuck-embeddings.ts の表示で同じ条件を使う
+ * 復旧の取得・件数・更新と、scripts/scheduled/recover-stuck-embeddings.ts の表示で同じ条件を使う
  */
 export function stuckJobWhere(
   db: PrismaClient,

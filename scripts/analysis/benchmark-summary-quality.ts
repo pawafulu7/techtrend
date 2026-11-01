@@ -2,8 +2,8 @@
  * Summary Quality Benchmark Script
  *
  * Usage:
- *   npx tsx scripts/manual/benchmark-summary-quality.ts --mode baseline
- *   npx tsx scripts/manual/benchmark-summary-quality.ts --mode compare
+ *   npx tsx scripts/analysis/benchmark-summary-quality.ts --mode baseline
+ *   npx tsx scripts/analysis/benchmark-summary-quality.ts --mode compare
  *
  * baseline: Generate summaries with current prompts and save results + article IDs
  * compare:  Generate summaries with updated prompts and compare against baseline

@@ -1,7 +1,7 @@
 import { Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import { calculateArticleQualityScore } from '@/lib/articles/quality-score';
-import { getLastProcessedTime, saveProcessingStatus } from '../utils/processing-status';
+import { getLastProcessedTime, saveProcessingStatus } from '../lib/processing-status';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface Options {

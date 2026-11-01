@@ -216,11 +216,11 @@ AI要約サービスのプロンプトで定義された正規化ルールに従
 
 ### 6.1 定期的なチェック
 
-**スクリプト**: [scripts/monitoring/check-tag-quality.ts](../../scripts/monitoring/check-tag-quality.ts)
+**スクリプト**: [scripts/scheduled/check-tag-quality.ts](../../scripts/monitoring/check-tag-quality.ts)
 
 ```bash
 # タグ品質チェック実行
-npx tsx scripts/monitoring/check-tag-quality.ts
+npx tsx scripts/scheduled/check-tag-quality.ts
 ```
 
 **チェック項目**:
@@ -263,7 +263,7 @@ npx tsx scripts/monitoring/check-tag-quality.ts
 - [lib/ai/adapter/prompt-builder.ts](../../lib/ai/adapter/prompt-builder.ts): AI要約プロンプト定義
 - [lib/tags/tag-normalizer.ts](../../lib/services/tag-normalizer.ts): タグ正規化処理
 - [scripts/maintenance/remove-source-based-tags.ts](../../scripts/maintenance/remove-source-based-tags.ts): タグクリーンアップ
-- [scripts/monitoring/check-tag-quality.ts](../../scripts/monitoring/check-tag-quality.ts): タグ品質監視
+- [scripts/scheduled/check-tag-quality.ts](../../scripts/monitoring/check-tag-quality.ts): タグ品質監視
 
 ### 実装履歴
 

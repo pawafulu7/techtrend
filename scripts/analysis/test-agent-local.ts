@@ -4,7 +4,7 @@
  * Tests the article search agent locally without starting the dev server.
  *
  * Usage:
- *   npx tsx scripts/rag/test-agent-local.ts
+ *   npx tsx scripts/analysis/test-agent-local.ts
  *
  * Requirements:
  * - OPENAI_API_KEY in .env

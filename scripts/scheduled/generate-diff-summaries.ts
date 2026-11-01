@@ -5,7 +5,7 @@
  * Intended to run weekly via GitHub Actions (Monday 02:00 JST).
  *
  * Usage:
- *   npx tsx scripts/ai/generate-diff-summaries.ts [options]
+ *   npx tsx scripts/scheduled/generate-diff-summaries.ts [options]
  *
  * Options:
  *   --week YYYY-Www        Target ISO week (default: current week)

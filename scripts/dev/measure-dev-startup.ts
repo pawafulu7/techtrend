@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { writeFile } from 'fs/promises';
+import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 
 interface StartupMeasurement {
@@ -173,7 +173,9 @@ async function main() {
     console.log(`Improvement: ${improvement.toFixed(1)}% faster`);
   }
 
-  const reportPath = join(process.cwd(), 'scripts/performance/startup-times.json');
+  const reportDir = join(process.cwd(), 'metrics-reports');
+  await mkdir(reportDir, { recursive: true });
+  const reportPath = join(reportDir, 'startup-times.json');
   await writeFile(reportPath, JSON.stringify(results, null, 2));
   console.log(`\nResults saved to: ${reportPath}`);
 }

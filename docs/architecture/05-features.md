@@ -138,7 +138,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 | `scheduler-changelog` | `15 3 * * *` | 12:15 | `collect-changelog.ts` | Claude Code の CHANGELOG の取り込みと翻訳 |
 | `scheduler-cleanup` | `0 17 * * 5` | 土曜 2:00 | `clean-tags.ts` | タグの統合と掃除 |
 | `ai-regression-test` | `0 0 * * 0`、関係する PR | 日曜 9:00 | `scripts/ci/run-golden-set-regression.ts` | ゴールデンセットでの要約の回帰テスト |
-| `tag-quality-check` | `0 0 * * 0` | 日曜 9:00 | `scripts/monitoring/check-tag-quality.ts` | CI の中のテスト DB でタグの品質を確かめる（本番のデータは見ない） |
+| `tag-quality-check` | `0 0 * * 0` | 日曜 9:00 | `scripts/scheduled/check-tag-quality.ts` | CI の中のテスト DB でタグの品質を確かめる（本番のデータは見ない） |
 
 ## 6. CLI と手動のスクリプト
 

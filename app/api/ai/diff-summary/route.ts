@@ -2,7 +2,7 @@
  * Diff Summary API Route
  *
  * GET: Retrieve diff summaries for categories
- * （生成は scripts/ai/generate-diff-summaries.ts の週次バッチ）
+ * （生成は scripts/scheduled/generate-diff-summaries.ts の週次バッチ）
  */
 
 import { NextRequest, NextResponse } from 'next/server';

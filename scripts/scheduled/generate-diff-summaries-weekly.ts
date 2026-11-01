@@ -6,8 +6,8 @@
  * Intended to be run on Monday mornings to summarize the previous week.
  *
  * Usage:
- *   npx tsx scripts/ai/generate-diff-summaries-weekly.ts
- *   npx tsx scripts/ai/generate-diff-summaries-weekly.ts --dry-run
+ *   npx tsx scripts/scheduled/generate-diff-summaries-weekly.ts
+ *   npx tsx scripts/scheduled/generate-diff-summaries-weekly.ts --dry-run
  */
 
 import { getISOWeek, getISOWeekYear } from 'date-fns';

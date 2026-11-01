@@ -3,7 +3,7 @@
  * ZennApiEnricherの動作を手動テストするためのスクリプト
  *
  * Usage:
- *   npx tsx scripts/diagnosis/test-zenn-api.ts
+ *   npx tsx scripts/analysis/test-zenn-api.ts
  */
 
 import { ZennService } from '@/lib/enrichers/zenn-service';

@@ -11,7 +11,7 @@ jest.mock('@/lib/articles/quality-score', () => ({
     mockCalculateArticleQualityScore(...args),
 }));
 
-jest.mock('@/scripts/utils/processing-status', () => ({
+jest.mock('@/scripts/lib/processing-status', () => ({
   getLastProcessedTime: (...args: unknown[]) => mockGetLastProcessedTime(...args),
   saveProcessingStatus: (...args: unknown[]) => mockSaveProcessingStatus(...args),
 }));

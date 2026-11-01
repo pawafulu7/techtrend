@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/utils/docker-test.sh
+# scripts/docker/test.sh
 # Usage: npm run docker:test:quick -- <test-file> [test-name-pattern]
 # Note: docker:test:spec はコンテナ起動込み。quickはコンテナ起動済みを前提とする。
 set -euo pipefail

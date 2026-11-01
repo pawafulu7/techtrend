@@ -9,7 +9,7 @@
  * Runs before the worker in .github/workflows/scheduler-embedding-worker.yml.
  *
  * Usage:
- *   npx tsx scripts/maintenance/recover-stuck-embeddings.ts [options]
+ *   npx tsx scripts/scheduled/recover-stuck-embeddings.ts [options]
  *
  * Options:
  *   --dry-run    Show what would be reset without making changes
@@ -19,9 +19,9 @@
  *   --limit=N    Maximum jobs to reset per run (default: 100)
  *
  * Examples:
- *   npx tsx scripts/maintenance/recover-stuck-embeddings.ts --dry-run --verbose
- *   npx tsx scripts/maintenance/recover-stuck-embeddings.ts --age=30 --verbose
- *   npx tsx scripts/maintenance/recover-stuck-embeddings.ts --age=30 --limit=50
+ *   npx tsx scripts/scheduled/recover-stuck-embeddings.ts --dry-run --verbose
+ *   npx tsx scripts/scheduled/recover-stuck-embeddings.ts --age=30 --verbose
+ *   npx tsx scripts/scheduled/recover-stuck-embeddings.ts --age=30 --limit=50
  */
 
 import { prisma } from '@/lib/prisma';

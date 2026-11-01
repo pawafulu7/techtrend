@@ -22,7 +22,7 @@ jest.mock('@/lib/cache/cache-invalidator', () => ({
   },
 }));
 
-jest.mock('@/scripts/utils/processing-status', () => ({
+jest.mock('@/scripts/lib/processing-status', () => ({
   getLastProcessedTime: jest.fn().mockResolvedValue(null),
   saveProcessingStatus: jest.fn().mockResolvedValue(undefined),
   hasContentUpdatesSince: jest.fn().mockResolvedValue(true),
