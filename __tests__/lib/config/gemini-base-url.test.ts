@@ -5,13 +5,6 @@
  * ここでは直書きが残っていた経路（週次差分要約・トレンドレポート）を見る。
  */
 
-const mockGetGenerativeModel = jest.fn();
-jest.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
-    getGenerativeModel: (...args: unknown[]) => mockGetGenerativeModel(...args),
-  })),
-}));
-
 jest.mock('@/lib/rag/embedding-scheduler', () => ({
   EmbeddingScheduler: jest.fn().mockImplementation(() => ({})),
 }));
@@ -37,8 +30,10 @@ import {
 } from '@/lib/ai/gemini-config';
 import { LLMExtractionPipeline } from '@/lib/ai/extraction/llm-extraction-pipeline';
 import { TrendReportGenerator } from '@/lib/trends/report/trend-report-generator';
+import type { TrendGeminiModel } from '@/lib/trends/report/trend-ai-summary-generator';
 import { GEMINI_API } from '@/lib/constants';
 import { loadConfig } from '@/lib/di/config';
+import { createTrendReportPrismaMock } from '../../helpers/trend-report-prisma-mock';
 
 const DEFAULT_BASE_URL = 'https://generativelanguage.googleapis.com';
 const PROXY_BASE_URL = 'https://gemini-proxy.example.test';
@@ -51,6 +46,21 @@ const okResponse = () => ({
   }),
   text: async () => 'ok',
 });
+
+/** SDK（@google/genai）は本物の Response を読むので、呼ばれるたびに作り直す */
+const sdkOkResponse = () =>
+  new Response(
+    JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } }
+  );
+
+/** トレンドレポートが要約を作るときに読み込む SDK のクライアントとモデル（private） */
+const trendModelOf = (generator: TrendReportGenerator) =>
+  (
+    generator as unknown as {
+      loadGeminiModel: () => Promise<TrendGeminiModel | null>;
+    }
+  ).loadGeminiModel();
 
 describe.each([
   ['未設定', undefined, DEFAULT_BASE_URL],
@@ -106,13 +116,27 @@ describe.each([
     );
   });
 
-  it('トレンドレポート（SDK）に base URL を渡し、モデルは要約と別のまま', () => {
-    new TrendReportGenerator({} as never);
+  it('トレンドレポート（SDK）の要約がその base URL を、要約と別のモデルで呼ぶ', async () => {
+    mockFetch.mockImplementation(async () => sdkOkResponse());
+    const { prisma, create } = createTrendReportPrismaMock();
 
-    expect(mockGetGenerativeModel).toHaveBeenCalledWith(
-      { model: GEMINI_API.TREND_MODEL },
-      { baseUrl: expectedBaseUrl }
+    // レポートの生成から要約のリクエストまで通す（応答は JSON でも十分な長さでもないので、
+    // 構造化要約の試し直しと legacy 要約を送り、要約なしで保存される）。送ったリクエストはすべて同じ URL
+    await new TrendReportGenerator(prisma).generateDailyReport(
+      new Date('2026-10-23T03:00:00Z')
     );
+
+    expect(mockFetch.mock.calls.length).toBeGreaterThan(0);
+    for (const [url, init] of mockFetch.mock.calls as [string, RequestInit][]) {
+      expect(url).toBe(
+        `${expectedBaseUrl}/v1beta/models/${GEMINI_API.TREND_MODEL}:generateContent`
+      );
+      expect(init.method).toBe('POST');
+      expect(new Headers(init.headers).get('x-goog-api-key')).toBe(
+        'test-api-key'
+      );
+    }
+    expect(create).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -147,13 +171,12 @@ describe('GEMINI_MODEL', () => {
     expect(new LLMExtractionPipeline().getModelVersion()).toBe('gemini-custom');
   });
 
-  it('トレンドレポートのモデルは GEMINI_MODEL で変わらない', () => {
+  it('トレンドレポートのモデルは GEMINI_MODEL で変わらない', async () => {
     expect(getGeminiTrendModel()).toBe(GEMINI_API.TREND_MODEL);
-    new TrendReportGenerator({} as never);
-    expect(mockGetGenerativeModel).toHaveBeenCalledWith(
-      { model: GEMINI_API.TREND_MODEL },
-      expect.anything()
+    const trendModel = await trendModelOf(
+      new TrendReportGenerator({} as never)
     );
+    expect(trendModel?.model).toBe(GEMINI_API.TREND_MODEL);
   });
 });
 
