@@ -72,14 +72,6 @@ export function getGeminiBaseUrl(): string {
 }
 
 /**
- * @google/generative-ai の getGenerativeModel に渡すリクエストオプション。
- * SDK は既定で公式のエンドポイントを使うので、base URL を明示して揃える
- */
-export function getGeminiRequestOptions(): { baseUrl: string } {
-  return { baseUrl: getGeminiBaseUrl() };
-}
-
-/**
  * generateContent の URL（API キーなし。キーは x-goog-api-key ヘッダで渡す経路用）。
  * model を省略すると設定のモデルを使う
  */

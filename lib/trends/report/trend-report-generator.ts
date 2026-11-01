@@ -1,10 +1,6 @@
 import { PrismaClient, TrendPeriodType, Prisma } from '@/lib/prisma-exports';
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import logger from '@/lib/logger';
-import {
-  getGeminiRequestOptions,
-  getGeminiTrendModel,
-} from '@/lib/ai/gemini-config';
+import { getGeminiTrendModel } from '@/lib/ai/gemini-config';
 import type {
   TopArticleInfo,
   CategoryInfo,
@@ -21,27 +17,40 @@ import {
   getWeekRangeJST,
   getMonthRangeJST,
 } from './trend-data-aggregator';
-import { generateAISummary } from './trend-ai-summary-generator';
+import type { TrendGeminiModel } from './trend-ai-summary-generator';
 import { env } from '@/lib/config/env';
 
 export class TrendReportGenerator {
   private prisma: PrismaClient;
-  private genAI: GoogleGenerativeAI | null = null;
-  private model: GenerativeModel | null = null;
+  private readonly apiKey: string | undefined;
+  private model: TrendGeminiModel | null = null;
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
 
-    // Gemini API initialization (optional)
-    const apiKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
-    if (apiKey) {
-      this.genAI = new GoogleGenerativeAI(apiKey);
-      // モデルは要約と別（GEMINI_MODEL では変わらない）。base URL は共有設定に揃える
-      this.model = this.genAI.getGenerativeModel(
-        { model: getGeminiTrendModel() },
-        getGeminiRequestOptions()
-      );
+    // Gemini API (optional)
+    this.apiKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
+  }
+
+  /**
+   * AI 要約に使う SDK のクライアントとモデル。API キーが無ければ null。
+   *
+   * SDK（@google/genai）は依存が大きく、読み込みに時間がかかる。このクラスは
+   * daily-report の読み出し（公開ページと API）でも作るので、SDK は要約を作るときに初めて読み込む
+   */
+  private async loadGeminiModel(): Promise<TrendGeminiModel | null> {
+    if (!this.apiKey) {
+      return null;
     }
+    if (!this.model) {
+      const { createGeminiClient } = await import('@/lib/ai/gemini-sdk');
+      // モデルは要約と別（GEMINI_MODEL では変わらない）。base URL は共有設定に揃える
+      this.model = {
+        client: createGeminiClient(this.apiKey),
+        model: getGeminiTrendModel(),
+      };
+    }
+    return this.model;
   }
 
   /**
@@ -120,23 +129,29 @@ export class TrendReportGenerator {
       let aiModel: string | undefined;
       let generatedAt: Date | undefined;
 
-      if (this.model && articles.length > 0) {
+      if (articles.length > 0) {
         try {
-          const aiSummaryResult = await generateAISummary(
-            this.model,
-            this.prisma,
-            periodType,
-            periodStart,
-            periodEnd,
-            articles,
-            topArticles,
-            categories,
-            tags
-          );
-          aiSummary = aiSummaryResult.content;
-          aiSummaryFormat = aiSummaryResult.format;
-          aiModel = getGeminiTrendModel();
-          generatedAt = new Date();
+          const model = await this.loadGeminiModel();
+          if (model) {
+            // 要約の処理も SDK を import するので、同じく作るときだけ読み込む
+            const { generateAISummary } =
+              await import('./trend-ai-summary-generator');
+            const aiSummaryResult = await generateAISummary(
+              model,
+              this.prisma,
+              periodType,
+              periodStart,
+              periodEnd,
+              articles,
+              topArticles,
+              categories,
+              tags
+            );
+            aiSummary = aiSummaryResult.content;
+            aiSummaryFormat = aiSummaryResult.format;
+            aiModel = model.model;
+            generatedAt = new Date();
+          }
         } catch (error) {
           logger.error({ err: error }, 'Failed to generate AI summary');
           // Save report even if AI generation fails

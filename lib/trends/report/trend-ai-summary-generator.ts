@@ -1,7 +1,8 @@
 import { sanitizeTrendAiText } from '@/lib/trends/report/trend-ai-text';
 import { PrismaClient, TrendPeriodType } from '@/lib/prisma-exports';
-import type { GenerativeModel } from '@google/generative-ai';
+import type { GoogleGenAI } from '@google/genai';
 import logger from '@/lib/logger';
+import { generateGeminiText } from '@/lib/ai/gemini-sdk';
 import { extractFirstJsonObject } from '@/lib/trends/report/trend-ai-summary-types';
 import type {
   ArticleWithRelations,
@@ -26,6 +27,12 @@ import { validateV2Content, resolveRefKeysToIds } from './trend-ai-validators';
 
 const GEMINI_TIMEOUT_MS = 60_000;
 
+/** トレンドレポートの生成に使う SDK のクライアントとモデルID */
+export type TrendGeminiModel = {
+  client: GoogleGenAI;
+  model: string;
+};
+
 export type AISummaryResult = {
   content: string;
   format: 'json' | 'text';
@@ -35,7 +42,7 @@ export type AISummaryResult = {
  * Generate AI summary, falling back to legacy plain text on failure.
  */
 export async function generateAISummary(
-  model: GenerativeModel,
+  model: TrendGeminiModel,
   prisma: PrismaClient,
   periodType: TrendPeriodType,
   periodStart: Date,
@@ -224,7 +231,7 @@ async function buildStructuredInput(
 }
 
 async function generateAISummaryStructured(
-  model: GenerativeModel,
+  model: TrendGeminiModel,
   prisma: PrismaClient,
   periodType: TrendPeriodType,
   periodStart: Date,
@@ -256,18 +263,15 @@ async function generateAISummaryStructured(
   const fallbackId = topArticleSlice[0]?.id;
 
   const generateOnce = async (promptText: string, temperature: number) => {
-    const result = await model.generateContent(
-      {
-        contents: [{ role: 'user', parts: [{ text: promptText }] }],
-        generationConfig: {
-          maxOutputTokens: 8192,
-          temperature,
-          responseMimeType: 'application/json',
-        },
-      },
-      { timeout: GEMINI_TIMEOUT_MS }
-    );
-    return result.response.text().trim();
+    const text = await generateGeminiText(model.client, {
+      model: model.model,
+      prompt: promptText,
+      maxOutputTokens: 8192,
+      temperature,
+      responseMimeType: 'application/json',
+      timeoutMs: GEMINI_TIMEOUT_MS,
+    });
+    return text.trim();
   };
 
   const runAttempt = async (promptText: string, temperature: number) => {
@@ -336,7 +340,7 @@ async function generateAISummaryStructured(
 }
 
 async function generateAISummaryLegacyPlainText(
-  model: GenerativeModel,
+  model: TrendGeminiModel,
   periodType: TrendPeriodType,
   periodStart: Date,
   periodEnd: Date,
@@ -345,19 +349,17 @@ async function generateAISummaryLegacyPlainText(
   const periodLabel = formatPeriodLabel(periodType, periodStart, periodEnd);
   const prompt = buildLegacyPrompt(periodLabel, topArticles);
 
-  const result = await model.generateContent(
-    {
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: 600,
-        temperature: 0.5,
-      },
-    },
-    { timeout: GEMINI_TIMEOUT_MS }
-  );
+  const text = await generateGeminiText(model.client, {
+    model: model.model,
+    prompt,
+    // 思考のトークンも上限に数える（gemini-2.5-flash）。600 では思考が約 570 を使い、
+    // 本文が 50 字前後で MAX_TOKENS になって必ず短すぎで落ちていた。長さは出力形式で決まる
+    maxOutputTokens: 8192,
+    temperature: 0.5,
+    timeoutMs: GEMINI_TIMEOUT_MS,
+  });
 
-  const response = result.response;
-  let summary = response.text().trim();
+  let summary = text.trim();
   summary = summary.replace(/^(要約[:：]?\s*|##\s*出力\s*)/i, '');
 
   if (summary.length < LEGACY_SUMMARY_MIN_LENGTH) {
