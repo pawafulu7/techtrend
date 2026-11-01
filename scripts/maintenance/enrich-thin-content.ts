@@ -14,7 +14,7 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
-import { isEnrichmentSkipped } from '../../lib/fetchers/generic-foreign-rss';
+import { isEnrichmentSkipped } from '../../lib/fetchers/config/foreign-rss-sources';
 import { isHighQuality } from '../../lib/enrichers/strategies/quality';
 import * as dotenv from 'dotenv';
 

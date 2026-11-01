@@ -15,8 +15,8 @@
 
 import {
   GenericForeignRssFetcher,
-  FOREIGN_SOURCE_CONFIGS,
 } from '@/lib/fetchers/generic-foreign-rss';
+import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/config/foreign-rss-sources';
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 

@@ -13,8 +13,8 @@
 
 import {
   GenericForeignRssFetcher,
-  FOREIGN_SOURCE_CONFIGS,
 } from '@/lib/fetchers/generic-foreign-rss';
+import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/config/foreign-rss-sources';
 import { SOURCE_CATEGORIES } from '@/lib/sources/source-categories';
 import { BATCH3_SOURCES } from '@/scripts/maintenance/add-batch3-sources';
 import Parser from 'rss-parser';

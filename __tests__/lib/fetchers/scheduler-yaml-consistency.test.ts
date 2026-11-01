@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/generic-foreign-rss';
+import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/config/foreign-rss-sources';
 
 /**
  * スケジューラ整合性テスト（Issue #628 / #407型事故の再発防止）

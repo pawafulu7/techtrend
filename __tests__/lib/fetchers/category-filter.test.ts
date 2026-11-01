@@ -2,7 +2,8 @@
  * GenericForeignRssFetcher カテゴリフィルタリングのテスト
  */
 
-import { GenericForeignRssFetcher, ForeignSourceConfig } from '@/lib/fetchers/generic-foreign-rss';
+import { GenericForeignRssFetcher } from '@/lib/fetchers/generic-foreign-rss';
+import { ForeignSourceConfig } from '@/lib/fetchers/config/foreign-rss-sources';
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { logger } from '@/lib/logger';

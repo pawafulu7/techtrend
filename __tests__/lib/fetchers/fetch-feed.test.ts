@@ -7,7 +7,8 @@
 
 import { fetchFeedXml, FEED_MAX_BODY_BYTES } from '@/lib/fetchers/fetch-feed';
 import { DeepMindBlogFetcher } from '@/lib/fetchers/deepmind-blog';
-import { GenericForeignRssFetcher, FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/generic-foreign-rss';
+import { GenericForeignRssFetcher } from '@/lib/fetchers/generic-foreign-rss';
+import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/config/foreign-rss-sources';
 import { ResponseTooLargeError, InvalidRedirectError } from '@/lib/utils/url/safe-redirect';
 import { SsrfGuardError } from '@/lib/utils/url/ssrf-guard';
 import dns from 'dns';

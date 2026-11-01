@@ -45,8 +45,8 @@ import { DevelopersIOFetcher, getTagFromSourceName } from './developersio';
 // Foreign Tech Company Blog Fetchers
 import {
   GenericForeignRssFetcher,
-  getForeignSourceConfig,
 } from './generic-foreign-rss';
+import { getForeignSourceConfig } from './config/foreign-rss-sources';
 
 // Japanese Corporate Tech Blog Fetchers
 import { DeNAFetcher } from './corporate-blogs/dena-fetcher';

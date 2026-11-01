@@ -16,9 +16,11 @@
 
 import {
   GenericForeignRssFetcher,
+} from '@/lib/fetchers/generic-foreign-rss';
+import {
   ForeignSourceConfig,
   FOREIGN_SOURCE_CONFIGS,
-} from '@/lib/fetchers/generic-foreign-rss';
+} from '@/lib/fetchers/config/foreign-rss-sources';
 import Parser from 'rss-parser';
 import {
   createMockSource as createMockSourceBase,

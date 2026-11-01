@@ -1,6 +1,6 @@
 import { Source } from '@/lib/prisma-exports';
 import { createFetcher } from '../../../lib/fetchers/index';
-import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/generic-foreign-rss';
+import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/config/foreign-rss-sources';
 
 // Mock rss-parser and the feed fetch to prevent actual network calls
 jest.mock('rss-parser', () => {

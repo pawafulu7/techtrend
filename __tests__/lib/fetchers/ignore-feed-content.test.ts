@@ -10,10 +10,12 @@
 
 import {
   GenericForeignRssFetcher,
+} from '@/lib/fetchers/generic-foreign-rss';
+import {
   ForeignSourceConfig,
   FOREIGN_SOURCE_CONFIGS,
   isEnrichmentSkipped,
-} from '@/lib/fetchers/generic-foreign-rss';
+} from '@/lib/fetchers/config/foreign-rss-sources';
 import { Source } from '@/lib/prisma-exports';
 import { HUGGINGFACE_PAPERS_SOURCE_NAME } from '@/lib/sources/source-categories';
 import Parser from 'rss-parser';

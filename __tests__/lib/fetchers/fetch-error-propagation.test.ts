@@ -13,8 +13,8 @@
 
 import {
   GenericForeignRssFetcher,
-  FOREIGN_SOURCE_CONFIGS,
 } from '@/lib/fetchers/generic-foreign-rss';
+import { FOREIGN_SOURCE_CONFIGS } from '@/lib/fetchers/config/foreign-rss-sources';
 import { FreeeFetcher } from '@/lib/fetchers/corporate-blogs/freee-fetcher';
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
