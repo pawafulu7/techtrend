@@ -35,8 +35,8 @@ async function main() {
     if (result.usage) {
       console.log('');
       console.log('Token Usage:');
-      console.log(`  Prompt: ${result.usage.promptTokens || 'N/A'}`);
-      console.log(`  Completion: ${result.usage.completionTokens || 'N/A'}`);
+      console.log(`  Prompt: ${result.usage.inputTokens || 'N/A'}`);
+      console.log(`  Completion: ${result.usage.outputTokens || 'N/A'}`);
       console.log(`  Total: ${result.usage.totalTokens}`);
     }
 

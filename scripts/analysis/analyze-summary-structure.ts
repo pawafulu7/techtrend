@@ -18,7 +18,7 @@ async function analyzeSummaryStructure() {
       continue;
     }
 
-    console.error('='*60);
+    console.error('='.repeat(60));
     console.error(`記事ID: ${articleId}`);
     console.error(`タイトル: ${article.title}`);
     console.error('\n--- 詳細要約の構造分析 ---');

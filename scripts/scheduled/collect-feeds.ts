@@ -87,6 +87,7 @@ import {
 
 // フェッチャーファクトリ（createFetcherですべてのソースを統一的に処理）
 import { createFetcher } from '@/lib/fetchers';
+import type { BaseFetcher } from '@/lib/fetchers/base';
 
 // エンリッチャーをインポート
 import { ContentEnricherFactory } from '@/lib/enrichers';
@@ -228,7 +229,7 @@ async function processSource({
 
   // createFetcherを使用してフェッチャーを生成
   // 未対応ソースの場合は "Unsupported source:" で始まるエラーがスローされる
-  let fetcher;
+  let fetcher: BaseFetcher;
   try {
     fetcher = createFetcher(source);
   } catch (error) {
@@ -307,7 +308,7 @@ async function processSource({
               // フィード本文由来の補完（CAS と、要約の待ち行列への投入は fillExistingContentFromFeed）
               const filled = await fillExistingContentFromFeed(
                 existing,
-                { content: article.content, thumbnail: article.thumbnail },
+                { content: article.content, thumbnail: article.thumbnail ?? undefined },
                 result.newArticleIds
               );
               if (filled) {
@@ -612,7 +613,7 @@ async function processSource({
               // メイン分岐と同じく fillExistingContentFromFeed（CAS と、要約の待ち行列への投入）
               const filled = await fillExistingContentFromFeed(
                 latestExisting,
-                { content: article.content, thumbnail: article.thumbnail },
+                { content: article.content, thumbnail: article.thumbnail ?? undefined },
                 result.newArticleIds
               );
               if (filled) {

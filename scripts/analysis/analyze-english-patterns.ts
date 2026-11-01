@@ -106,11 +106,12 @@ async function analyzePatterns() {
         // 英語部分を抽出
         const match = firstLine.match(/^([A-Za-z\s.,!?]+)/);
         if (match) {
-          englishPattern = match[1].trim();
-          
+          const pattern = String(match[1]).trim();
+          englishPattern = pattern;
+
           // パターンをカウント
-          const count = englishPatterns.get(englishPattern) || 0;
-          englishPatterns.set(englishPattern, count + 1);
+          const count = englishPatterns.get(pattern) || 0;
+          englishPatterns.set(pattern, count + 1);
         }
       }
       

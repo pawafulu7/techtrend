@@ -279,10 +279,12 @@ async function main() {
             // collect-feeds.ts の受入基準と同一（500文字以上は無条件、
             // 250-499文字は isHighQuality 必須）にし、わずかな伸びでの
             // クリアを防ぐ
+            // hasNewContent が真なら content は空でない
+            const recoveredContent = enrichedData.content ?? '';
             if (
               isSummaryEligible &&
-              (enrichedData.content.length >= 500 ||
-                (enrichedData.content.length >= 250 && isHighQuality(enrichedData.content)))
+              (recoveredContent.length >= 500 ||
+                (recoveredContent.length >= 250 && isHighQuality(recoveredContent)))
             ) {
               updateData.skipReason = null;
               updateData.summaryError = null;

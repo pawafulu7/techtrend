@@ -9,6 +9,7 @@ import { getAppDependencies } from '@/lib/di/bootstrap';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { EmbeddingScheduler } from '@/lib/rag/embedding-scheduler';
 import { ContentEnricherFactory } from '../enrichers';
+import type { EnrichedContent } from '../enrichers/base';
 import {
   detectSourceFromUrl,
   normalizeSourceName,
@@ -221,9 +222,9 @@ export async function addArticleManually(
     }
 
     // エンリッチメント処理
-    let enrichedData = null;
+    let enrichedData: EnrichedContent | null = null;
     let content = '';
-    let thumbnail = null;
+    let thumbnail: string | null = null;
     let finalTitle = customTitle || '';
     let tagNames: string[] = [];
 
@@ -234,16 +235,10 @@ export async function addArticleManually(
       if (enricher) {
         try {
           enrichedData = await enricher.enrich(url);
+          // エンリッチャーが返すのは本文とサムネイルだけ（EnrichedContent）。タイトルとタグは下でメタデータから取る
           if (enrichedData) {
             content = enrichedData.content || '';
             thumbnail = enrichedData.thumbnail || null;
-            if (!customTitle && enrichedData.title) {
-              finalTitle = enrichedData.title;
-            }
-            // エンリッチャーからタグを取得
-            if (enrichedData.tags && Array.isArray(enrichedData.tags)) {
-              tagNames = enrichedData.tags;
-            }
           }
         } catch (e) {
           logger.warn(
@@ -265,14 +260,14 @@ export async function addArticleManually(
     } | null = null;
     if (!finalTitle && !customTitle) {
       metadata = await fetchBasicMetadata(url);
-      finalTitle = metadata.title;
+      finalTitle = metadata.title ?? '';
       // コンテンツが取得できていない場合のみ、メタデータのコンテンツを使用
       if (!content) {
-        content = metadata.content;
+        content = metadata.content ?? '';
       }
       // サムネイルが取得できていない場合のみ、メタデータのサムネイルを使用
       if (!thumbnail) {
-        thumbnail = metadata.thumbnail;
+        thumbnail = metadata.thumbnail ?? null;
       }
       // メタデータからキーワードをタグとして使用（ただし既にタグがある場合はスキップ）
       if (
@@ -339,8 +334,8 @@ export async function addArticleManually(
     });
 
     // 要約生成
-    let summary = null;
-    let detailedSummary = null;
+    let summary: string | null = null;
+    let detailedSummary: string | null = null;
     let generatedTags: string[] = [];
 
     if (!skipSummary && content && content.length > 100) {
@@ -413,8 +408,8 @@ export async function addArticleManually(
       articleId: article.id,
       title: finalTitle,
       source: sourceName,
-      summary,
-      detailedSummary,
+      summary: summary ?? undefined,
+      detailedSummary: detailedSummary ?? undefined,
       message: '記事を正常に追加しました',
     };
   } catch (error) {

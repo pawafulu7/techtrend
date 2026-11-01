@@ -68,8 +68,8 @@ async function main() {
 
       if (result.usage) {
         console.log(`\nToken Usage:`);
-        console.log(`  Prompt: ${result.usage.promptTokens}`);
-        console.log(`  Completion: ${result.usage.completionTokens}`);
+        console.log(`  Prompt: ${result.usage.inputTokens}`);
+        console.log(`  Completion: ${result.usage.outputTokens}`);
         console.log(`  Total: ${result.usage.totalTokens}`);
       }
 

@@ -2,7 +2,7 @@
  * ZennService Unit Tests
  */
 
-import { ZennService, ZennArticleResponse } from '@/lib/enrichers/zenn-service';
+import { ZennService, ZennArticleResponse } from '@/lib/fetchers/zenn-service';
 
 // Mock logger to suppress logs during tests
 jest.mock('@/lib/logger', () => ({

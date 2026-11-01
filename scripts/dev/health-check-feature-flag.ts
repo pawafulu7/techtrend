@@ -66,6 +66,9 @@ async function checkFeatureFlag() {
 
       // Test getSourcesByCategory() with known group
       console.log('  Testing getSourcesByCategory(group_company_japan)...');
+      if (!provider.getSourcesByCategory) {
+        throw new Error('provider does not implement getSourcesByCategory');
+      }
       const groupSources = await provider.getSourcesByCategory('group_company_japan');
       console.log('    Success: Retrieved', groupSources.length, 'sources');
 

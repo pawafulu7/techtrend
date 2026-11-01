@@ -10,20 +10,22 @@ import { getPoolConfig } from '@/lib/database-config';
 import { env } from '@/lib/config/env';
 
 type PrismaLogLevel = 'query' | 'info' | 'warn' | 'error';
+/** レベルだけ、または $on で受け取るための { level, emit: 'event' } */
+type PrismaLogOption = PrismaLogLevel | { level: PrismaLogLevel; emit: 'stdout' | 'event' };
 
 /**
  * LOG_ERROR_DETAILS=false なら error を外す。Prisma の error ログには、DB に繋がらないときの
  * 接続先（ホスト）が入り、catch より先に出る。定期実行のログは公開されるので、そこでは外す
  */
-export function withPrismaErrorLogSetting<T extends PrismaLogLevel>(levels: T[]): T[] {
+export function withPrismaErrorLogSetting<T extends PrismaLogOption>(levels: T[]): T[] {
   return env.LOG_ERROR_DETAILS === 'false'
-    ? levels.filter((level) => level !== 'error')
+    ? levels.filter((level) => (typeof level === 'string' ? level : level.level) !== 'error')
     : levels;
 }
 
 export function createPrismaClient(options?: {
   connectionString?: string;
-  log?: Array<'query' | 'info' | 'warn' | 'error'>;
+  log?: PrismaLogOption[];
 }): PrismaClient {
   const poolConfig = getPoolConfig(options?.connectionString);
 

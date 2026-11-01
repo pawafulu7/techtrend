@@ -1,5 +1,5 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
-import { Source, Tag } from '@/lib/prisma-exports';
+import { Prisma, Source, Tag } from '@/lib/prisma-exports';
 import * as bcrypt from 'bcryptjs';
 import Redis from 'ioredis';
 
@@ -163,7 +163,7 @@ async function ensureSource(id: string, name: string, type: 'RSS' | 'API' | 'SCR
 }
 
 async function createSources() {
-  const sources = [];
+  const sources: Awaited<ReturnType<typeof ensureSource>>[] = [];
   
   // 固定IDソース（E2Eテストで使用されるID）
   sources.push(await ensureSource(
@@ -500,7 +500,7 @@ async function createUsers() {
 }
 
 async function createArticles(sources: Source[], tags: Tag[]) {
-  const articles = [];
+  const articles: Prisma.ArticleGetPayload<{ include: { source: true; tags: true } }>[] = [];
   const now = new Date();
   const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   // 環境変数で記事数を設定可能に（Phase 2で増量）

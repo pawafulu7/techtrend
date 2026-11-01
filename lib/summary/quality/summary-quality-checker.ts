@@ -3,7 +3,7 @@
  * 統一プロンプトによる要約生成の品質を検証し、再生成の必要性を判定
  *
  * 本番の要約生成経路では使わない（新サービスは lib/ai/service/quality-checker.ts）。
- * 手動の比較スクリプト（scripts/manual/compare-llm-quality.ts など）のために残している。
+ * 手動の再生成スクリプト（scripts/maintenance/regenerate-all-unified.ts）が使う。
  */
 
 import { detectSpeculativeExpressions } from './quality-rules';

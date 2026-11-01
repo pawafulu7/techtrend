@@ -21,11 +21,11 @@ interface CliOptions {
 }
 
 interface CandidateArticle {
-  id: string | number;
+  id: string;
   title: string;
   content: string | null;
   enrichedContent: string | null;
-  url: string | null;
+  url: string;
   summary: string | null;
   detailedSummary: string | null;
   qualityScore: number;

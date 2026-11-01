@@ -4,7 +4,7 @@
  */
 
 import { BaseContentEnricher, EnrichmentResult } from './base';
-import { ZennService } from '@/lib/enrichers/zenn-service';
+import { ZennService } from '@/lib/fetchers/zenn-service';
 import * as cheerio from 'cheerio';
 
 /**

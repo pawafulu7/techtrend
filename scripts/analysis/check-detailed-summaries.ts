@@ -6,6 +6,7 @@ async function checkDetailedSummaries() {
     where: {
       detailedSummary: { not: null }
     },
+    include: { source: true },
     orderBy: { createdAt: 'desc' },
     take: 10
   });
@@ -18,7 +19,7 @@ async function checkDetailedSummaries() {
     const hasBulletPoints = lines.some((line: string) => line.startsWith('・'));
     const lineCount = lines.length;
     
-    console.error('\n[' + article.source + '] ' + article.title.substring(0, 50) + '...');
+    console.error('\n[' + article.source.name + '] ' + article.title.substring(0, 50) + '...');
     console.error('  箇条書き形式: ' + (hasBulletPoints ? '✅' : '❌'));
     console.error('  行数: ' + lineCount);
     

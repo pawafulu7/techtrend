@@ -1,11 +1,12 @@
 import { readFileSync } from 'fs';
+import { join } from 'path';
 import { createPrismaClient } from '@/lib/prisma/create-client';
 
 const prisma = createPrismaClient();
 
 async function analyzeProblems() {
   // 問題データを読み込み
-  const data = JSON.parse(readFileSync('/home/tomoaki/work/techtrend/data/problematic-articles.json', 'utf-8'));
+  const data = JSON.parse(readFileSync(join(process.cwd(), 'data', 'problematic-articles.json'), 'utf-8'));
   const articleIds = data.articleIds;
 
   console.error('問題のある記事の詳細分析');
@@ -16,7 +17,8 @@ async function analyzeProblems() {
   const articles = await prisma.article.findMany({
     where: {
       id: { in: articleIds }
-    }
+    },
+    include: { source: true }
   });
 
   // ソース別の統計
@@ -32,7 +34,7 @@ async function analyzeProblems() {
   };
 
   for (const article of articles) {
-    const source = article.source || 'Unknown';
+    const source = article.source?.name || 'Unknown';
     
     // ソース別カウント
     sourceStats.set(source, (sourceStats.get(source) || 0) + 1);
@@ -84,7 +86,7 @@ async function analyzeProblems() {
 
   // 最も問題のあるソースのサンプルを表示
   const topProblematicSource = sortedSources[0][0];
-  const sampleArticles = articles.filter(a => a.source === topProblematicSource).slice(0, 3);
+  const sampleArticles = articles.filter(a => a.source?.name === topProblematicSource).slice(0, 3);
   
   console.error('\n【問題の多い「' + topProblematicSource + '」のサンプル】');
   for (const article of sampleArticles) {

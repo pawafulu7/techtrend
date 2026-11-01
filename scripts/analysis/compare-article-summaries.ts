@@ -22,7 +22,7 @@ async function compareArticles() {
       continue;
     }
 
-    console.error('='*60);
+    console.error('='.repeat(60));
     console.error(`記事ID: ${article.id}`);
     console.error(`タイトル: ${article.title}`);
     console.error(`ソース: ${article.source.name}`);

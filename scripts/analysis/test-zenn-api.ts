@@ -6,7 +6,7 @@
  *   npx tsx scripts/analysis/test-zenn-api.ts
  */
 
-import { ZennService } from '@/lib/enrichers/zenn-service';
+import { ZennService } from '@/lib/fetchers/zenn-service';
 import { ZennApiEnricher } from '@/lib/enrichers/zenn-api';
 
 async function testZennAPI() {

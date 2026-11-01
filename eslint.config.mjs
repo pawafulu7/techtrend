@@ -16,6 +16,13 @@ const rssParseUrlRestriction = {
   message: "rss-parser's parseURL does not SSRF-check redirects. Fetch the XML with fetchFeedXml from @/lib/fetchers/fetch-feed and parse it with parseString.",
 }
 
+// 依存の向き: lib/ と scripts/ は画面のコード（app/・components/）を import しない（docs/architecture/06-directory-structure.md）。
+// no-restricted-imports を上書きする設定（enricher）でも、この patterns を含める
+const uiLayerImportRestriction = {
+  group: ['@/app/*', '@/components/*'],
+  message: 'lib/ と scripts/ から画面のコード（app/・components/）を import しない。画面と共有するロジックは lib/ に置く（docs/architecture/06-directory-structure.md）',
+}
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -58,7 +65,6 @@ const eslintConfig = defineConfig([
       'lib/config/env.ts',
       'lib/logger.ts',
       'lib/logger.client.ts',
-      'lib/hooks/**',
       'lib/cookies/**',
       'lib/errors/**',
       'lib/articles/article-link-extractor.ts',
@@ -79,9 +85,16 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // lib/ と scripts/ から画面のコードを import しない（env の例外ファイルも含めて全体に掛ける）
+  {
+    files: ['lib/**/*.ts', 'lib/**/*.tsx', 'scripts/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [uiLayerImportRestriction] }],
+    },
+  },
   // Enforce centralized env access in app/ and scripts/scheduled/
   {
-    files: ['app/**/*.ts', 'app/**/*.tsx', 'scripts/scheduled/**/*.ts', 'config/**/*.ts'],
+    files: ['app/**/*.ts', 'app/**/*.tsx', 'scripts/scheduled/**/*.ts'],
     rules: {
       'no-restricted-syntax': ['error',
         loggerErrorKeyRestriction,
@@ -118,6 +131,7 @@ const eslintConfig = defineConfig([
             message: 'Use fetchWithValidatedRedirects from @/lib/utils/url/safe-redirect so every redirect hop is SSRF-checked.',
           })),
         ],
+        patterns: [uiLayerImportRestriction],
       }],
     },
   },

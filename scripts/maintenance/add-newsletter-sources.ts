@@ -14,6 +14,7 @@
  */
 
 import path from 'path';
+import type { Source } from '@/lib/prisma-exports';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 import { assertSourceIdentity } from './utils/source-identity';
 
@@ -75,7 +76,7 @@ async function main() {
     // 1件でも失敗したら全件ロールバックし、部分登録状態を作らない。同じ name の行が別の id で
     // あると、create が name の一意制約で失敗して全件が戻る（黙って別の行を作らない）
     const results = await prisma.$transaction(async (tx) => {
-      const upserted = [];
+      const upserted: Source[] = [];
       for (const source of [...NEWSLETTER_SOURCES, ...DORMANT_SOURCES]) {
         await assertSourceIdentity(tx, source);
         const row = await tx.source.upsert({

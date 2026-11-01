@@ -3,7 +3,7 @@
  */
 
 import { ZennApiEnricher } from '@/lib/enrichers/zenn-api';
-import { ZennService } from '@/lib/enrichers/zenn-service';
+import { ZennService } from '@/lib/fetchers/zenn-service';
 
 // Mock logger
 jest.mock('@/lib/logger', () => ({
@@ -17,7 +17,7 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 // Mock ZennService
-jest.mock('@/lib/enrichers/zenn-service');
+jest.mock('@/lib/fetchers/zenn-service');
 
 describe('ZennApiEnricher', () => {
   let enricher: ZennApiEnricher;

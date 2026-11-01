@@ -19,7 +19,7 @@ echo
 
 # Load PROD_DATABASE_URL (environment variable > .env.local > .env)
 # shellcheck source=scripts/db/prod-db-env.sh
-source "$(dirname "$0")/../db/prod-db-env.sh"
+source "$(dirname "$0")/prod-db-env.sh"
 load_prod_database_url || exit 1
 
 # prisma migrate status / deploy の生の出力には接続先が入るため、prod_db_run で
