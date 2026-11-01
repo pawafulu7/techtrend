@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useCompanyFilter } from '@/lib/hooks/use-company-filter';
+import { useCompanyFilter } from '@/app/hooks/use-company-filter';
 import type { CompanySource } from '@/lib/providers/company-source';
 
 const mockSources: CompanySource[] = [

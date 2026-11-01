@@ -1,5 +1,5 @@
 import { requireAdmin } from '@/lib/auth/admin-check';
-import JobManagementDashboard from './components/JobManagementDashboard';
+import JobManagementDashboard from './_components/JobManagementDashboard';
 
 /**
  * Job Management Dashboard Page (Admin Only)

@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
-import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
+import { useAgentSearch } from '@/app/hooks/use-agent-search';
+import type { AgentSearchResult } from '@/app/hooks/use-agent-search';
 
 // Jest の DOM 環境（jest-environment-jsdom が使う jsdom）には TextEncoder・TextDecoder が無い。
 // テストの SSE の組み立てと、フックの SSE の解析（new TextDecoder()）の両方が使うので、Node の実装を入れる

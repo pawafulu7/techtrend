@@ -7,7 +7,7 @@ import type {
   EmbeddingSummaryResponse,
   ArticleStatsResponse,
   JobDashboardError,
-} from '../types';
+} from '../_types';
 
 interface JobsPollingResult {
   processingLogs: ProcessingLogsResponse | null;

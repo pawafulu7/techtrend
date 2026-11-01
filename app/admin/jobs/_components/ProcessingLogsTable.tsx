@@ -24,7 +24,7 @@ import {
   XCircle,
   AlertTriangle,
 } from 'lucide-react';
-import type { ProcessingLogsResponse, ProcessingLogEntry } from '../types';
+import type { ProcessingLogsResponse, ProcessingLogEntry } from '../_types';
 
 interface ProcessingLogsTableProps {
   data: ProcessingLogsResponse | null;

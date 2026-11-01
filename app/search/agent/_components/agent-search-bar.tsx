@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import {
   useSearchHistory,
   type SearchHistoryItem,
-} from '@/lib/hooks/useSearchHistory';
+} from '@/app/hooks/use-search-history';
 
 interface AgentSearchBarProps {
   onSearch: (query: string) => void;

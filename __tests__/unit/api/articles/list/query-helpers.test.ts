@@ -25,7 +25,7 @@ jest.mock('@/app/api/articles/list/cache-config', () => ({
 }));
 
 // date-utilsのモック
-jest.mock('@/app/lib/date-utils', () => ({
+jest.mock('@/lib/utils/date-range', () => ({
   getDateRangeFilter: jest.fn().mockReturnValue(null),
   parseDateFromTo: jest.fn().mockReturnValue(null),
   getDateFieldForSort: jest.fn().mockReturnValue('publishedAt'),

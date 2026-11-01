@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import Link from 'next/link';
-import { SignupForm } from '@/components/auth/SignupForm';
-import { EmailSignupForm } from '@/components/auth/EmailSignupForm';
+import { SignupForm } from '@/app/components/auth/SignupForm';
+import { EmailSignupForm } from '@/app/components/auth/EmailSignupForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui-v2/button-v2';
 import {

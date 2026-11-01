@@ -9,7 +9,7 @@
 import { act } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
 import { hydrateRoot, type Root } from 'react-dom/client';
-import { UserMenu } from '@/components/auth/UserMenu';
+import { UserMenu } from '@/app/components/auth/UserMenu';
 
 const mockUseSession = jest.fn();
 jest.mock('@/lib/auth/auth-client', () => ({

@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SITE_NAME } from '@/lib/constants';
-import { ThemeToggle } from '@/components/theme-toggle';
-import { UserMenu } from '@/components/auth/UserMenu';
+import { ThemeToggle } from '@/app/components/layout/theme-toggle';
+import { UserMenu } from '@/app/components/auth/UserMenu';
 import { ContactLink } from '@/app/components/layout/contact-link';
 import { ObservatoryMark } from '@/components/icons/observatory-mark';
 import { navTabClass } from '@/components/ui-v2/nav-tab';

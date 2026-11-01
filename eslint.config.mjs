@@ -154,7 +154,7 @@ const eslintConfig = defineConfig([
     'scripts/*.ts',
     'prisma/seed.ts',
     'prisma/seed-*.ts',
-    'hooks/use-toast.ts',
+    'app/hooks/use-toast.ts',
     'test-*.js',
     'test-*.ts',
     '*-test.js',

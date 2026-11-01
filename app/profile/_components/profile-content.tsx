@@ -1,14 +1,14 @@
 'use client';
 
-import { ProfileForm } from '@/components/profile/ProfileForm';
-import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
-import { DeleteAccountDialog } from '@/components/profile/DeleteAccountDialog';
+import { ProfileForm } from '@/app/profile/_components/ProfileForm';
+import { PasswordChangeForm } from '@/app/profile/_components/PasswordChangeForm';
+import { DeleteAccountDialog } from '@/app/profile/_components/DeleteAccountDialog';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { User, UserCog, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui-v2/button-v2';
-import { UserProfileFetchError, useUserProfile } from '@/hooks/useUserProfile';
+import { UserProfileFetchError, useUserProfile } from '@/app/hooks/use-user-profile';
 import { loginWithCallback } from '@/lib/routes/auth';
 import { CREDENTIAL_PROVIDER_ID } from '@/lib/auth/constants';
 

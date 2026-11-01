@@ -4,11 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
+import { useIsHydrated } from '@/app/hooks/use-is-hydrated';
 import { authClient } from '@/lib/auth/auth-client';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { loginWithCallback } from '@/lib/routes/auth';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/app/hooks/use-toast';
 
 interface FavoriteButtonProps {
   articleId: string;

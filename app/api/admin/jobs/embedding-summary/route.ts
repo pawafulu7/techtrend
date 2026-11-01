@@ -13,7 +13,7 @@ import type {
   StuckJob,
   HighRetryJob,
   EmbeddingSummaryResponse,
-} from '@/app/admin/jobs/types';
+} from '@/app/admin/jobs/_types';
 
 const DEFAULT_STUCK_THRESHOLD_MINUTES = 30;
 const HIGH_RETRY_THRESHOLD = 2;

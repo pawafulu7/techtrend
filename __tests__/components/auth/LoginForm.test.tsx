@@ -2,7 +2,7 @@ import React from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import { LoginForm } from '@/components/auth/LoginForm';
+import { LoginForm } from '@/app/components/auth/LoginForm';
 import { authClient } from '@/lib/auth/auth-client';
 import { useRouter } from 'next/navigation';
 

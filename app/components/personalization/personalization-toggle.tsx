@@ -12,7 +12,7 @@ import { Button } from '@/components/ui-v2/button-v2';
 import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CategoryPreferenceDialog } from './category-preference-dialog';
-import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
+import { usePersonalizationPreferences } from '@/app/hooks/use-personalization-preferences';
 import type { PeriodPreset } from '@/lib/personalization/types';
 import {
   TOOLBAR_CONTROL,

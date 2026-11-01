@@ -1,9 +1,9 @@
 'use client';
 
 import { DateRangeFilter } from './date-range-filter';
-import { useSourceFilter } from './hooks/useSourceFilter';
+import { useSourceFilter } from '../../hooks/use-source-filter';
 import { SourceFilterPanel } from './SourceFilterPanel';
-import CategoryFilter from '@/components/filters/CategoryFilter';
+import CategoryFilter from '@/app/components/common/CategoryFilter';
 import type { GroupedSources } from '@/lib/types/source-grouping';
 
 interface FiltersProps {

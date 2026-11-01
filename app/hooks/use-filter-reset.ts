@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/app/hooks/use-toast';
 
 // 実行中の状態は、ツールバーの「リセット」と空状態の「フィルターをリセット」で共有する。
 // インスタンスごとに持つと、一方の実行中にもう一方から押せて DELETE と再同期が重複する

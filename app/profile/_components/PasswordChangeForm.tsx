@@ -6,7 +6,7 @@ import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/app/hooks/use-toast';
 import { commonActionErrorMessage } from '@/lib/utils/action-error-messages';
 
 const PASSWORD_CHANGE_FAILED_MESSAGE =

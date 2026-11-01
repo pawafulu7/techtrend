@@ -24,7 +24,7 @@ import {
   getDateRangeFilter,
   parseDateFromTo,
   getDateFieldForSort,
-} from '@/app/lib/date-utils';
+} from '@/lib/utils/date-range';
 import logger from '@/lib/logger';
 import { containsFilter } from '@/lib/utils/like-pattern';
 import { slideWithoutSummaryWhere } from '@/lib/utils/source/slide-source';

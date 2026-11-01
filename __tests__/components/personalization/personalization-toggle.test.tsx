@@ -8,9 +8,9 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { PersonalizationToggle } from '@/app/components/personalization/personalization-toggle';
-import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
+import { usePersonalizationPreferences } from '@/app/hooks/use-personalization-preferences';
 
-jest.mock('@/lib/hooks/use-personalization-preferences', () => ({
+jest.mock('@/app/hooks/use-personalization-preferences', () => ({
   usePersonalizationPreferences: jest.fn(),
 }));
 

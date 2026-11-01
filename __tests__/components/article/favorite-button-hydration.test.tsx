@@ -25,7 +25,7 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(),
 }));
-jest.mock('@/hooks/use-toast', () => ({
+jest.mock('@/app/hooks/use-toast', () => ({
   useToast: () => ({ toast: jest.fn() }),
 }));
 

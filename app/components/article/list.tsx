@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui-v2/empty-state';
 import { Newspaper } from 'lucide-react';
 // useToast は全トーストの状態を購読して一覧全体を再描画させるため、関数だけを使う
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/app/hooks/use-toast';
 
 // 既読状態変更イベントの型定義
 interface ArticleReadStatusChangedDetail {

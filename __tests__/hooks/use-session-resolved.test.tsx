@@ -1,7 +1,7 @@
 /**
  * useIsSessionPendingLatched のテスト。
  *
- * このラッチは lib/hooks/use-personalization-preferences.ts と
+ * このラッチは app/hooks/use-personalization-preferences.ts と
  * app/hooks/use-read-status.ts の enabled を支えており、外れると
  * 「enabled が false→true に再遷移 → 読み込み済み全ページの再取得」が復活する。
  *
@@ -16,7 +16,7 @@ import { renderHook } from '@testing-library/react';
 import {
   useIsSessionPendingLatched,
   resetSessionResolvedLatchForTests,
-} from '@/lib/auth/use-session-resolved';
+} from '@/app/hooks/use-session-resolved';
 
 // better-auth の client は ESM のため Jest では実体を読み込ませない。
 const mockUseSession = jest.fn();

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui-v2/button-v2';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { SignupEmailSent } from '@/components/auth/SignupEmailSent';
+import { SignupEmailSent } from '@/app/components/auth/SignupEmailSent';
 import { Loader2, Mail, Eye, EyeOff, Check, X } from 'lucide-react';
 
 type EmailSignupFormData = {

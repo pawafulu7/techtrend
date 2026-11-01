@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
-import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
+import type { AgentSearchResult } from '@/app/hooks/use-agent-search';
 
 // Markdown の chunk が届かない状態を再現する（Issue #718）。
 // モジュールを「解決しない thenable」にすると、import() がそれを待ち続ける

@@ -7,13 +7,13 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { ProfileContent } from '@/app/profile/_components/profile-content';
 
-jest.mock('@/components/profile/ProfileForm', () => ({
+jest.mock('@/app/profile/_components/ProfileForm', () => ({
   ProfileForm: () => <div data-testid="profile-form" />,
 }));
-jest.mock('@/components/profile/PasswordChangeForm', () => ({
+jest.mock('@/app/profile/_components/PasswordChangeForm', () => ({
   PasswordChangeForm: () => null,
 }));
-jest.mock('@/components/profile/DeleteAccountDialog', () => ({
+jest.mock('@/app/profile/_components/DeleteAccountDialog', () => ({
   DeleteAccountDialog: () => null,
 }));
 

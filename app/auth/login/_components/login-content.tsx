@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import Link from 'next/link';
-import { LoginForm } from '@/components/auth/LoginForm';
+import { LoginForm } from '@/app/components/auth/LoginForm';
 import { Button } from '@/components/ui-v2/button-v2';
 import {
   Card,

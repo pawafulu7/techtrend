@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { AgentSearchBar } from '@/app/search/agent/_components/agent-search-bar';
-import type { SearchHistoryItem } from '@/lib/hooks/useSearchHistory';
+import type { SearchHistoryItem } from '@/app/hooks/use-search-history';
 
 // 固定基準時刻。fixture と mockGetRelativeTime の双方をこの値基準に揃え、実時計への依存を排除する。
 // Date.now() 基準だとモジュール評価時刻(T0)と描画時刻(T1)の差に結果が左右され、
@@ -28,7 +28,7 @@ const mockGetRelativeTime = jest.fn((timestamp: number) => {
   return '1時間前';
 });
 
-jest.mock('@/lib/hooks/useSearchHistory', () => ({
+jest.mock('@/app/hooks/use-search-history', () => ({
   useSearchHistory: () => ({
     getSearchHistory: mockGetSearchHistory,
     getSearchHistoryWithTimestamp: mockGetSearchHistoryWithTimestamp,

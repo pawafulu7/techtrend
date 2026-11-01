@@ -5,7 +5,7 @@ import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui-v2/button-v2';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useDebounce } from '@/app/hooks/use-debounce';
 import { cn } from '@/lib/utils';
 import {
   TOOLBAR_CONTROL,

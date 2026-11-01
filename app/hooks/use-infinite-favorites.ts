@@ -176,7 +176,7 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
   const removeFavoriteFromCache = updateCacheOnRemove;
 
   // 止めるのは、この画面を開いてから起きた 401 だけ。ログインし直してクライアント遷移で戻ると
-  // 前の 401 がキャッシュに残るため、それで止めると案内が消えなくなる（lib/hooks/use-digest.ts と同じ）
+  // 前の 401 がキャッシュに残るため、それで止めると案内が消えなくなる（app/hooks/use-digest.ts と同じ）
   const [mountedAt] = useState(() => Date.now());
 
   const infiniteQuery = useInfiniteQuery<FavoritesApiResponse, Error>({

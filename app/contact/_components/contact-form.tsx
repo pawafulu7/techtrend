@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { authClient } from '@/lib/auth/auth-client';
-import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
+import { useIsHydrated } from '@/app/hooks/use-is-hydrated';
 import {
   INQUIRY_EMAIL_MAX_LENGTH,
   INQUIRY_MESSAGE_HINTS,

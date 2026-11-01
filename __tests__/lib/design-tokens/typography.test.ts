@@ -138,7 +138,7 @@ const ALLOWED: Array<{
   ...[
     'app/history/_components/analytics/analytics-content.tsx',
     'app/admin/page.tsx',
-    'components/dashboard/MetricsCard.tsx',
+    'app/admin/jobs/_components/MetricsCard.tsx',
   ].map((file) => ({
     file,
     tag: 'CardTitle',
@@ -267,8 +267,8 @@ describe('見出しのサイズ指定', () => {
     const [group] = literalSizeHeadingHits(
       '<CardTitle className="flex items-center gap-2 text-sm">x</CardTitle>'
     );
-    expect(isAllowed('components/dashboard/MetricsCard.tsx', kpi)).toBe(true);
-    expect(isAllowed('components/dashboard/MetricsCard.tsx', group)).toBe(
+    expect(isAllowed('app/admin/jobs/_components/MetricsCard.tsx', kpi)).toBe(true);
+    expect(isAllowed('app/admin/jobs/_components/MetricsCard.tsx', group)).toBe(
       false
     );
     expect(isAllowed('app/components/article/card.tsx', kpi)).toBe(false);

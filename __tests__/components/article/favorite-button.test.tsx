@@ -33,7 +33,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 const mockToast = jest.fn();
-jest.mock('@/hooks/use-toast', () => ({
+jest.mock('@/app/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
   toast: (...args: unknown[]) => mockToast(...args),
 }));

@@ -10,7 +10,7 @@ import {
   SOURCE_CATEGORIES,
 } from '@/lib/constants/source-categories';
 import { getSourceIdsForPreset } from '@/lib/constants/source-presets';
-import { useCompanyFilter } from '@/lib/hooks/use-company-filter';
+import { useCompanyFilter } from '@/app/hooks/use-company-filter';
 import type { CompanySource } from '@/lib/providers/company-source';
 import type { GroupedSources } from '@/lib/types/source-grouping';
 import { getPrimaryCategoryByGroupId } from '@/lib/compatibility/category-group-mapping';

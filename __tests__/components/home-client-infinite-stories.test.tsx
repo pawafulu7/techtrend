@@ -53,7 +53,7 @@ jest.mock('@/app/hooks/use-infinite-articles', () => ({
   }),
 }));
 
-jest.mock('@/lib/hooks/use-personalization-preferences', () => ({
+jest.mock('@/app/hooks/use-personalization-preferences', () => ({
   usePersonalizationPreferences: () => ({
     selectedCategories: [],
     filterEnabled: false,

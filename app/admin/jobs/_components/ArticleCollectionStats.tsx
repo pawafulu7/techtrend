@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Calendar, TrendingUp } from 'lucide-react';
-import type { ArticleStatsResponse, SourceStats, DailyStats } from '../types';
+import type { ArticleStatsResponse, SourceStats, DailyStats } from '../_types';
 
 interface ArticleCollectionStatsProps {
   data: ArticleStatsResponse | null;

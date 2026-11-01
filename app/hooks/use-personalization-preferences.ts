@@ -11,7 +11,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authClient } from '@/lib/auth/auth-client';
-import { useIsSessionPendingLatched } from '@/lib/auth/use-session-resolved';
+import { useIsSessionPendingLatched } from '@/app/hooks/use-session-resolved';
 import type {
   UserCategoryPreferences,
   UpdateCategoryPreferencesRequest,
@@ -236,7 +236,7 @@ export function usePersonalizationPreferences() {
   // preferencesQuery.isLoading はラッチしない: principal が変わったときは新しい
   // 設定の解決を待たなければ Issue #569 が別条件で再発するため。
   //
-  // ラッチはモジュールスコープの共有状態（lib/auth/use-session-resolved.ts）。
+  // ラッチはモジュールスコープの共有状態（app/hooks/use-session-resolved.ts）。
   // フックインスタンス単位で持つと、記事詳細 → ホームのような再マウント経路で
   // 新インスタンスが「未解決」から始まりラッチが効かない。ラッチしているのは
   // isSessionPending の項だけで、これはセッション全体のグローバルな事実であり

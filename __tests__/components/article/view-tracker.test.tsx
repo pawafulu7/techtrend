@@ -1,5 +1,5 @@
 import { render, act } from '@testing-library/react';
-import { ViewTracker } from '@/components/article/view-tracker';
+import { ViewTracker } from '@/app/components/article/view-tracker';
 import { authClient } from '@/lib/auth/auth-client';
 
 jest.mock('@/lib/auth/auth-client', () => ({

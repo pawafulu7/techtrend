@@ -12,7 +12,7 @@ import { ExternalLink, FileText, Calendar, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
-import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
+import type { AgentSearchResult } from '@/app/hooks/use-agent-search';
 import { formatDate, formatDateWithTime } from '@/lib/utils/date';
 
 // Top-level control Context (0: root, 1+: nested)

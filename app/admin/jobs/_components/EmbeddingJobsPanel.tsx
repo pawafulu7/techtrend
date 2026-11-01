@@ -22,7 +22,7 @@ import type {
   EmbeddingSummaryResponse,
   StuckJob,
   HighRetryJob,
-} from '../types';
+} from '../_types';
 
 interface EmbeddingJobsPanelProps {
   data: EmbeddingSummaryResponse | null;

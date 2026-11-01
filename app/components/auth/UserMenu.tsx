@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
+import { useIsHydrated } from '@/app/hooks/use-is-hydrated';
 import { authClient } from '@/lib/auth/auth-client';
 import Link from 'next/link';
 import {

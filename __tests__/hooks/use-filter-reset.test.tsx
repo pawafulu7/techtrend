@@ -13,7 +13,7 @@ jest.mock('@tanstack/react-query', () => ({
     invalidateQueries: jest.fn().mockResolvedValue(undefined),
   }),
 }));
-jest.mock('@/hooks/use-toast', () => ({ toast: jest.fn() }));
+jest.mock('@/app/hooks/use-toast', () => ({ toast: jest.fn() }));
 
 describe('useFilterReset', () => {
   const originalFetch = global.fetch;

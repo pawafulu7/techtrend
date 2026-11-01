@@ -9,8 +9,8 @@ import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-t
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
 import { useRefreshKeepingPosition } from '@/app/hooks/use-refresh-keeping-position';
-import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
-import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
+import { usePersonalizationPreferences } from '@/app/hooks/use-personalization-preferences';
+import { useIsHydrated } from '@/app/hooks/use-is-hydrated';
 import type { HomePersonalization } from '@/lib/personalization/preferences-state';
 import { buildHomeArticleFilters } from '@/lib/articles/home-articles-query';
 import { buildScrollStorageKey } from '@/lib/utils/scroll';

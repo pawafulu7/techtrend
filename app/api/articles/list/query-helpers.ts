@@ -15,7 +15,7 @@ import {
   getDateRangeFilter,
   parseDateFromTo,
   getDateFieldForSort,
-} from '@/app/lib/date-utils';
+} from '@/lib/utils/date-range';
 import { prisma } from '@/lib/prisma';
 import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 import { BLANK_CONTENT_VALUES } from '@/lib/database/home-article-filter';

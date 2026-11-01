@@ -6,7 +6,7 @@ import {
   parseDateFromTo,
   getDateFieldForSort,
   DATE_RANGE_OPTIONS,
-} from '@/app/lib/date-utils';
+} from '@/lib/utils/date-range';
 
 describe('Date Utils', () => {
   beforeEach(() => {

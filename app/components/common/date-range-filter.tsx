@@ -23,7 +23,7 @@ import {
   LazyLoadFailed,
 } from '@/app/components/common/lazy-component';
 import { cn } from '@/lib/utils';
-import { DATE_RANGE_OPTIONS, getDateRangeLabel } from '@/app/lib/date-utils';
+import { DATE_RANGE_OPTIONS, getDateRangeLabel } from '@/lib/utils/date-range';
 import {
   buildFilterUrl,
   clearTransientFilterParams,

@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import { EmailSignupForm } from '@/components/auth/EmailSignupForm';
+import { EmailSignupForm } from '@/app/components/auth/EmailSignupForm';
 import { authClient } from '@/lib/auth/auth-client';
 
 jest.mock('@/lib/auth/auth-client', () => ({

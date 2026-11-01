@@ -1,7 +1,7 @@
 import { useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import type { PerformanceMetrics, DashboardError } from '../types/dashboard';
-import { createEmptyPerformanceMetrics } from '../types/dashboard';
+import type { PerformanceMetrics, DashboardError } from '../_types/dashboard';
+import { createEmptyPerformanceMetrics } from '../_types/dashboard';
 
 /**
  * メトリクスポーリングフック

@@ -3,7 +3,7 @@
  */
 
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useArticleQA } from '@/lib/hooks/useArticleQA';
+import { useArticleQA } from '@/app/hooks/use-article-qa';
 
 // Mock Response for jsdom environment
 class MockResponse {

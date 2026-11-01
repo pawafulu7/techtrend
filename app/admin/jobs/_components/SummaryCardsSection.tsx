@@ -1,11 +1,11 @@
 'use client';
 
-import { MetricsCard } from '@/components/dashboard/MetricsCard';
+import { MetricsCard } from '@/app/admin/jobs/_components/MetricsCard';
 import type {
   ProcessingLogsResponse,
   EmbeddingSummaryResponse,
   ArticleStatsResponse,
-} from '../types';
+} from '../_types';
 
 interface SummaryCardsSectionProps {
   processingLogs: ProcessingLogsResponse | null;

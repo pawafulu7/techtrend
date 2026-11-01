@@ -42,7 +42,7 @@ jest.mock('@/lib/auth/auth-client', () => ({
 }));
 
 const mockToast = jest.fn();
-jest.mock('@/hooks/use-toast', () => ({
+jest.mock('@/app/hooks/use-toast', () => ({
   toast: (...args: unknown[]) => mockToast(...args),
 }));
 

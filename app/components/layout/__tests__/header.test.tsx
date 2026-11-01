@@ -32,11 +32,11 @@ jest.mock('@/config/features', () => ({
 }));
 
 // コンポーネントのモック
-jest.mock('@/components/theme-toggle', () => ({
+jest.mock('@/app/components/layout/theme-toggle', () => ({
   ThemeToggle: () => <button data-testid="theme-toggle">Theme Toggle</button>,
 }));
 
-jest.mock('@/components/auth/UserMenu', () => ({
+jest.mock('@/app/components/auth/UserMenu', () => ({
   UserMenu: () => <button data-testid="user-menu">User Menu</button>,
 }));
 

@@ -28,7 +28,7 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
-jest.mock('@/hooks/use-toast', () => ({ toast: jest.fn() }));
+jest.mock('@/app/hooks/use-toast', () => ({ toast: jest.fn() }));
 
 // タグの一覧の中身はこのテストの対象外。開いたかだけを見る
 jest.mock('@/app/components/common/tag-filter', () => ({

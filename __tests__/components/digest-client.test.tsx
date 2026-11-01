@@ -8,7 +8,7 @@ import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DigestClient } from '@/app/components/digest/digest-client';
 
-jest.mock('@/lib/hooks/use-personalization-preferences', () => ({
+jest.mock('@/app/hooks/use-personalization-preferences', () => ({
   useUpdatePreferences: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 

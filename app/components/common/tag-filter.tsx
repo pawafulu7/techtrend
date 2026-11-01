@@ -26,7 +26,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useDebounce } from '@/app/hooks/use-debounce';
 import { MAX_TAG_FILTER_COUNT } from '@/lib/constants/tag-filter';
 import {
   buildFilterUrl,

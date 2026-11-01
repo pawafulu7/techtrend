@@ -1,6 +1,6 @@
 import { render, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReadTracker } from '@/components/article/read-tracker';
+import { ReadTracker } from '@/app/components/article/read-tracker';
 import { authClient } from '@/lib/auth/auth-client';
 
 // Mock @/lib/auth/auth-client

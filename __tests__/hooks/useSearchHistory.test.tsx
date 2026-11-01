@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { useSearchHistory } from '@/lib/hooks/useSearchHistory';
+import { useSearchHistory } from '@/app/hooks/use-search-history';
 
 describe('useSearchHistory', () => {
   beforeEach(() => {

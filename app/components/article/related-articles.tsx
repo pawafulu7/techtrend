@@ -22,7 +22,7 @@ import {
   useRelatedArticles,
   type RelatedArticle,
   type RelatedArticlesAlgorithm,
-} from '@/hooks/use-related-articles';
+} from '@/app/hooks/use-related-articles';
 
 // 関連の理由を方式ごとの言葉で出す。similarity は方式ごとに意味が違い
 // （tag は Jaccard でタグが同じなら 100%、embedding は検索スコア）、% では伝わらないため（#703）

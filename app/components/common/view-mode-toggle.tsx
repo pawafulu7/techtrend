@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/app/hooks/use-toast';
 import {
   TOOLBAR_ICON_BUTTON,
   TOOLBAR_OUTLINE,

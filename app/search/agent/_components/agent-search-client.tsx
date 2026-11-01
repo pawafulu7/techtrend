@@ -14,7 +14,7 @@ import {
   generateRelatedQuestions,
 } from './agent-related-questions';
 import { AgentSearchInterpretation } from './agent-search-interpretation';
-import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
+import { useAgentSearch } from '@/app/hooks/use-agent-search';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { RAG_TOOL_NAMES } from '@/lib/rag/constants';
 

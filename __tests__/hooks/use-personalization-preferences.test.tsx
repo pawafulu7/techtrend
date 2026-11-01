@@ -11,9 +11,9 @@ import {
   useUserPreferences,
   useUpdatePreferences,
   usePersonalizationPreferences,
-} from '@/lib/hooks/use-personalization-preferences';
+} from '@/app/hooks/use-personalization-preferences';
 import type { UserCategoryPreferences } from '@/lib/personalization/types';
-import { resetSessionResolvedLatchForTests } from '@/lib/auth/use-session-resolved';
+import { resetSessionResolvedLatchForTests } from '@/app/hooks/use-session-resolved';
 
 // Mock fetch globally
 const mockFetch = jest.fn();
