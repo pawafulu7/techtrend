@@ -269,5 +269,5 @@ For technical issues or feature requests, contact your system administrator or f
 
 ## Related Documentation
 
-- [RAG Embedding Lifecycle](docs/operations/rag-embedding-lifecycle.md)
-- [RAG Rollback Procedure](docs/operations/rag-rollback-procedure.md)
+- [RAG Embedding Lifecycle](../operations/rag-embedding-lifecycle.md)
+- [RAG Rollback Procedure](../operations/rag-rollback-procedure.md)

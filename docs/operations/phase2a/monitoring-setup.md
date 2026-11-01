@@ -288,7 +288,7 @@ WHERE appName = 'techtrend-web'
 
 **Threshold**: error_rate > 2% for at least 5 minutes
 **Routing**: PagerDuty (on-call) + Slack #techtrend-alerts
-**Runbook**: operations/rollback-runbook-phase2a.md
+**Runbook**: docs/operations/phase2a/rollback-runbook.md
 
 #### Alert 2: High Latency (CRITICAL)
 
@@ -302,7 +302,7 @@ WHERE appName = 'techtrend-web'
 
 **Threshold**: p95_latency > 500ms for at least 10 minutes
 **Routing**: Slack #techtrend-alerts + Email on-call
-**Runbook**: operations/rollback-runbook-phase2a.md
+**Runbook**: docs/operations/phase2a/rollback-runbook.md
 
 #### Alert 3: DB Connection Pool Saturation (CRITICAL)
 
@@ -314,7 +314,7 @@ FROM DatabasePool
 
 **Threshold**: pool_utilization > 90% for at least 5 minutes
 **Routing**: PagerDuty + Slack #techtrend-alerts
-**Runbook**: operations/rollback-runbook-phase2a.md
+**Runbook**: docs/operations/phase2a/rollback-runbook.md
 
 #### Alert 4: Low Cache Hit Rate (WARNING)
 
@@ -378,7 +378,7 @@ WHERE message LIKE '%CompanySourceProvider%'
 **Alert**:
 - **Threshold**: 3 consecutive failures
 - **Routing**: PagerDuty + Slack #techtrend-alerts
-- **Runbook**: operations/rollback-runbook-phase2a.md
+- **Runbook**: docs/operations/phase2a/rollback-runbook.md
 
 ### Setup Procedure
 
@@ -776,8 +776,8 @@ SINCE 1 hour ago
 
 ## References
 
-- **Migration Procedure**: `operations/production-migration-phase2a.md`
-- **Rollback Runbook**: `operations/rollback-runbook-phase2a.md`
+- **Migration Procedure**: `docs/operations/phase2a/production-migration.md`
+- **Rollback Runbook**: `docs/operations/phase2a/rollback-runbook.md`
 - **Health Check Script**: `scripts/health-check-feature-flag.ts`
 - **New Relic Documentation**: https://docs.newrelic.com/docs/apm
 - **Vercel Analytics Documentation**: https://vercel.com/docs/analytics

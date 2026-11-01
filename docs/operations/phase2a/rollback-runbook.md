@@ -466,5 +466,5 @@ Before attempting Phase 2-A migration again:
 - **Investigation Report**: `.claude/docs/investigate/investigate_20251116_182844_528_phase2a-production-migration.md`
 - **Implementation Plan**: `.claude/docs/plan/plan_20251116_191759_334_phase2a-production-migration.md`
 - **Health Check Script**: `scripts/health-check-feature-flag.ts`
-- **Migration Procedure**: `operations/production-migration-phase2a.md`
+- **Migration Procedure**: `docs/operations/phase2a/production-migration.md`
 - **Phase 2-A PRs**: #208, #209, #210, #211, #212

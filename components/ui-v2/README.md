@@ -97,7 +97,7 @@ import {
   CardV2Header,
   CardV2Title,
   CardV2Content,
-} from '@/components/ui-v2';
+} from '@/components/ui-v2/card-v2';
 
 <CardV2 variant="hover">
   <CardV2Header>
@@ -122,7 +122,7 @@ Pill-shaped badge component with semantic variants.
 #### Usage
 
 ```tsx
-import { BadgeV2 } from '@/components/ui-v2';
+import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 
 <BadgeV2 variant="primary">New</BadgeV2>
 <BadgeV2 variant="outline" disabled>Disabled</BadgeV2>
@@ -155,7 +155,7 @@ Enhanced button component with loading states and icon support.
 #### Usage
 
 ```tsx
-import { ButtonV2 } from '@/components/ui-v2';
+import { ButtonV2 } from '@/components/ui-v2/button-v2';
 
 <ButtonV2 variant="primary" size="md">Click me</ButtonV2>
 <ButtonV2 variant="primary" loading>Loading...</ButtonV2>

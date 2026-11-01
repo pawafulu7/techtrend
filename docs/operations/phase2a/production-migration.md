@@ -188,7 +188,7 @@ Incident Commander: [@ic]
 On-call: [@oncall]
 
 Monitoring: [New Relic dashboard URL]
-Rollback runbook: operations/rollback-runbook-phase2a.md
+Rollback runbook: docs/operations/phase2a/rollback-runbook.md
 ```
 
 #### Step 2: Set Environment Variable (09:05)
@@ -390,7 +390,7 @@ Initiate rollback immediately if:
 | User Error Reports | 3+ reports | 30 minutes |
 | Data Inconsistency | Any detection | Immediate |
 
-**Rollback Procedure**: See `operations/rollback-runbook-phase2a.md`
+**Rollback Procedure**: See `docs/operations/phase2a/rollback-runbook.md`
 
 ## Success Criteria
 
@@ -586,7 +586,7 @@ Expected completion: 09:20
 Team: IC=[@ic], On-call=[@oncall], QA=[@qa]
 
 Status updates: Every 15 minutes
-Rollback ready: operations/rollback-runbook-phase2a.md
+Rollback ready: docs/operations/phase2a/rollback-runbook.md
 ```
 
 #### Step 2: Environment Variable Configuration (09:05)
@@ -842,8 +842,8 @@ Team:
 - QA: [@qa]
 
 Runbooks:
-- Migration: operations/production-migration-phase2a.md
-- Rollback: operations/rollback-runbook-phase2a.md
+- Migration: docs/operations/phase2a/production-migration.md
+- Rollback: docs/operations/phase2a/rollback-runbook.md
 
 Updates: Every 15 min (Phase 1), hourly (Phase 2-3)
 ```
@@ -1005,17 +1005,17 @@ Action items for incoming:
 - [ ] Next manual check: [time]
 
 Runbooks:
-- Migration: operations/production-migration-phase2a.md
-- Rollback: operations/rollback-runbook-phase2a.md
+- Migration: docs/operations/phase2a/production-migration.md
+- Rollback: docs/operations/phase2a/rollback-runbook.md
 
 Escalation: [Incident Commander contact]
 ```
 
 ## References
 
-- **Rollback Runbook**: `operations/rollback-runbook-phase2a.md`
+- **Rollback Runbook**: `docs/operations/phase2a/rollback-runbook.md`
 - **Health Check Script**: `scripts/health-check-feature-flag.ts`
-- **Monitoring Setup**: `operations/monitoring-setup-phase2a.md`
+- **Monitoring Setup**: `docs/operations/phase2a/monitoring-setup.md`
 - **Investigation Report**: `.claude/docs/investigate/investigate_20251116_182844_528_phase2a-production-migration.md`
 - **Implementation Plan**: `.claude/docs/plan/plan_20251116_191759_334_phase2a-production-migration.md`
 - **Phase 2-A PRs**: #208, #209, #210, #211, #212

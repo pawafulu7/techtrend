@@ -2,36 +2,38 @@
 
 ## テスト構造
 
+テストはソースと同じパスに置く（`lib/tags/tag-service.ts` → `__tests__/lib/tags/tag-service.test.ts`）。置き場所の基準の全体は [docs/architecture/06-directory-structure.md](../docs/architecture/06-directory-structure.md#テスト)。
+
 ```
 __tests__/
-├── unit/           # 単体テスト
-│   ├── utils/      # ユーティリティ関数のテスト
-│   ├── lib/        # ライブラリのテスト
-│   └── types/      # 型定義のテスト
-├── integration/    # 統合テスト
-│   └── api/        # APIエンドポイントのテスト
-├── e2e/            # E2Eテスト（将来的に実装）
-├── __mocks__/      # モック定義
-└── test-utils.tsx  # テストユーティリティ
+├── lib/ app/ scripts/ types/   単体テスト（ソースと同じパス）
+├── api/                        API のルート（app/api/）のテスト
+├── components/ hooks/          画面の部品（app/components/）・フック（app/hooks/）のテスト
+├── integration/                実際の DB と Redis を使う結合テスト
+├── e2e/                        Playwright の E2E（helpers/・utils/・constants/ は E2E の補助）
+├── performance/                性能の計測
+├── helpers/ fixtures/          テストの補助とデータ
+└── __mocks__/                  テスト用のモック（node_modules のモックはルートの __mocks__/）
 ```
+
+ソースの隣の `__tests__/`（`lib/ai/service/__tests__/` など）に置いてもよい。
+
+| 設定 | 対象 |
+|------|------|
+| `jest.config.node.js` | `*.test.ts`（Node 環境）。`*.db.test.ts` はテスト用の DB を使う |
+| `jest.config.dom.js` | `*.test.tsx`（jsdom） |
+| `jest.config.integration.js` | `__tests__/integration/` |
+| `playwright.config.ts` | `__tests__/e2e/**/*.spec.ts` |
 
 ## テストの実行
 
+テスト用の DB（マイグレーションとシード済み）を前提にするので、Docker の中で流す。
+
 ```bash
-# すべてのテストを実行
-npm test
-
-# ウォッチモードでテストを実行
-npm run test:watch
-
-# カバレッジレポートを生成
-npm run test:coverage
-
-# 特定のテストファイルを実行
-npm test -- quality-score.test.ts
-
-# 特定のテストスイートを実行
-npm test -- --testNamePattern="calculateQualityScore"
+npm run docker:build:ci                                   # ソースやテストを変えたらイメージを作り直す
+TEST_FILE=__tests__/lib/tags/tag-service.test.ts npm run docker:test:file          # Node 環境
+TEST_FILE=__tests__/components/ArticleCard.test.tsx npm run docker:test:react:file # DOM 環境
+E2E_FILE=__tests__/e2e/specs/home.spec.ts npm run docker:e2e:file:fast             # E2E（Chromium）
 ```
 
 ## テストの書き方

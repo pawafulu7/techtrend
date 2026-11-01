@@ -20,6 +20,8 @@
 
 - 画面・API・定期実行・CLI などの機能一覧: [docs/architecture/05-features.md](./docs/architecture/05-features.md)
 - システム構成・バッチパイプライン・リクエストフロー・データモデルの図: [docs/architecture/](./docs/architecture/README.md)
+- ディレクトリ構成と、新しいコードの置き場所の基準: [docs/architecture/06-directory-structure.md](./docs/architecture/06-directory-structure.md)
+- ドキュメントの一覧: [docs/README.md](./docs/README.md)
 
 ## 環境変数設定
 
@@ -210,7 +212,6 @@ npm run monitoring:down
 - Logs: ログ検索（console.log移行後）
 - Alerts: エラー率、レスポンスタイム監視
 
-詳細は [CLAUDE.md](./CLAUDE.md) を参照してください。
 
 ## ⚠️ 重要なお知らせ
 
