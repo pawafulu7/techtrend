@@ -711,8 +711,8 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
     if (newArticleIds.length > 0) {
       console.error('\n[INFO] 要約生成を自動実行します...');
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { generateSummaries } = require('./generate-summaries.ts');
+        // 要約が要るときだけ読み込む（型の付く動的 import。移動しても型チェックで気づける）
+        const { generateSummaries } = await import('./generate-summaries');
         const result = await generateSummaries({ articleIds: newArticleIds });
         console.error(`[INFO] 要約生成完了: ${result.generated}件の要約を生成`);
 

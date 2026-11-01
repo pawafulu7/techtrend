@@ -12,6 +12,7 @@ describe('createCompanySourceProvider', () => {
   it('should return StaticCompanySourceProvider when flag is false', () => {
     // Mock feature flags to return false
     jest.doMock('@/lib/config/feature-flags', () => ({
+      ...jest.requireActual('@/lib/config/feature-flags'),
       FEATURE_FLAGS: {
         USE_DATABASE_PROVIDER: false,
       },
@@ -28,6 +29,7 @@ describe('createCompanySourceProvider', () => {
   it('should return DatabaseCompanySourceProvider when flag is true', () => {
     // Mock feature flags to return true
     jest.doMock('@/lib/config/feature-flags', () => ({
+      ...jest.requireActual('@/lib/config/feature-flags'),
       FEATURE_FLAGS: {
         USE_DATABASE_PROVIDER: true,
       },

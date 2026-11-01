@@ -88,4 +88,14 @@ async function generateSummaries(options: GenerateSummariesOptions = {}): Promis
   }
 }
 
+// 直接実行された場合（npm run scripts:summarize・summarize:local）。#248 で入口が消え、何もせずに終わっていた
+if (require.main === module) {
+  generateSummaries()
+    .then(() => process.exit(0))
+    .catch(() => {
+      // エラーの内容は generateSummaries の中で出力済み
+      process.exit(1);
+    });
+}
+
 export { generateSummaries };

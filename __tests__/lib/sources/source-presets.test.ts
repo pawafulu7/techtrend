@@ -9,6 +9,7 @@ import type { GroupedSources } from '@/lib/sources/source-grouping-types';
 
 // Mock FEATURE_FLAGS module
 jest.mock('@/lib/config/feature-flags', () => ({
+  ...jest.requireActual('@/lib/config/feature-flags'),
   FEATURE_FLAGS: {
     USE_DATABASE_PROVIDER: false,
   },
@@ -179,6 +180,7 @@ describe('source-presets', () => {
           // Mock FEATURE_FLAGS.USE_DATABASE_PROVIDER = true
           jest.resetModules();
           jest.doMock('@/lib/config/feature-flags', () => ({
+            ...jest.requireActual('@/lib/config/feature-flags'),
             FEATURE_FLAGS: {
               USE_DATABASE_PROVIDER: true,
             },
@@ -234,6 +236,7 @@ describe('source-presets', () => {
         beforeEach(() => {
           jest.resetModules();
           jest.doMock('@/lib/config/feature-flags', () => ({
+            ...jest.requireActual('@/lib/config/feature-flags'),
             FEATURE_FLAGS: {
               USE_DATABASE_PROVIDER: false,
             },

@@ -86,7 +86,9 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  // lib/ と scripts/ から画面のコードを import しない（env の例外ファイルも含めて全体に掛ける）
+  // lib/ と scripts/ から画面のコードを import しない（env の例外ファイルも含めて全体に掛ける）。
+  // scripts/ のうち lint の対象は scheduled/ だけ（globalIgnores）。全ファイルは __tests__/scripts/import-direction.test.ts が見る。
+  // require() と import() もそのテストが見る
   {
     files: ['lib/**/*.ts', 'lib/**/*.tsx', 'scripts/**/*.ts'],
     rules: {

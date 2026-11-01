@@ -69,10 +69,13 @@
     "out",
     "build",
     "dist",
-    "**/__tests__/**",
+    "__tests__/**",
+    "lib/**/__tests__/**",
+    "scripts/**/__tests__/**",
     "__mocks__/**",
     "prisma/generated/**",
     "scripts/temp/**",
+    "scripts/*.ts",
     "prisma/seed-full.ts"
   ]
 }

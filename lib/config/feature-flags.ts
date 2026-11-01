@@ -6,6 +6,11 @@
 
 // NOTE: This file is imported by client components (source-presets.ts, primary-nav.ts).
 // Do NOT import from env.ts (server-only due to pino/zod dependencies).
+
+/**
+ * サーバーだけで有効なフラグ。NEXT_PUBLIC_ でない環境変数を読むので、クライアントの部品では
+ * 常に false になる。画面の出し分けには下の features を使う
+ */
 export const FEATURE_FLAGS = {
   /**
    * Enable database-backed provider for company sources

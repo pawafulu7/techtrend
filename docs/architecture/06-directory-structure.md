@@ -36,7 +36,7 @@
 | `app/providers/` | React の Provider（認証・React Query・テーマ・トースト） |
 | `app/api/<パス>/route.ts` | API。ルート固有の補助は同じディレクトリの `lib/`・`handlers/` に置く（`app/api/articles/lib/` など） |
 
-shadcn/ui の CLI は `components.json` の別名に従い、部品を `components/ui/`、フックを `app/hooks/` に生成する。
+shadcn/ui の CLI は `components.json` の別名に従い、部品を `components/ui/`、フックを `app/hooks/` に生成する。そのため `components/ui/` の一部（`sidebar.tsx`・`toaster.tsx`）は `app/hooks/` の `use-mobile.ts`・`use-toast.ts` を使う。`components/` から `app/` への依存はこの shadcn のフックだけにする。
 
 ## lib/
 
