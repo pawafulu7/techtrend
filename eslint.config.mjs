@@ -151,7 +151,7 @@ const eslintConfig = defineConfig([
     '.backup/**',
     '.workflow/**',
     'tmp/**',
-    'temp/**',
+    '**/temp/**',
     'test_debug.ts',
     'test_*.ts',
     '**/test-*.ts',

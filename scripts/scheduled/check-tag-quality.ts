@@ -135,7 +135,7 @@ async function checkTagQuality(): Promise<{
     if (duplicates.length > 0) {
       console.log('\n⚠️ タグの重複が検出されました（大文字小文字の違いのみ）:');
       const tagList: string[] = [];
-      for (const [lower, tags] of duplicates) {
+      for (const [, tags] of duplicates) {
         const tagStr = tags.map(t => `${t.name} (${t.count})`).join(', ');
         console.log(`   - ${tagStr}`);
         tagList.push(tagStr);
