@@ -15,6 +15,7 @@ import { resetGeminiConfigCache } from '@/lib/ai/gemini-config';
 import {
   createGeminiClient,
   generateGeminiText,
+  generateGeminiTextResult,
   getGeminiResponseText,
 } from '@/lib/ai/gemini-sdk';
 
@@ -102,6 +103,33 @@ describe('generateGeminiText', () => {
       });
     }
   );
+
+  it('generateGeminiTextResult は本文と終了理由を返す', async () => {
+    mockFetch.mockImplementationOnce(async () =>
+      jsonResponse({
+        candidates: [
+          {
+            content: { parts: [{ text: '上限で切れた本文' }] },
+            finishReason: 'MAX_TOKENS',
+          },
+        ],
+      })
+    );
+
+    const result = await generateGeminiTextResult(createGeminiClient('k1'), {
+      model: 'm1',
+      prompt: 'p',
+      maxOutputTokens: 10,
+      temperature: 0,
+      timeoutMs: 1000,
+    });
+
+    expect(result).toEqual({
+      text: '上限で切れた本文',
+      finishReason: FinishReason.MAX_TOKENS,
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
 
   it('応答が CONTINUATION で終わっても送り直さず、届いた分を返す', async () => {
     // 2 回目以降は beforeEach の通常の応答（送り直すと 2 回目が呼ばれて失敗する）

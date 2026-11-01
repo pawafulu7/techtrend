@@ -29,11 +29,11 @@ import {
   resetGeminiConfigCache,
 } from '@/lib/ai/gemini-config';
 import { LLMExtractionPipeline } from '@/lib/ai/extraction/llm-extraction-pipeline';
-import { generateGeminiText } from '@/lib/ai/gemini-sdk';
 import { TrendReportGenerator } from '@/lib/trends/report/trend-report-generator';
 import type { TrendGeminiModel } from '@/lib/trends/report/trend-ai-summary-generator';
 import { GEMINI_API } from '@/lib/constants';
 import { loadConfig } from '@/lib/di/config';
+import { createTrendReportPrismaMock } from '../../helpers/trend-report-prisma-mock';
 
 const DEFAULT_BASE_URL = 'https://generativelanguage.googleapis.com';
 const PROXY_BASE_URL = 'https://gemini-proxy.example.test';
@@ -116,33 +116,27 @@ describe.each([
     );
   });
 
-  it('トレンドレポート（SDK）がその base URL を、要約と別のモデルで呼ぶ', async () => {
+  it('トレンドレポート（SDK）の要約がその base URL を、要約と別のモデルで呼ぶ', async () => {
     mockFetch.mockImplementation(async () => sdkOkResponse());
-    const trendModel = await trendModelOf(
-      new TrendReportGenerator({} as never)
-    );
-    if (!trendModel)
-      throw new Error('API キーがあるのに SDK のクライアントが無い');
+    const { prisma, create } = createTrendReportPrismaMock();
 
-    // 生成時と同じ関数で呼ぶ（リクエストごとの httpOptions を渡しても base URL が残ることも見る）
-    const text = await generateGeminiText(trendModel.client, {
-      model: trendModel.model,
-      prompt: 'prompt',
-      maxOutputTokens: 10,
-      temperature: 0,
-      timeoutMs: 1000,
-    });
+    // レポートの生成から要約のリクエストまで通す（応答は JSON でも十分な長さでもないので、
+    // 構造化 4 回と legacy 1 回を送り、要約なしで保存される）
+    await new TrendReportGenerator(prisma).generateDailyReport(
+      new Date('2026-10-23T03:00:00Z')
+    );
 
-    expect(text).toBe('ok');
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe(
-      `${expectedBaseUrl}/v1beta/models/${GEMINI_API.TREND_MODEL}:generateContent`
-    );
-    expect(init.method).toBe('POST');
-    expect(new Headers(init.headers).get('x-goog-api-key')).toBe(
-      'test-api-key'
-    );
+    expect(mockFetch).toHaveBeenCalledTimes(5);
+    for (const [url, init] of mockFetch.mock.calls as [string, RequestInit][]) {
+      expect(url).toBe(
+        `${expectedBaseUrl}/v1beta/models/${GEMINI_API.TREND_MODEL}:generateContent`
+      );
+      expect(init.method).toBe('POST');
+      expect(new Headers(init.headers).get('x-goog-api-key')).toBe(
+        'test-api-key'
+      );
+    }
+    expect(create).toHaveBeenCalledTimes(1);
   });
 });
 

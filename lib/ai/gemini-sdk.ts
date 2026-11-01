@@ -42,6 +42,12 @@ export type GeminiTextRequest = {
   timeoutMs: number;
 };
 
+export type GeminiTextResult = {
+  text: string;
+  /** 最初の候補の終了理由。上限で切れたか（MAX_TOKENS）を呼び出し側が見るため */
+  finishReason?: FinishReason;
+};
+
 /**
  * 1 つのプロンプトを 1 回のリクエストで送り、本文を返す。
  *
@@ -53,6 +59,14 @@ export async function generateGeminiText(
   client: GoogleGenAI,
   request: GeminiTextRequest
 ): Promise<string> {
+  return (await generateGeminiTextResult(client, request)).text;
+}
+
+/** generateGeminiText と同じリクエストを送り、本文と終了理由を返す */
+export async function generateGeminiTextResult(
+  client: GoogleGenAI,
+  request: GeminiTextRequest
+): Promise<GeminiTextResult> {
   const response = await client.models.generateContent({
     model: request.model,
     contents: [{ role: 'user', parts: [{ text: request.prompt }] }],
@@ -64,7 +78,10 @@ export async function generateGeminiText(
       httpOptions: { timeout: request.timeoutMs },
     },
   });
-  return getGeminiResponseText(response);
+  return {
+    text: getGeminiResponseText(response),
+    finishReason: response.candidates?.[0]?.finishReason,
+  };
 }
 
 // 旧 SDK（@google/generative-ai）の response.text() が例外にしていた終了理由

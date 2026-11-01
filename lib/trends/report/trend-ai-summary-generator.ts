@@ -1,8 +1,11 @@
 import { sanitizeTrendAiText } from '@/lib/trends/report/trend-ai-text';
 import { PrismaClient, TrendPeriodType } from '@/lib/prisma-exports';
-import type { GoogleGenAI } from '@google/genai';
+import { FinishReason, type GoogleGenAI } from '@google/genai';
 import logger from '@/lib/logger';
-import { generateGeminiText } from '@/lib/ai/gemini-sdk';
+import {
+  generateGeminiText,
+  generateGeminiTextResult,
+} from '@/lib/ai/gemini-sdk';
 import { extractFirstJsonObject } from '@/lib/trends/report/trend-ai-summary-types';
 import type {
   ArticleWithRelations,
@@ -349,7 +352,7 @@ async function generateAISummaryLegacyPlainText(
   const periodLabel = formatPeriodLabel(periodType, periodStart, periodEnd);
   const prompt = buildLegacyPrompt(periodLabel, topArticles);
 
-  const text = await generateGeminiText(model.client, {
+  const { text, finishReason } = await generateGeminiTextResult(model.client, {
     model: model.model,
     prompt,
     // 思考のトークンも上限に数える（gemini-2.5-flash）。600 では思考が約 570 を使い、
@@ -358,6 +361,14 @@ async function generateAISummaryLegacyPlainText(
     temperature: 0.5,
     timeoutMs: GEMINI_TIMEOUT_MS,
   });
+
+  // 上限で切れた本文は途中で終わっているので、長さが足りても保存しない
+  // （構造化の経路は切れた JSON が検証で落ちて修復に進むので、ここだけで見る）
+  if (finishReason === FinishReason.MAX_TOKENS) {
+    throw new Error(
+      `Legacy AI summary was truncated at the output limit (${text.trim().length} chars)`
+    );
+  }
 
   let summary = text.trim();
   summary = summary.replace(/^(要約[:：]?\s*|##\s*出力\s*)/i, '');
