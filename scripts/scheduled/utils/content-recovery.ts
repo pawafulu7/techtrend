@@ -6,7 +6,7 @@
  * 要約まわりをどう戻すかの判定は summary-reset.ts。
  */
 import { prisma } from '@/lib/prisma';
-import { validateArticleContent } from '@/lib/services/summary/summary-orchestrator';
+import { validateArticleContent } from '@/lib/summary/summary-orchestrator';
 import { PERMANENT_SKIP_REASONS, SUMMARY_RESET } from './summary-reset';
 
 /** 表示・保存してよいサムネイル URL か（http / https だけ） */

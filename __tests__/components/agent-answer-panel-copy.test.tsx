@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
-import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
+import type { AgentSearchResult } from '@/app/hooks/use-agent-search';
 
 // Markdown が何も描かない回答でも、元のテキストをコピーする（Issue #718）
 jest.mock('@/app/components/common/lazy-markdown', () => ({

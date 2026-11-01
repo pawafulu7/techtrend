@@ -8,7 +8,7 @@ const mockTagCount = jest.fn();
 const mockUserCount = jest.fn();
 
 // Mock Prisma
-jest.mock('@/lib/database', () => ({
+jest.mock('@/lib/prisma', () => ({
   prisma: {
     article: {
       count: mockArticleCount,

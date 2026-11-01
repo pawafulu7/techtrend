@@ -7,7 +7,7 @@ jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/middleware/with-rate-limit', () => ({
   withRateLimit: (_policy: string, handler: Function) => handler,
 }));
-jest.mock('@/lib/services/digest-service', () => ({
+jest.mock('@/lib/personalization/digest-service', () => ({
   digestService: {
     getDigest: jest.fn(),
   },
@@ -15,7 +15,7 @@ jest.mock('@/lib/services/digest-service', () => ({
 
 import { NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth/get-session';
-import { digestService } from '@/lib/services/digest-service';
+import { digestService } from '@/lib/personalization/digest-service';
 
 const authMock = getSession as jest.MockedFunction<typeof getSession>;
 const digestServiceMock = digestService as jest.Mocked<typeof digestService>;

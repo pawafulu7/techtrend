@@ -9,7 +9,7 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { getAllOptimizerStats } from '@/lib/dataloader/batch-optimizer';
 import { getFavoriteLoaderStats } from '@/lib/dataloader/favorite-loader';
 import { getViewLoaderStats } from '@/lib/dataloader/article-view-loader';
-import type { PartialDataLoaderStats } from '@/lib/types/metrics';
+import type { PartialDataLoaderStats } from '@/lib/metrics/types';
 import logger from '@/lib/logger';
 
 async function handler() {

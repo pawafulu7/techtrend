@@ -8,14 +8,14 @@ import {
   useQuery,
   keepPreviousData,
 } from '@tanstack/react-query';
-import { PAPER_SOURCE_IDS_PARAM } from '@/lib/utils/source/paper-source';
+import { PAPER_SOURCE_IDS_PARAM } from '@/lib/sources/paper-source';
 import {
   buildArticlesRequest,
   buildHomeArticleFilters,
   normalizeArticleFilters,
 } from '@/lib/articles/home-articles-query';
-import { usePersonalizationPreferences } from '@/lib/hooks/use-personalization-preferences';
-import { ReadTracker } from '@/components/article/read-tracker';
+import { usePersonalizationPreferences } from '@/app/hooks/use-personalization-preferences';
+import { ReadTracker } from '@/app/components/article/read-tracker';
 import { FilterSidebarToggle } from '@/app/components/home/filter-sidebar';
 import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle';
 import { SearchBox } from '@/app/components/common/search-box';

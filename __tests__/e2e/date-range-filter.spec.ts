@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForUrlParam, getTimeout, waitForArticles, openFilterSidebar } from '../../e2e/helpers/wait-utils';
+import { waitForUrlParam, getTimeout, waitForArticles, openFilterSidebar } from './helpers/wait-utils';
 
 // Desktop viewport for sidebar visibility
 test.use({

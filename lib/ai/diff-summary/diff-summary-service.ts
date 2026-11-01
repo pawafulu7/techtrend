@@ -29,7 +29,7 @@ import { DiffSummaryOutput } from '../extraction/extraction-schemas';
 import {
   SOURCE_CATEGORIES,
   SourceCategoryId,
-} from '@/lib/constants/source-categories';
+} from '@/lib/sources/source-categories';
 import {
   getISOWeek,
   getPreviousISOWeek,

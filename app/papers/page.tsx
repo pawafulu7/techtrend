@@ -11,7 +11,7 @@ import { getFilterPreferencesFromCookies } from '@/lib/cookies/filter-preference
 import {
   PAPER_SOURCE_IDS,
   PAPER_SOURCE_NAMES,
-} from '@/lib/constants/source-categories';
+} from '@/lib/sources/source-categories';
 import { PapersClientInfinite } from '@/app/components/papers/papers-client-infinite';
 import { PageHeader } from '@/components/ui-v2/page-header';
 

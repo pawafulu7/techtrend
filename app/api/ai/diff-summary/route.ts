@@ -2,7 +2,7 @@
  * Diff Summary API Route
  *
  * GET: Retrieve diff summaries for categories
- * （生成は scripts/ai/generate-diff-summaries.ts の週次バッチ）
+ * （生成は scripts/scheduled/generate-diff-summaries.ts の週次バッチ）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,7 +12,7 @@ import { getISOWeek, getPreviousISOWeek } from '@/lib/ai/diff-summary/iso-week';
 import {
   SOURCE_CATEGORIES,
   SourceCategoryId,
-} from '@/lib/constants/source-categories';
+} from '@/lib/sources/source-categories';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';

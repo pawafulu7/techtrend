@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { TIMEOUTS } from '../../../e2e/helpers/wait-utils';
+import { TIMEOUTS } from '../helpers/wait-utils';
 import { loginAsAdmin } from '../utils/e2e-helpers';
 
 /**

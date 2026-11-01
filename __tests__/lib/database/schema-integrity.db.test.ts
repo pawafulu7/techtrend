@@ -29,7 +29,7 @@ jest.mock('@/lib/middleware/with-rate-limit', () => ({
 
 import { auth } from '@/lib/auth/auth';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { prismaMock } = require('../../../test/utils/prisma-mock');
+const { prismaMock } = require('../../helpers/prisma-mock');
 
 import { POST } from '@/app/api/user/source-presets/route';
 

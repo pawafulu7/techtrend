@@ -29,7 +29,7 @@ import {
   contrastRatio,
   parseColor,
   readableTextColor,
-} from '@/lib/utils/design-tokens/contrast';
+} from '@/lib/design-tokens/contrast';
 
 type ColorKey = keyof ColorModeTokens;
 

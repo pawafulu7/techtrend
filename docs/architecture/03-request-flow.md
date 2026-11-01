@@ -91,7 +91,7 @@ sequenceDiagram
 | CSRF チェック（`/api/*` 変更系のみ） | `proxy.ts:182-190` |
 | メンテナンスモード（管理者判定は Redis キャッシュ + DB） | `proxy.ts:192-247` |
 | 保護パスガード（Cookie 存在確認のみ） | `proxy.ts:249-280` |
-| `setSecurityHeaders()` / `x-theme` | `proxy.ts:157`, `proxy.ts:282-291`, `config/security-headers.ts` |
+| `setSecurityHeaders()` / `x-theme` | `proxy.ts:157`, `proxy.ts:282-291`, `lib/config/security-headers.ts` |
 | 保護ページのセッション取得 | `lib/auth/get-session.ts:4-9`（`getSession()`） |
 | 管理者ページの DB-backed role 検証 | `lib/auth/admin-check.ts:12-26`（`requireAdmin()`） |
 | Better Auth 設定本体 | `lib/auth/auth.ts:51-191` |

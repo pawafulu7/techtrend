@@ -17,7 +17,7 @@ jest.mock('@/lib/di/bootstrap', () => ({
   }),
 }));
 
-jest.mock('@/lib/utils/quality-score', () => ({
+jest.mock('@/lib/articles/quality-score', () => ({
   calculateArticleQualityScore: (...args: unknown[]) =>
     mockCalculateArticleQualityScore(...args),
 }));

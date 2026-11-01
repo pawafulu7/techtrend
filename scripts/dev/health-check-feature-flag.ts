@@ -13,7 +13,7 @@
  */
 
 import { FEATURE_FLAGS } from '@/lib/config/feature-flags';
-import { createCompanySourceProvider } from '@/lib/providers/company-source/factory';
+import { createCompanySourceProvider } from '@/lib/sources/company-source/factory';
 
 async function checkFeatureFlag() {
   console.log('=== Phase 2-A Feature Flag Health Check ===\n');
@@ -66,6 +66,9 @@ async function checkFeatureFlag() {
 
       // Test getSourcesByCategory() with known group
       console.log('  Testing getSourcesByCategory(group_company_japan)...');
+      if (!provider.getSourcesByCategory) {
+        throw new Error('provider does not implement getSourcesByCategory');
+      }
       const groupSources = await provider.getSourcesByCategory('group_company_japan');
       console.log('    Success: Retrieved', groupSources.length, 'sources');
 

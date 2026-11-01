@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/lib/logger';
 import { publicCacheHeaders } from '@/lib/api/cache-headers';
-import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/constants/daily-trend';
+import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/trends/daily-trend';
 import {
   getDailyTrendReport,
   previousJSTDay,
-} from '@/lib/services/trend-report/daily-report';
+} from '@/lib/trends/report/daily-report';
 
 /**
  * GET /api/trends/daily

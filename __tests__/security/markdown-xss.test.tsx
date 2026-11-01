@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
-import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
+import type { AgentSearchResult } from '@/app/hooks/use-agent-search';
 
 // Markdown の表示は遅延読み込み（Issue #718）。描き終わる前は本文を書式なしの文字で出すので、
 // 「含まない」の確認はそのままでは素通りする。Markdown が描いた要素が出るのを待ってから確かめる

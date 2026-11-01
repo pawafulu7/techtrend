@@ -36,7 +36,7 @@ import {
 
 // lib/prisma は jest.setup.node.js がモックした PrismaClient（= prismaMock）を返す
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { prismaMock } = require('../../test/utils/prisma-mock');
+const { prismaMock } = require('../helpers/prisma-mock');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;

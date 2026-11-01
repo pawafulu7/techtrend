@@ -7,6 +7,7 @@
 
 import { execSync } from 'child_process';
 import { createPrismaClient } from '@/lib/prisma/create-client';
+import type { Article } from '@/lib/prisma-exports';
 
 // テストDB接続設定
 const TEST_DATABASE_URL = 'postgresql://postgres:postgres_dev_password@localhost:5434/techtrend_test';
@@ -117,7 +118,7 @@ async function setupTestDatabase() {
     
     // 記事作成
     console.error('Creating articles...');
-    const articles = [];
+    const articles: Article[] = [];
     const now = new Date();
     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     

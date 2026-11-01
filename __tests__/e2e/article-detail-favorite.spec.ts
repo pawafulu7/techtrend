@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { SELECTORS } from './constants/selectors';
 import { waitForPageLoad } from './utils/e2e-helpers';
-import { MOBILE_VIEWPORT } from '../../e2e/constants/viewports';
+import { MOBILE_VIEWPORT } from './constants/viewports';
 
 // Phase 3: CI最適化 - 長時間テストにマーク
 test.describe('Article Detail Favorite Button', () => {

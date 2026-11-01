@@ -3,8 +3,8 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { Building2, ChevronDown, ChevronRight } from 'lucide-react';
-import type { CompanySource } from '@/lib/providers/company-source';
-import { DEVELOPERSIO_SOURCE_IDS } from '@/lib/constants/source-categories';
+import type { CompanySource } from '@/lib/sources/company-source';
+import { DEVELOPERSIO_SOURCE_IDS } from '@/lib/sources/source-categories';
 import {
   createLazyComponent,
   LazyLoadFailed,

@@ -3,12 +3,12 @@
  */
 
 // モックの設定
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 jest.mock('@/lib/auth/get-session');
 jest.mock('@/lib/redis/factory');
 
 import { GET, POST, PUT, DELETE } from '@/app/api/articles/read-status/route';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth/get-session';
 import { getRedisService } from '@/lib/redis/factory';
 import { NextRequest } from 'next/server';

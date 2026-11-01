@@ -13,7 +13,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-generator';
+import { TrendReportGenerator } from '@/lib/trends/report/trend-report-generator';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 type ReportType = 'daily' | 'weekly' | 'monthly';

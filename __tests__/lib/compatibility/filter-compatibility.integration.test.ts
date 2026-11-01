@@ -52,7 +52,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
     it('should convert category IDs to group IDs when feature flag is true', async () => {
       await withFeatureFlag(true, async () => {
         const { getGroupIdsByCategoryId } = await import(
-          '@/lib/compatibility/category-group-mapping'
+          '@/lib/sources/category-group-mapping'
         );
 
         const companyGroupIds = getGroupIdsByCategoryId('company');
@@ -73,7 +73,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
     it('should convert multiple category IDs to group IDs and remove duplicates', async () => {
       await withFeatureFlag(true, async () => {
         const { getGroupIdsForCategories } = await import(
-          '@/lib/compatibility/category-group-mapping'
+          '@/lib/sources/category-group-mapping'
         );
 
         // ai and llm map to the same groups, so duplicates should be removed
@@ -91,7 +91,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
     it('should convert group IDs to primary category IDs', async () => {
       await withFeatureFlag(true, async () => {
         const { getPrimaryCategoryByGroupId } = await import(
-          '@/lib/compatibility/category-group-mapping'
+          '@/lib/sources/category-group-mapping'
         );
 
         expect(getPrimaryCategoryByGroupId('group_company_japan')).toBe('company');
@@ -106,7 +106,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
     it('should return undefined for unknown group IDs', async () => {
       await withFeatureFlag(true, async () => {
         const { getPrimaryCategoryByGroupId } = await import(
-          '@/lib/compatibility/category-group-mapping'
+          '@/lib/sources/category-group-mapping'
         );
 
         expect(getPrimaryCategoryByGroupId('unknown_group')).toBeUndefined();
@@ -116,7 +116,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
     it('should convert multiple group IDs to category IDs and filter unknown groups', async () => {
       await withFeatureFlag(true, async () => {
         const { getPrimaryCategoriesForGroups } = await import(
-          '@/lib/compatibility/category-group-mapping'
+          '@/lib/sources/category-group-mapping'
         );
 
         const categoryIds = getPrimaryCategoriesForGroups([
@@ -134,7 +134,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const { createInMemoryCompanyProvider } = await import(
             '../../helpers/phase2a-test-fixtures'
@@ -157,7 +157,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const { createInMemoryCompanyProvider } = await import(
             '../../helpers/phase2a-test-fixtures'
@@ -180,7 +180,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const { createInMemoryCompanyProvider } = await import(
             '../../helpers/phase2a-test-fixtures'
@@ -210,7 +210,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
 
           // groupedSources not provided -> fallback to SOURCE_CATEGORIES
@@ -226,7 +226,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
       await withFeatureFlag(false, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const { createInMemoryCompanyProvider } = await import(
             '../../helpers/phase2a-test-fixtures'
@@ -271,7 +271,7 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
 
         await jest.isolateModulesAsync(async () => {
           const { SOURCE_CATEGORIES } = await import(
-            '@/lib/constants/source-categories'
+            '@/lib/sources/source-categories'
           );
 
           const allSourceIds = Object.values(SOURCE_CATEGORIES).flatMap(
@@ -304,10 +304,10 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { createCompanySourceProvider } = await import(
-            '@/lib/providers/company-source/factory'
+            '@/lib/sources/company-source/factory'
           );
           const { DatabaseCompanySourceProvider } = await import(
-            '@/lib/providers/company-source/database-provider'
+            '@/lib/sources/company-source/database-provider'
           );
 
           const provider = createCompanySourceProvider();
@@ -320,10 +320,10 @@ describe('[Phase2A][Integration] Filter Compatibility', () => {
       await withFeatureFlag(false, async () => {
         await jest.isolateModulesAsync(async () => {
           const { createCompanySourceProvider } = await import(
-            '@/lib/providers/company-source/factory'
+            '@/lib/sources/company-source/factory'
           );
           const { StaticCompanySourceProvider } = await import(
-            '@/lib/providers/company-source/static-provider'
+            '@/lib/sources/company-source/static-provider'
           );
 
           const provider = createCompanySourceProvider();

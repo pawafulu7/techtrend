@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
-import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
-import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
-import type { TopArticleInfo } from '@/lib/services/trend-report/types';
+import { hasValidThumbnail } from '@/lib/articles/thumbnail';
+import type { EvidenceArticleMap } from '@/lib/trends/report/trend-ai-summary-types';
+import type { TopArticleInfo } from '@/lib/trends/report/types';
 
 type TopArticle = TopArticleInfo;
 

@@ -32,7 +32,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Local env files
+# Local env files（API キーなどの実際の値が入る。イメージに入れると、テストが手元のキーで有料の API を
+# 実際に呼ぶ。テストのコンテナに渡す値は docker-compose.test.yml の environment に明示する）
+.env
 .env*.local
 .env.local
 .env.development.local
@@ -141,11 +143,15 @@ test-results
 playwright-report
 .playwright-mcp
 
-# Claude/AI specific
+# Claude/AI specific（個人の作業ファイル。.workflow/tmp/ には本番 DB のコマンドの生の出力も残る）
 .claude
 .serena
 claudedocs
 CLAUDE.md
+.workflow
+.codex
+.kiro
+.aigne
 
 # Scripts that shouldn't be in the image
 scripts/test-*

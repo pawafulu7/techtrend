@@ -1,7 +1,7 @@
 /**
  * パーソナライズ設定の既定値・設定 API の応答の変換・期間の正規化。
  *
- * クライアントのフック（lib/hooks/use-personalization-preferences.ts）と、ホームの
+ * クライアントのフック（app/hooks/use-personalization-preferences.ts）と、ホームの
  * サーバー描画（app/components/home/prefetch-home-articles.ts）の両方が使う。フックのファイルは
  * 'use client' なので、サーバーから値として読めるようにここへ分けている（issue #714）。
  */

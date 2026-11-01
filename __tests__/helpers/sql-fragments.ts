@@ -22,7 +22,7 @@ export function sqlFragmentsOf(
 }
 
 /**
- * /stats の 7 日の件数の問い合わせ（lib/services/dashboard-stats.ts の countPublishedBetween）か。
+ * /stats の 7 日の件数の問い合わせ（lib/trends/dashboard-stats.ts の countPublishedBetween）か。
  * GROUP BY の無い COUNT(*) は必ず 1 行を返すので、$queryRaw のモックはこの問い合わせに [{ count }] を返す。
  * 書き方の違い（AS の大文字など）で外れないよう、SELECT の直後が COUNT(*) かだけを見る
  * （COUNT(*) で始まる生 SQL はこの問い合わせだけ）
@@ -64,7 +64,7 @@ export function fullSqlOf(call: readonly unknown[]): string {
 }
 
 /**
- * トレンドの分析（lib/services/trend-analysis.ts）の問い合わせの期間の条件を確かめる。
+ * トレンドの分析（lib/trends/trend-analysis.ts）の問い合わせの期間の条件を確かめる。
  * - 期間は 1 つの断片で、非表示でない・有効なソース・[from, to) を、すべて AND でつなぐ
  * - from・to は Z 付きの ISO 文字列を ::timestamptz で読む（Date のまま渡すと pg アダプターはオフセット無しで送り、
  *   ::timestamp はオフセットを捨てる。どちらもセッションのタイムゾーンが UTC でないと時差の分ずれる）。

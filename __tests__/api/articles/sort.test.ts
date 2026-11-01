@@ -1,9 +1,9 @@
 import { GET } from '@/app/api/articles/route';
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 
 // Mock dependencies
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 jest.mock('@/lib/cache/cache-invalidator');
 
 // LayeredCacheを直接モック

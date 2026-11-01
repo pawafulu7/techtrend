@@ -25,8 +25,8 @@ import {
   buildWhereClause,
   type WhereClauseParams,
 } from '@/app/api/articles/list/query-helpers';
-import { ARXIV_SOURCE_ID } from '@/lib/constants/source-categories';
-import { PAPER_SOURCE_IDS_PARAM } from '@/lib/utils/source/paper-source';
+import { ARXIV_SOURCE_ID } from '@/lib/sources/source-categories';
+import { PAPER_SOURCE_IDS_PARAM } from '@/lib/sources/paper-source';
 
 const PREFIX = '__test_home_filter_';
 const DAY_MS = 24 * 60 * 60 * 1000;

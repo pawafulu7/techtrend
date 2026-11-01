@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
+import type { Prisma } from '@/lib/prisma-exports';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -19,7 +20,7 @@ async function exportData() {
 
     // 2. Articles（バッチ処理）
     console.log('📝 Articlesをエクスポート中...');
-    const articles = [];
+    const articles: Prisma.ArticleGetPayload<{ include: { tags: { select: { name: true } } } }>[] = [];
     const batchSize = 500;
     let skip = 0;
     

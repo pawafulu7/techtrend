@@ -68,7 +68,7 @@ jest.mock('@/app/hooks/use-infinite-articles', () => ({
 }));
 
 const mockUsePersonalizationPreferences = jest.fn<MockPreferences, []>();
-jest.mock('@/lib/hooks/use-personalization-preferences', () => ({
+jest.mock('@/app/hooks/use-personalization-preferences', () => ({
   usePersonalizationPreferences: () => mockUsePersonalizationPreferences(),
 }));
 

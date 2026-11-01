@@ -1,5 +1,5 @@
 /**
- * /stats の集計（lib/services/dashboard-stats.ts）が、DB のセッションのタイムゾーンに左右されないことの
+ * /stats の集計（lib/trends/dashboard-stats.ts）が、DB のセッションのタイムゾーンに左右されないことの
  * 結合テスト（issue #807）。
  *
  * 以前は日別のまとめを `TO_CHAR(publishedAt, …)`（セッションのタイムゾーン）で作り、期間に上限が無かった。
@@ -48,7 +48,7 @@ jest.mock('@/lib/cache', () => ({
 
 import { prisma as laSessionPrisma } from '@/lib/prisma';
 import { createPrismaClient } from '@/lib/prisma/create-client';
-import { getDashboardStats } from '@/lib/services/dashboard-stats';
+import { getDashboardStats } from '@/lib/trends/dashboard-stats';
 
 // テストのデータは UTC のセッションで作る。Prisma の pg アダプターは日時をオフセット無しで送るので、
 // LA のセッションで書くと保存される時刻が時差の分ずれる（読む側の集計だけを LA のセッションにする）。

@@ -7,12 +7,12 @@ import { createPrismaClient } from '@/lib/prisma/create-client';
 import { GoogleAIEnricher } from '../../lib/enrichers/google-ai';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import type { SummaryServiceResult } from '@/lib/ai/service/unified-summary-service.interface';
-import { isEnrichmentSkipped } from '../../lib/fetchers/generic-foreign-rss';
+import { isEnrichmentSkipped } from '../../lib/fetchers/config/foreign-rss-sources';
 import {
   contentStateWhere,
   summaryUpdatesForReplacedContent,
 } from '../scheduled/utils/summary-reset';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { EmbeddingScheduler } from '@/lib/rag/embedding-scheduler';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { closeRedisConnection } from '@/lib/redis/client';
 

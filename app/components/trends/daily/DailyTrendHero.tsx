@@ -1,7 +1,7 @@
 'use client';
 
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
-import { stripInternalArticleRefs } from '@/lib/utils/trend-ai-text';
+import { getTagDisplayName } from '@/lib/tags/tag-labels';
+import { stripInternalArticleRefs } from '@/lib/trends/report/trend-ai-text';
 import { useMemo } from 'react';
 import { Sparkles, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui-v2/card-v2';
@@ -10,8 +10,8 @@ import { cn } from '@/lib/utils';
 import {
   parseTrendAiSummary,
   type EvidenceArticleMap,
-} from '@/lib/types/trend-ai-summary';
-import type { TopArticleInfo } from '@/lib/services/trend-report/types';
+} from '@/lib/trends/report/trend-ai-summary-types';
+import type { TopArticleInfo } from '@/lib/trends/report/types';
 import { StructuredAISummaryView } from './StructuredAISummaryView';
 
 interface DailyTrendHeroProps {

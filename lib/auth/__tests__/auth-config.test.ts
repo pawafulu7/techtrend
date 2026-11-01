@@ -91,7 +91,7 @@ describe('email verification on sign-up (#832)', () => {
   });
 
   it('keeps users signed out until they verify the email and sign in with the password', () => {
-    // 登録フォーム（components/auth/*SignupForm.tsx）は、登録後にログインしない前提で
+    // 登録フォーム（app/components/auth/*SignupForm.tsx）は、登録後にログインしない前提で
     // 「確認メールを送信しました」を出す
     expect(options.emailAndPassword?.requireEmailVerification).toBe(true);
     expect(options.emailVerification?.sendOnSignUp).toBe(true);

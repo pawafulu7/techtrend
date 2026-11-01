@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { waitForSourceFilter, getTimeout, waitForUrlParam } from '../../e2e/helpers/wait-utils';
-import { isCI } from '../../e2e/helpers/env';
-import { MOBILE_VIEWPORT } from '../../e2e/constants/viewports';
+import { waitForSourceFilter, getTimeout, waitForUrlParam } from './helpers/wait-utils';
+import { isCI } from './helpers/env';
+import { MOBILE_VIEWPORT } from './constants/viewports';
 
 test.describe('ソースカテゴリフィルター機能', () => {
   test.beforeEach(async ({ page }) => {

@@ -19,7 +19,7 @@ import { CACHE_TTL } from './constants';
 import { CachedAIResponse } from './types';
 import { normalizeQuery } from './normalize-query';
 import { hashSensitiveValue, logger } from '@/lib/logger';
-import { countTokens } from '@/lib/utils/chunking';
+import { countTokens } from '@/lib/rag/chunking';
 
 export type ArticleQACachedResponse = CachedAIResponse;
 

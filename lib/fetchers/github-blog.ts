@@ -4,9 +4,9 @@ import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { fetchFeedXml } from './fetch-feed';
 import { parseRSSDate } from '@/lib/utils/date';
-import { extractContent } from '@/lib/utils/content/content-extractor';
+import { extractContent } from '@/lib/fetchers/content-extractor';
 import { ContentEnricherFactory } from '@/lib/enrichers';
-import { normalizeTagInput } from '@/lib/utils/tag/tag-normalizer';
+import { normalizeTagInput } from '@/lib/tags/tag-input-normalizer';
 import logger from '@/lib/logger';
 
 interface GitHubBlogItem {

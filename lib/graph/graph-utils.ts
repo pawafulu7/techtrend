@@ -7,7 +7,7 @@
  * @see lib/graph/graph-data-serializer.ts
  */
 
-import { CATEGORY_COLORS } from '@/lib/types/graph';
+import { CATEGORY_COLORS } from '@/lib/graph/types';
 
 // ============================================================
 // Constants

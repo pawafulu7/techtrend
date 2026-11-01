@@ -11,7 +11,7 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
-import { aiLLMFilter } from '@/lib/filters/ai-llm-filter';
+import { aiLLMFilter } from '@/lib/fetchers/ai-llm-filter';
 
 export class NVIDIADeveloperBlogFetcher extends BaseFetcher {
   private parser: Parser;

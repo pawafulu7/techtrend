@@ -8,7 +8,7 @@
  * および「両期間に存在し焦点が変化したか」= updated の見極め）だけ。
  */
 
-import { TAG_NORMALIZATION_MAP } from '@/lib/utils/tag/tag-normalizer';
+import { TAG_NORMALIZATION_MAP } from '@/lib/tags/tag-input-normalizer';
 import type { TopicData } from './prompts/diff-summary-prompt';
 
 /** 報告対象とする最低件数 */

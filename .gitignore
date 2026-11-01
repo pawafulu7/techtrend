@@ -81,8 +81,11 @@ backups/
 # NOTE: `docs/` ではなく `docs/*` にすること。ディレクトリ自体を除外すると
 # git がその中に降りないため、後続の `!docs/xxx/` が一切効かなくなる。
 docs/*
-!docs/operations/
+!docs/README.md
 !docs/architecture/
+!docs/development/
+!docs/guides/
+!docs/operations/
 
 # data and reports
 data/
@@ -97,9 +100,6 @@ lib/ai/testing/candidate-pool-report.json
 lib/ai/testing/backups/
 regression-report.json
 regression-report.md
-
-# jest-dom snapshot output (should not be committed)
-.jest-dom-partial.json
 
 # test and temporary files
 # More specific patterns to avoid excluding legitimate test files
@@ -189,8 +189,12 @@ benchmark-*.json
 # regeneration logs
 regenerate.log
 
-# progress files
-.regenerate-low-item-summaries-progress.json
+# progress files（スクリプトの再開位置）
+.*-progress.json
+
+# 計測・テストの実行結果
+metrics-reports/
+.jest-*.json
 .archive/
 backups/
 # Claude Code internal documentation

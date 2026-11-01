@@ -5,7 +5,7 @@ import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
 import { applyPublicCacheHeaders } from '@/lib/api/cache-headers';
 import { enabledSourceSql } from '@/lib/database/enabled-source-filter';
-import { getArticleCategoryLabel } from '@/lib/constants/tag-categories';
+import { getArticleCategoryLabel } from '@/lib/tags/tag-categories';
 
 type Period = 'day' | 'week' | 'month';
 

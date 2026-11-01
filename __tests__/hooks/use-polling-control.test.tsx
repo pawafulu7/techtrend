@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { usePollingControl } from '@/lib/hooks/use-polling-control';
+import { usePollingControl } from '@/app/hooks/use-polling-control';
 
 describe('usePollingControl', () => {
   it('動いている状態で始まり、指定した間隔を返す', () => {

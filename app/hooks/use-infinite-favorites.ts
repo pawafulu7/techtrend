@@ -2,11 +2,11 @@
 
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FavoritesResponseSchema } from '@/lib/schemas/favorites';
+import { FavoritesResponseSchema } from '@/lib/favorites/schema';
 import type {
   FavoriteArticle,
   FavoritesApiResponse,
-} from '@/lib/types/favorites';
+} from '@/lib/favorites/types';
 
 /** 画面で文言を選べるよう、HTTP ステータスを持たせる（issue #729） */
 export class FavoritesFetchError extends Error {
@@ -176,7 +176,7 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
   const removeFavoriteFromCache = updateCacheOnRemove;
 
   // 止めるのは、この画面を開いてから起きた 401 だけ。ログインし直してクライアント遷移で戻ると
-  // 前の 401 がキャッシュに残るため、それで止めると案内が消えなくなる（lib/hooks/use-digest.ts と同じ）
+  // 前の 401 がキャッシュに残るため、それで止めると案内が消えなくなる（app/hooks/use-digest.ts と同じ）
   const [mountedAt] = useState(() => Date.now());
 
   const infiniteQuery = useInfiniteQuery<FavoritesApiResponse, Error>({

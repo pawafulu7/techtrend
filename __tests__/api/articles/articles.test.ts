@@ -5,12 +5,12 @@
 
 // モックを先に設定
 // タグ名は lower(name) で ID にしてから絞る（#681）。テストでは名前の小文字から ID を作る
-jest.mock('@/lib/services/tag-service', () => ({
-  ...jest.requireActual('@/lib/services/tag-service'),
+jest.mock('@/lib/tags/tag-service', () => ({
+  ...jest.requireActual('@/lib/tags/tag-service'),
   findTagIdGroupsByNames: async (names: string[]) =>
     names.map((name) => [`tag-${name.toLowerCase()}`]),
 }));
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 jest.mock('@/lib/cache/cache-invalidator');
 
 // LayeredCacheを直接モック
@@ -49,7 +49,7 @@ jest.mock('@/lib/metrics/performance', () => ({
 
 import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/articles/route';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { getRedisClient } from '@/lib/redis/client';
 
 // Inline test utilities to avoid CI module resolution issues

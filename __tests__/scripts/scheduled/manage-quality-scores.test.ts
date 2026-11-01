@@ -6,12 +6,12 @@ const mockCalculateArticleQualityScore = jest.fn();
 const mockGetLastProcessedTime = jest.fn();
 const mockSaveProcessingStatus = jest.fn();
 
-jest.mock('@/lib/utils/quality-score', () => ({
+jest.mock('@/lib/articles/quality-score', () => ({
   calculateArticleQualityScore: (...args: unknown[]) =>
     mockCalculateArticleQualityScore(...args),
 }));
 
-jest.mock('@/scripts/utils/processing-status', () => ({
+jest.mock('@/scripts/lib/processing-status', () => ({
   getLastProcessedTime: (...args: unknown[]) => mockGetLastProcessedTime(...args),
   saveProcessingStatus: (...args: unknown[]) => mockSaveProcessingStatus(...args),
 }));

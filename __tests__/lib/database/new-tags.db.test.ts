@@ -4,7 +4,7 @@ import { articleAggregationWhere } from '@/lib/database/article-aggregation-filt
 import {
   findTagIdGroupsByNames,
   findTagIdsByNames,
-} from '@/lib/services/tag-service';
+} from '@/lib/tags/tag-service';
 import { findTopTags } from '@/lib/database/tag-article-counts';
 
 const { PrismaClient: RealPrismaClient } = jest.requireActual(

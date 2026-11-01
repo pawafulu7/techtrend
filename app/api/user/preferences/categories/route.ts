@@ -26,7 +26,7 @@ import {
 import { withCSRFProtection } from '@/lib/middleware/csrf-protection';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
-import { digestService } from '@/lib/services/digest-service';
+import { digestService } from '@/lib/personalization/digest-service';
 
 // =============================================================================
 // Configuration

@@ -11,7 +11,7 @@ import {
   type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
-import { digestService } from '@/lib/services/digest-service';
+import { digestService } from '@/lib/personalization/digest-service';
 import { logger, sanitizeError } from '@/lib/logger';
 
 // =============================================================================

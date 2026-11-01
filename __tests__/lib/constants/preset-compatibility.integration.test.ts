@@ -46,7 +46,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const { createInMemoryCompanyProvider: createProvider } = await import(
             '../../helpers/phase2a-test-fixtures'
@@ -69,7 +69,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(false, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const { makeLegacyPresetFixture: makeLegacy } = await import(
             '../../helpers/phase2a-test-fixtures'
@@ -93,7 +93,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
 
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const groupedSources = createInMemoryCompanyProvider();
           ids = getSourceIdsForPreset('company', groupedSources);
@@ -111,7 +111,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
 
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           ids = getSourceIdsForPreset('company');
         });
@@ -135,7 +135,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const groupedSources = createInMemoryCompanyProvider();
           const sourceIds = getSourceIdsForPreset('foreign', groupedSources);
@@ -154,7 +154,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(false, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
 
           const sourceIds = getSourceIdsForPreset('foreign');
@@ -171,7 +171,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const groupedSources = createInMemoryCompanyProvider();
           const sourceIds = getSourceIdsForPreset('domestic', groupedSources);
@@ -197,7 +197,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(false, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
 
           const sourceIds = getSourceIdsForPreset('domestic');
@@ -214,7 +214,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const groupedSources = createInMemoryCompanyProvider();
           const sourceIds = getSourceIdsForPreset('presentation', groupedSources);
@@ -233,7 +233,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(false, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
 
           const sourceIds = getSourceIdsForPreset('presentation');
@@ -250,7 +250,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const groupedSources = createInMemoryCompanyProvider();
           const sourceIds = getSourceIdsForPreset('ai-ml', groupedSources);
@@ -276,7 +276,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(false, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
 
           const sourceIds = getSourceIdsForPreset('ai-ml');
@@ -291,7 +291,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const groupedSources = createInMemoryCompanyProvider();
           const sourceIds = getSourceIdsForPreset('ai-ml', groupedSources);
@@ -309,7 +309,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
 
           // groupedSources not provided -> fallback to SOURCE_CATEGORIES
@@ -326,7 +326,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
 
           // groupedSources is empty -> fallback to SOURCE_CATEGORIES
@@ -343,7 +343,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(false, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const groupedSources = createInMemoryCompanyProvider();
 
@@ -363,7 +363,7 @@ describe('[Phase2A][Integration] Preset Compatibility', () => {
       await withFeatureFlag(true, async () => {
         await jest.isolateModulesAsync(async () => {
           const { getSourceIdsForPreset } = await import(
-            '@/lib/constants/source-presets'
+            '@/lib/sources/source-presets'
           );
           const groupedSources = createInMemoryCompanyProvider();
 

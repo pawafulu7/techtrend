@@ -95,7 +95,6 @@ services:
       SKIP_EMAIL_SEND: "true"
     volumes:
       - ./__tests__:/app/__tests__:ro
-      - ./e2e:/app/e2e:ro
       - ./playwright.config.ts:/app/playwright.config.ts:ro
     shm_size: "2gb"
     logging: *common-logging

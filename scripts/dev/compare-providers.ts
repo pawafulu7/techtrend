@@ -1,6 +1,6 @@
-import { StaticCompanySourceProvider } from '@/lib/providers/company-source/static-provider';
-import { DatabaseCompanySourceProvider } from '@/lib/providers/company-source/database-provider';
-import { SOURCE_CATEGORIES } from '@/lib/constants/source-categories';
+import { StaticCompanySourceProvider } from '@/lib/sources/company-source/static-provider';
+import { DatabaseCompanySourceProvider } from '@/lib/sources/company-source/database-provider';
+import { SOURCE_CATEGORIES } from '@/lib/sources/source-categories';
 
 async function compareProviders() {
   console.log('=== Provider Comparison Test ===\n');

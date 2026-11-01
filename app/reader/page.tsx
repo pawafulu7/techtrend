@@ -10,11 +10,11 @@ import {
 } from '@/app/components/home/filter-sidebar';
 import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
-import { groupSourcesStatic } from '@/lib/utils/source/source-grouping-static';
+import { groupSourcesStatic } from '@/lib/sources/source-grouping-static';
 import {
   withoutPaperSourceGroups,
   withoutPaperSources,
-} from '@/lib/utils/source/paper-source';
+} from '@/lib/sources/paper-source';
 import { getSession } from '@/lib/auth/get-session';
 import { resolveHomeFilterDefaults } from '@/lib/articles/home-filter-defaults';
 import { ReaderClient } from './reader-client';

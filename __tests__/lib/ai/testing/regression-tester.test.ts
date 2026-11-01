@@ -1,5 +1,8 @@
-import { GoldenSetRegressionTester } from '@/lib/ai/testing/regression-tester';
+import { APIError } from 'openai';
+import { EmbeddingService } from '@/lib/rag/embedding-service';
+import { GoldenSetRegressionTester, RegressionAbortedError } from '@/lib/ai/testing/regression-tester';
 import type { GoldenExample } from '@/lib/ai/testing/types';
+import type { SummaryServiceResult } from '@/lib/ai/service/unified-summary-service.interface';
 
 jest.mock('@/lib/ai/testing/golden-set-loader', () => ({
   loadGoldenExamples: jest.fn().mockResolvedValue([
@@ -56,12 +59,16 @@ jest.mock('@/lib/ai/testing/golden-set-loader', () => ({
 jest.mock('@/lib/di/bootstrap', () => ({
   buildAppDependencies: jest.fn().mockReturnValue({
     service: {
+      // 型で検査する（必須の processingTimeMs・summaryVersion が無いと、assertSummaryServiceResult が
+      // 要約の段階で失敗にし、埋め込み以降を通らない）
       generateSummary: jest.fn().mockResolvedValue({
         summary: 'Test summary',
         detailedSummary: 'Detailed test summary',
         tags: ['Testing', 'AI'],
         qualityScore: 0.95,
-      }),
+        processingTimeMs: 1,
+        summaryVersion: 1,
+      } satisfies SummaryServiceResult),
     },
   }),
 }));
@@ -92,6 +99,9 @@ describe('GoldenSetRegressionTester', () => {
     expect(report.passRate).toBeGreaterThanOrEqual(0);
     expect(report.passRate).toBeLessThanOrEqual(100);
     expect(report.goldenSetVersion).toBe('1.0.0');
+    // モックの要約と埋め込みで 1 件とも通る（失敗していても件数の確認だけでは気づけない）
+    expect(report.passed).toBe(1);
+    expect(report.results[0].issues).toEqual([]);
   });
 
   it('should generate markdown report', () => {
@@ -136,6 +146,41 @@ describe('GoldenSetRegressionTester', () => {
     const report = await tester.runRegression();
 
     expect(report.totalExamples).toBe(1);
+  });
+
+  describe('埋め込みの失敗', () => {
+    const mockEmbeddingFailure = (error: Error) => {
+      (EmbeddingService as unknown as jest.Mock).mockImplementationOnce(() => ({
+        embedText: jest.fn().mockRejectedValue(error),
+      }));
+    };
+
+    it.each([true, false])(
+      'OpenAI の残高不足なら全件を待たずに止める（parallel=%s）',
+      async (parallel) => {
+        mockEmbeddingFailure(
+          APIError.generate(
+            429,
+            { error: { type: 'insufficient_quota', code: 'credit_balance_exhausted', message: 'No credits.' } },
+            undefined,
+            new Headers()
+          )
+        );
+        const tester = new GoldenSetRegressionTester({ parallel });
+
+        await expect(tester.runRegression()).rejects.toBeInstanceOf(RegressionAbortedError);
+      }
+    );
+
+    it('ほかのエラーは各回のエラーとしてレポートの issues に残す', async () => {
+      mockEmbeddingFailure(new Error('network down'));
+      const tester = new GoldenSetRegressionTester({ parallel: false });
+
+      const report = await tester.runRegression();
+      const issues = report.results.flatMap((r) => r.issues);
+
+      expect(issues).toContain('Execution error: network down');
+    });
   });
 
   it('should calculate category statistics', async () => {

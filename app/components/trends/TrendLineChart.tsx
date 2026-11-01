@@ -226,7 +226,7 @@ export function TrendLineChart({
           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" />
-          {/* 日付は日本時間の暦日の文字列（lib/services/trend-analysis.ts）。Date に戻すと UTC の 0 時として読まれ、
+          {/* 日付は日本時間の暦日の文字列（lib/trends/trend-analysis.ts）。Date に戻すと UTC の 0 時として読まれ、
               UTC より西の閲覧者には前日の日付が出るので、文字列のまま整形する */}
           <XAxis
             dataKey="date"

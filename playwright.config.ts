@@ -6,14 +6,14 @@ import * as path from 'node:path';
 dotenv.config({ path: path.resolve(__dirname, '.env.test'), override: false });
 
 // 静的インポートに戻す（CI環境でtop-level awaitが使用できないため）
-import { testConfig } from './config/test.config';
+import { testConfig } from './__tests__/e2e/test.config';
 
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
   testDir: './',
-  testMatch: ['**/e2e/**/*.spec.ts', '**/__tests__/e2e/**/*.spec.ts'],
+  testMatch: ['**/__tests__/e2e/**/*.spec.ts'],
   /* Global timeout for entire test run - 20分に延長 */
   globalTimeout: 20 * 60 * 1000,  // 20分（E2E全432テスト完走用）
   /* Global timeout for each test - Phase 1: タイムアウト改善 */
@@ -27,8 +27,8 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. - Phase 1: 並列度最適化 */
   workers: Number(process.env.E2E_WORKERS) || (process.env.CI ? 5 : 3),  // E2E_WORKERS優先、未設定時: CI=5, ローカル=3。npm scriptsでの--workers上書き禁止
   /* Global setup and teardown */
-  globalSetup: './e2e/global-setup.ts',
-  globalTeardown: './e2e/global-teardown.ts',
+  globalSetup: './__tests__/e2e/global-setup.ts',
+  globalTeardown: './__tests__/e2e/global-teardown.ts',
   /* CI環境でサーバーを自動起動 */
   webServer: testConfig.webServer || undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */

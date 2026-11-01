@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react';
 import Link from 'next/link';
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
+import { getTagDisplayName } from '@/lib/tags/tag-labels';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 
 /** 最初に出すタグの数（リーダーの MAX_VISIBLE_TAGS と同じ） */

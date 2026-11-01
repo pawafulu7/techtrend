@@ -27,7 +27,6 @@ const customJestConfig = {
     // Handle module aliases
     '^@/(.*)$': '<rootDir>/$1',
     // Mock Prisma client
-    '^@/lib/database$': '<rootDir>/__mocks__/lib/database.ts',
     '^@/lib/prisma$': '<rootDir>/__mocks__/lib/prisma.ts',
     '^@/lib/redis/client$': '<rootDir>/__mocks__/lib/redis/client.ts',
   },
@@ -35,27 +34,19 @@ const customJestConfig = {
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
     '<rootDir>/__tests__/e2e/',
-    '<rootDir>/e2e/',
-    // FavoriteButtonテストはNode環境専用なのでDOM環境では除外
-    '<rootDir>/components/article/__tests__/FavoriteButton.test.tsx',
     // window.location操作を含むテストはDOM環境では除外（jsdom制限）
     '<rootDir>/app/components/article/__tests__/ArticleCard.test.tsx',
     // Node環境専用テスト（.node.test.ts）をDOM環境では除外（CodexMCP推奨）
     '\\.node\\.test\\.(t|j)sx?$',
     // API/Server/Integration tests: Node環境専用のためDOM環境では除外
     '<rootDir>/__tests__/api/',
-    '<rootDir>/app/api/__tests__/',
     '<rootDir>/__tests__/integration/',
     '<rootDir>/__tests__/performance/',
     // Enricher/Fetcherテスト: Cheerio（Node専用）使用のためDOM環境では除外
-    '<rootDir>/__tests__/enrichers/',
+    '<rootDir>/__tests__/lib/enrichers/',
     '<rootDir>/lib/enrichers/__tests__/',
-    '<rootDir>/__tests__/fetchers/',
+    '<rootDir>/__tests__/lib/fetchers/',
     '<rootDir>/lib/fetchers/__tests__/',
-    '<rootDir>/__tests__/manual/',
-    // Service/DB/Cacheテスト: Node環境専用
-    '<rootDir>/__tests__/services/',
-    '<rootDir>/lib/services/__tests__/',
     // __tests__/security/ は除外しない。headers.test.ts は testMatch（*.test.tsx）に当たらず Node 環境で走り、
     // markdown-xss.test.tsx は DOM 環境が要る（除外していた間はどの設定でも走っていなかった）
     '<rootDir>/__tests__/middleware.node.test.ts',

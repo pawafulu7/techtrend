@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
-import { useAgentSearch } from '@/lib/hooks/useAgentSearch';
-import type { UseAgentSearchReturn } from '@/lib/hooks/useAgentSearch';
+import { useAgentSearch } from '@/app/hooks/use-agent-search';
+import type { UseAgentSearchReturn } from '@/app/hooks/use-agent-search';
 
 describe('useAgentSearch Contract', () => {
   test('returns correct interface shape', () => {

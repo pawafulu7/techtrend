@@ -12,7 +12,7 @@ services:
       - "127.0.0.1:4317:4317"  # OTLP gRPC
       - "127.0.0.1:4318:4318"  # OTLP HTTP
     volumes:
-      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+      - ./monitoring/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     healthcheck:
       test: ["CMD", "/otelcol-contrib", "--version"]
       interval: 30s

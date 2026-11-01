@@ -6,8 +6,8 @@ import {
   act,
 } from '@testing-library/react';
 import { AgentAnswerPanel } from '@/app/search/agent/_components/agent-answer-panel';
-import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
-import type { ArticleLink } from '@/lib/types/article-link';
+import type { AgentSearchResult } from '@/app/hooks/use-agent-search';
+import type { ArticleLink } from '@/lib/articles/article-link-types';
 
 const mockResult: AgentSearchResult = {
   query: 'test query',

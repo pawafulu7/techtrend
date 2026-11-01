@@ -8,7 +8,7 @@ import {
   ARXIV_SOURCE_ID,
   HUGGINGFACE_PAPERS_SOURCE_ID,
   PAPER_SOURCE_IDS,
-} from '@/lib/constants/source-categories';
+} from '@/lib/sources/source-categories';
 
 const mockUseInfiniteArticles = jest.fn();
 jest.mock('@/app/hooks/use-infinite-articles', () => ({

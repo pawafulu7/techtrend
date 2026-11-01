@@ -7,7 +7,7 @@ import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import { ZennAIEnricher } from '@/lib/enrichers/zenn-ai';
-import { generateZennThumbnail } from '@/lib/utils/zenn-thumbnail';
+import { generateZennThumbnail } from '@/lib/fetchers/zenn-thumbnail';
 
 interface ZennTopic {
   name: string;

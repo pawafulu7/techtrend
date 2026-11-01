@@ -15,6 +15,7 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { ContentEnricherFactory } from '../../lib/enrichers';
+import type { EnrichedContent } from '../../lib/enrichers/base';
 import * as fs from 'fs';
 
 const prisma = createPrismaClient();
@@ -118,7 +119,7 @@ async function enrichWithRetry(
   url: string,
   sourceId: string,
   maxRetries: number = 3
-): Promise<{ content?: string; thumbnail?: string } | null> {
+): Promise<EnrichedContent | null> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const enriched = await factory.trySequential(url, sourceId);

@@ -14,7 +14,7 @@ import {
   waitForPageLoad,
   waitForLoadingToDisappear,
 } from '../utils/e2e-helpers';
-import { MOBILE_VIEWPORT } from '../../../e2e/constants/viewports';
+import { MOBILE_VIEWPORT } from '../constants/viewports';
 
 /**
  * 記事詳細ページに遷移するヘルパー関数

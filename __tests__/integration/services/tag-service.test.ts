@@ -11,7 +11,7 @@ import {
   getOrCreateTags,
   findTagIdsByNames,
   findTagIdGroupsByNames,
-} from '@/lib/services/tag-service';
+} from '@/lib/tags/tag-service';
 
 // 他のデータと衝突しないよう、テストごとに固有の接頭辞を付ける
 const P = `it672x${Date.now()}`;

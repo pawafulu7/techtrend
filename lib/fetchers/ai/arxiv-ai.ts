@@ -9,7 +9,7 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
-import { RSSItem } from '@/lib/types/rss';
+import { RSSItem } from '@/lib/fetchers/rss-types';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/config/env';
 

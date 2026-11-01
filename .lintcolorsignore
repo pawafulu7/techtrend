@@ -11,9 +11,9 @@
 # rejected. Narrow entries to specific files or directories.
 #
 # Supported syntax:
-#   - exact file paths: lib/utils/source/source-colors.ts
+#   - exact file paths: lib/sources/source-colors.ts
 #   - trailing slash directories: app/dashboard/legacy/
 #   - single-segment globs: app/components/**/foo*.tsx is NOT supported; use exact paths.
 
 # Source brand identity colors (Qiita green, Zenn blue, etc.). Intentional hex/class pairs.
-lib/utils/source/source-colors.ts # brand-only: source identity colors established by external brands
+lib/sources/source-colors.ts # brand-only: source identity colors established by external brands

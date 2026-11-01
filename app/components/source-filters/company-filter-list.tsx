@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { CompanySource } from '@/lib/providers/company-source';
+import type { CompanySource } from '@/lib/sources/company-source';
 
 export interface CompanyFilterListProps {
   developersioSources: CompanySource[];

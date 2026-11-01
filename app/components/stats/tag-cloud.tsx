@@ -1,6 +1,6 @@
 'use client';
 
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
+import { getTagDisplayName } from '@/lib/tags/tag-labels';
 import { Tag } from 'lucide-react';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import Link from 'next/link';

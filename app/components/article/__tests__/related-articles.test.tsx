@@ -4,7 +4,7 @@ import '@testing-library/jest-dom';
 import { RelatedArticles } from '@/app/components/article/related-articles';
 
 // useRelatedArticlesフックをモック
-jest.mock('@/hooks/use-related-articles', () => ({
+jest.mock('@/app/hooks/use-related-articles', () => ({
   useRelatedArticles: jest.fn(),
 }));
 
@@ -59,7 +59,7 @@ describe('RelatedArticles', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseRelatedArticles =
-      require('@/hooks/use-related-articles').useRelatedArticles;
+      require('@/app/hooks/use-related-articles').useRelatedArticles;
   });
 
   it('関連記事が正しいリンクで表示される', async () => {

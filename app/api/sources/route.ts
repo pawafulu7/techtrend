@@ -8,7 +8,7 @@ import {
   inferSourceCategory,
   sortSources,
   type SourceCategory,
-} from '@/lib/utils/source/source-helpers';
+} from '@/lib/sources/source-helpers';
 import { withAdminAuth } from '@/lib/middleware/with-admin-auth';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { env } from '@/lib/config/env';

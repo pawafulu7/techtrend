@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import { renderHook, act } from '@testing-library/react';
-import { useSearchHistory } from '@/lib/hooks/useSearchHistory';
+import { useSearchHistory } from '@/app/hooks/use-search-history';
 
 describe('useSearchHistory', () => {
   const STORAGE_KEY = 'searchHistory';

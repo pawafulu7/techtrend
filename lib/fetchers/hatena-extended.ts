@@ -6,7 +6,7 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types/models';
 import { parseRSSDate } from '@/lib/utils/date';
 import { isUrlFromDomain } from '@/lib/utils/url/url-validator';
-import { generateZennThumbnail } from '@/lib/utils/zenn-thumbnail';
+import { generateZennThumbnail } from '@/lib/fetchers/zenn-thumbnail';
 
 interface HatenaItem {
   title?: string;

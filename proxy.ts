@@ -8,7 +8,7 @@ import {
   type GateEnv,
 } from '@/lib/auth/basic-auth-gate';
 import { getThemeFromCookie } from '@/lib/cookies/theme-cookie';
-import { setSecurityHeaders } from '@/config/security-headers';
+import { setSecurityHeaders } from '@/lib/config/security-headers';
 import {
   csrfProtection,
   isCSRFExemptPath,
@@ -201,7 +201,7 @@ export async function proxy(request: NextRequest) {
     const respondMaintenance = async () => {
       try {
         const { createMaintenanceResponse } =
-          await import('@/lib/maintenance/maintenance-response');
+          await import('@/lib/middleware/maintenance-response');
         // セキュリティヘッダは呼び出し元の finalize が一括で適用する
         return createMaintenanceResponse();
       } catch {

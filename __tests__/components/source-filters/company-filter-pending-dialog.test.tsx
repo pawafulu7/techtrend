@@ -1,7 +1,7 @@
 import { render, screen, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CompanyFilter } from '@/app/components/source-filters/company-filter';
-import type { CompanySource } from '@/lib/providers/company-source';
+import type { CompanySource } from '@/lib/sources/company-source';
 
 // 一覧ダイアログの chunk が届かない状態を再現する（Issue #718）。
 // モジュールを thenable にして、テストから好きな時点で解決できるようにする

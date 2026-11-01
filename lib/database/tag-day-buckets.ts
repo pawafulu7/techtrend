@@ -4,7 +4,7 @@ import { homeArticleSql } from './home-article-filter';
 import {
   TREND_BUCKET_COUNT,
   type TagBucketRow,
-} from '@/lib/services/trending-series';
+} from '@/lib/trends/trending-series';
 
 /**
  * ホームに出る記事を、タグ別・24 時間ごとの区間別に数える（1 回の問い合わせ）。

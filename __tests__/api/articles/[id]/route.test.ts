@@ -3,7 +3,7 @@
  */
 
 // モックの設定
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 
 jest.mock('@/lib/logger', () => ({
   __esModule: true,
@@ -12,7 +12,7 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 import { GET } from '@/app/api/articles/[id]/route';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 
 const prismaMock = prisma as any;

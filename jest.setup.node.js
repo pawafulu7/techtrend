@@ -1,8 +1,8 @@
 // Node.js環境用のセットアップ
 import '@testing-library/jest-dom';
-import { RedisMockFactory } from './test/factories/redis-mock-factory';
-import { CacheMockFactory } from './test/factories/cache-mock-factory';
-const { prismaMock, resetPrismaMock } = require('./test/utils/prisma-mock');
+import { RedisMockFactory } from './__tests__/helpers/redis-mock-factory';
+import { CacheMockFactory } from './__tests__/helpers/cache-mock-factory';
+const { prismaMock, resetPrismaMock } = require('./__tests__/helpers/prisma-mock');
 // Polyfill for web File/Blob in Node test environment
 try {
    

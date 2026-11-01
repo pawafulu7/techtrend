@@ -3,6 +3,7 @@ import pLimit from 'p-limit';
 import { logger } from '@/lib/logger';
 import { embeddingSchema } from './schemas';
 import { env } from '@/lib/config/env';
+import { isInsufficientQuotaError } from './openai-errors';
 
 /**
  * Embedding Service for RAG
@@ -222,6 +223,11 @@ export class EmbeddingService {
    */
   private shouldRetry(error: unknown, retryCount: number): boolean {
     if (retryCount >= this.config.maxRetries) {
+      return false;
+    }
+
+    // 残高不足の 429 は待っても直らない（再試行すると 1 回の埋め込みに数十秒かかってから失敗する）
+    if (isInsufficientQuotaError(error)) {
       return false;
     }
 

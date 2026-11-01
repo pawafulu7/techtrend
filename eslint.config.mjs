@@ -16,6 +16,14 @@ const rssParseUrlRestriction = {
   message: "rss-parser's parseURL does not SSRF-check redirects. Fetch the XML with fetchFeedXml from @/lib/fetchers/fetch-feed and parse it with parseString.",
 }
 
+// 依存の向き: lib/ と scripts/ は画面のコード（app/・components/）を import しない（docs/architecture/06-directory-structure.md）。
+// no-restricted-imports を上書きする設定（enricher）でも、この patterns を含める
+const uiLayerImportRestriction = {
+  // 別名（@/app/...）と相対パス（../../app/...）の両方を止める
+  regex: '^(@/|(\\.\\./)+)(app|components)/',
+  message: 'lib/ と scripts/ から画面のコード（app/・components/）を import しない。画面と共有するロジックは lib/ に置く（docs/architecture/06-directory-structure.md）',
+}
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -49,12 +57,6 @@ const eslintConfig = defineConfig([
       // Note: Hardcoded Tailwind color detection is handled by grep in CI
       // See: npm run lint:colors (uses grep to find bg-/text-/border- patterns)
       // ESLint's no-restricted-syntax cannot reliably detect class names in strings
-      'no-restricted-imports': ['error', {
-        paths: [{
-          name: '@/lib/database',
-          message: "Use '@/lib/prisma' instead. @/lib/database is deprecated.",
-        }],
-      }],
     },
   },
   // Enforce centralized env access (only direct process.env.NODE_ENV and NEXT_PUBLIC_* allowed, no destructuring)
@@ -64,10 +66,9 @@ const eslintConfig = defineConfig([
       'lib/config/env.ts',
       'lib/logger.ts',
       'lib/logger.client.ts',
-      'lib/hooks/**',
       'lib/cookies/**',
       'lib/errors/**',
-      'lib/utils/article/article-link-extractor.ts',
+      'lib/articles/article-link-extractor.ts',
       'lib/config/feature-flags.ts',
     ],
     rules: {
@@ -85,12 +86,18 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  // lib/ と scripts/ から画面のコードを import しない（env の例外ファイルも含めて全体に掛ける）。
+  // scripts/ のうち lint の対象は scheduled/ だけ（globalIgnores）。全ファイルは __tests__/scripts/import-direction.test.ts が見る。
+  // require() と import() もそのテストが見る
+  {
+    files: ['lib/**/*.ts', 'lib/**/*.tsx', 'scripts/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [uiLayerImportRestriction] }],
+    },
+  },
   // Enforce centralized env access in app/ and scripts/scheduled/
   {
-    files: ['app/**/*.ts', 'app/**/*.tsx', 'scripts/scheduled/**/*.ts', 'config/**/*.ts'],
-    ignores: [
-      'config/test.config.ts',
-    ],
+    files: ['app/**/*.ts', 'app/**/*.tsx', 'scripts/scheduled/**/*.ts'],
     rules: {
       'no-restricted-syntax': ['error',
         loggerErrorKeyRestriction,
@@ -119,15 +126,15 @@ const eslintConfig = defineConfig([
         checkGlobalObject: true,
         globalObjects: ['global'],
       }],
-      // 別名の import で取得の関数を持ち込むのも止める（共通の @/lib/database の制限は保つ。ESLint は規則の配列を置き換えるため）
+      // 別名の import で取得の関数を持ち込むのも止める
       'no-restricted-imports': ['error', {
         paths: [
-          { name: '@/lib/database', message: "Use '@/lib/prisma' instead. @/lib/database is deprecated." },
           ...['undici', 'node-fetch', 'axios', 'got', 'cross-fetch', 'http', 'https', 'node:http', 'node:https'].map((name) => ({
             name,
             message: 'Use fetchWithValidatedRedirects from @/lib/utils/url/safe-redirect so every redirect hop is SSRF-checked.',
           })),
         ],
+        patterns: [uiLayerImportRestriction],
       }],
     },
   },
@@ -147,14 +154,12 @@ const eslintConfig = defineConfig([
     '.backup/**',
     '.workflow/**',
     'tmp/**',
-    'temp/**',
-    'test/**',
+    '**/temp/**',
     'test_debug.ts',
     'test_*.ts',
     '**/test-*.ts',
     'testStability.ts',
     '*.tsbuildinfo',
-    'e2e/**',
     '**/*.spec.ts',
     '**/*.test.ts',
     '**/*.test.tsx',
@@ -166,7 +171,7 @@ const eslintConfig = defineConfig([
     'scripts/*.ts',
     'prisma/seed.ts',
     'prisma/seed-*.ts',
-    'hooks/use-toast.ts',
+    'app/hooks/use-toast.ts',
     'test-*.js',
     'test-*.ts',
     '*-test.js',

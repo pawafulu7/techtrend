@@ -5,7 +5,7 @@ import { CheckCircle2, AlertTriangle, Copy, Check } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { ButtonV2 } from '@/components/ui-v2/button-v2';
-import type { AgentSearchResult } from '@/lib/hooks/useAgentSearch';
+import type { AgentSearchResult } from '@/app/hooks/use-agent-search';
 import { AnswerContent } from './answer-content';
 import { stripArticleIdTokens } from './remark-extract-article-id';
 import { SourceReferences } from './source-references';

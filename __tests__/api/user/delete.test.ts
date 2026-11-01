@@ -2,7 +2,7 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
 
 // モック設定（password.test.tsと同じパターン）
-jest.mock('@/lib/database');
+jest.mock('@/lib/prisma');
 jest.mock('@/lib/auth/auth', () => ({
   auth: {
     api: {
@@ -16,8 +16,8 @@ jest.mock('@/lib/auth/utils', () => ({
 }));
 
 // Mock rate limiter (preserve RateLimitError class)
-jest.mock('@/lib/rate-limiter', () => {
-  const actual = jest.requireActual('@/lib/rate-limiter');
+jest.mock('@/lib/middleware/rate-limiter', () => {
+  const actual = jest.requireActual('@/lib/middleware/rate-limiter');
   return {
     ...actual,
     checkRateLimit: jest.fn().mockResolvedValue({ limit: 3, remaining: 2, reset: new Date() }),
@@ -29,7 +29,7 @@ jest.mock('@/lib/rate-limiter', () => {
 
 // Import DELETE after mocks are set up
 const { DELETE } = require('@/app/api/user/delete/route');
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 
 const prismaMock = prisma as any;
 

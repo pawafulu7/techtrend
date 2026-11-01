@@ -3,7 +3,7 @@
  *
  * 号の HTML から選ばれた記事を1本ずつ取り出して、記事として保存する（index.ts）。
  * name は Source.name・createFetcher の case・ワークフローの引数と、sourceId は
- * Source.id・SOURCE_CATEGORIES と一致させる（__tests__/fetchers/newsletter-sources.test.ts が検査する）。
+ * Source.id・SOURCE_CATEGORIES と一致させる（__tests__/lib/fetchers/newsletter-sources.test.ts が検査する）。
  */
 
 /** 号の HTML の形式 */

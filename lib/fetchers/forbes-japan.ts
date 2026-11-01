@@ -5,7 +5,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { logger } from '@/lib/cli/utils/logger';
-import { forbesJapanConfig } from '@/lib/config/forbes-japan';
+import { forbesJapanConfig } from '@/lib/fetchers/config/forbes-japan';
 
 interface ForbesJapanArticleCandidate {
   url: string;

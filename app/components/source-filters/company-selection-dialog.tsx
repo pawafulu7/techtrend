@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui-v2/button-v2';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Command, CommandInput } from '@/components/ui/command';
-import type { CompanySource } from '@/lib/providers/company-source';
+import type { CompanySource } from '@/lib/sources/company-source';
 
 export interface CompanySelectionDialogProps {
   open: boolean;

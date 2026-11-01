@@ -41,7 +41,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 | 主要導線 | `app/components/layout/primary-nav.ts` | ホーム・ダイジェスト・トレンド・AI 検索の4つ。AI 検索はフラグが有効でログイン中のときだけ出す（それ以外は3つ）。デスクトップはヘッダー、モバイルはボトムナビに同じ項目を出す |
 | トレンドのサブナビ | `app/components/trends/TrendSubNav.tsx` | 概要・デイリー・週間変化・セクターマップ、区切りの後に人気・タグ・AI エージェント更新情報 |
 | コマンドパレット（⌘K） | `app/components/layout/command-palette.tsx` | 全ページ。ログイン中はお気に入り・履歴・プロフィール、管理者には管理画面が加わる |
-| ユーザーメニュー | `components/auth/UserMenu.tsx` | プロフィール、お気に入り、履歴、管理画面（管理者だけ） |
+| ユーザーメニュー | `app/components/auth/UserMenu.tsx` | プロフィール、お気に入り、履歴、管理画面（管理者だけ） |
 | 管理画面のサイドバー | `app/admin/_config/navigation.ts` | 3節の管理画面と `/sources` |
 
 導線が細い画面:
@@ -138,7 +138,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 | `scheduler-changelog` | `15 3 * * *` | 12:15 | `collect-changelog.ts` | Claude Code の CHANGELOG の取り込みと翻訳 |
 | `scheduler-cleanup` | `0 17 * * 5` | 土曜 2:00 | `clean-tags.ts` | タグの統合と掃除 |
 | `ai-regression-test` | `0 0 * * 0`、関係する PR | 日曜 9:00 | `scripts/ci/run-golden-set-regression.ts` | ゴールデンセットでの要約の回帰テスト |
-| `tag-quality-check` | `0 0 * * 0` | 日曜 9:00 | `scripts/monitoring/check-tag-quality.ts` | CI の中のテスト DB でタグの品質を確かめる（本番のデータは見ない） |
+| `tag-quality-check` | `0 0 * * 0` | 日曜 9:00 | `scripts/scheduled/check-tag-quality.ts` | CI の中のテスト DB でタグの品質を確かめる（本番のデータは見ない） |
 
 ## 6. CLI と手動のスクリプト
 

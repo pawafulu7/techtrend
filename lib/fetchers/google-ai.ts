@@ -5,7 +5,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
-import { extractContent } from '@/lib/utils/content/content-extractor';
+import { extractContent } from '@/lib/fetchers/content-extractor';
 
 interface GoogleAIRSSItem {
   title?: string;

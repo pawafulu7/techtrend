@@ -2,7 +2,7 @@ import { Article, Source, Tag } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
 import fetch from 'node-fetch';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
-import { getOrCreateTags } from '@/lib/services/tag-service';
+import { getOrCreateTags } from '@/lib/tags/tag-service';
 import { env } from '@/lib/config/env';
 import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { summarizeError } from '@/lib/utils/sanitize-error';

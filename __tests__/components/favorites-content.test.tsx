@@ -11,7 +11,7 @@ import { FavoritesFetchError } from '@/app/hooks/use-infinite-favorites';
 import { loginWithCallback } from '@/lib/routes/auth';
 
 const mockToast = jest.fn();
-jest.mock('@/hooks/use-toast', () => ({
+jest.mock('@/app/hooks/use-toast', () => ({
   toast: (...args: unknown[]) => mockToast(...args),
 }));
 

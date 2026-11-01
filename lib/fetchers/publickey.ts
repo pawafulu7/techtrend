@@ -8,7 +8,7 @@ import { parseRSSDate } from '@/lib/utils/date';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { classifyEnrichmentError } from '@/lib/enrichers/error-classifier';
 import logger from '@/lib/logger';
-import { extractTagsFromCategories } from '@/lib/utils/tag/tag-extractor';
+import { extractTagsFromCategories } from '@/lib/tags/tag-extractor';
 
 interface PublickeyRSSItem {
   title?: string;

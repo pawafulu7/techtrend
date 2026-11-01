@@ -6,8 +6,8 @@
  * - sortBy=finalScore（前の推薦の並び）を受けても 500 にならない
  */
 
-jest.mock('@/lib/services/tag-service', () => ({
-  ...jest.requireActual('@/lib/services/tag-service'),
+jest.mock('@/lib/tags/tag-service', () => ({
+  ...jest.requireActual('@/lib/tags/tag-service'),
   findTagIdGroupsByNames: async (names: string[]) =>
     names.map((name) => [`tag-${name.toLowerCase()}`]),
 }));

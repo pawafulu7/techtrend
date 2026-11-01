@@ -4,7 +4,7 @@ import {
   ragAgentSearchRateLimit,
   articleQaRateLimit,
   RateLimitError,
-} from '@/lib/rate-limiter';
+} from '@/lib/middleware/rate-limiter';
 import { detectPromptInjection } from '@/lib/rag/security/prompt-injection-detector';
 import { logger, sanitizeError } from '@/lib/logger';
 import { trace, SpanStatusCode } from '@opentelemetry/api';

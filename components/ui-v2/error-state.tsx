@@ -42,7 +42,7 @@ export function ErrorState({
         className
       )}
     >
-      {/* E2E の規約（e2e/testid-naming.md）: エラー表示は error-message と role="alert"。
+      {/* E2E の規約（docs/development/e2e-testid-naming.md）: エラー表示は error-message と role="alert"。
           live region は文言だけにし、再試行ボタンの「再試行中…」への変化で読み上げ直させない */}
       <div
         role="alert"

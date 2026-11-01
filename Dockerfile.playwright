@@ -33,7 +33,10 @@ RUN npx playwright install chromium firefox webkit
 COPY --chown=pwuser:pwuser . .
 
 # Build Next.js application for E2E tests
-RUN npm run build
+# イメージを作る時点のビルド（下準備。テストの実行時は playwright の webServer が compose の環境変数で作り直す）。
+# .env はイメージに入れないので、環境変数の検証を通すテスト用の値をこのビルドにだけ渡す
+# （docker-compose.test.yml の AUTH_SECRET の既定値と同じ。イメージの ENV には残さない）
+RUN AUTH_SECRET=test-secret-key-for-testing-only-32-chars npm run build
 
 # Create necessary directories
 RUN mkdir -p test-results playwright-report tmp .cache

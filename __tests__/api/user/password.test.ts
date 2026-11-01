@@ -16,8 +16,8 @@ jest.mock('@/lib/auth/utils', () => ({
 }));
 
 // Mock rate limiter (preserve RateLimitError class)
-jest.mock('@/lib/rate-limiter', () => {
-  const actual = jest.requireActual('@/lib/rate-limiter');
+jest.mock('@/lib/middleware/rate-limiter', () => {
+  const actual = jest.requireActual('@/lib/middleware/rate-limiter');
   return {
     ...actual,
     checkRateLimit: jest.fn().mockResolvedValue({ limit: 5, remaining: 4, reset: new Date() }),

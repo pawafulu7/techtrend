@@ -12,7 +12,7 @@ import {
 import { PieChartIcon } from 'lucide-react';
 import { useChartColors } from './useChartColors';
 import { chartLabelTextColors } from '@/lib/design-tokens';
-import { readableTextColor } from '@/lib/utils/design-tokens/contrast';
+import { readableTextColor } from '@/lib/design-tokens/contrast';
 import { ErrorState } from '@/components/ui-v2/error-state';
 
 interface SourceData {

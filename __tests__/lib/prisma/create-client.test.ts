@@ -26,4 +26,16 @@ describe('withPrismaErrorLogSetting', () => {
 
     expect(withPrismaErrorLogSetting(['error', 'warn'])).toEqual(expected);
   });
+
+  it('{ level, emit } の形でも error を外す（$on で query を受け取るスクリプト用）', () => {
+    process.env.LOG_ERROR_DETAILS = 'false';
+    resetEnvCache();
+
+    expect(
+      withPrismaErrorLogSetting([
+        { level: 'query', emit: 'event' },
+        { level: 'error', emit: 'stdout' },
+      ])
+    ).toEqual([{ level: 'query', emit: 'event' }]);
+  });
 });

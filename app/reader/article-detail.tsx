@@ -1,6 +1,6 @@
 'use client';
 
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
+import { getTagDisplayName } from '@/lib/tags/tag-labels';
 import {
   ExternalLink,
   Newspaper,
@@ -10,11 +10,11 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { parseSummary } from '@/lib/utils/summary/summary-parser';
+import { parseSummary } from '@/lib/summary/summary-parser';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
-import { isSlideArticle } from '@/lib/utils/source/slide-source';
-import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
+import { isSlideArticle } from '@/lib/sources/slide-source';
+import { hasValidThumbnail } from '@/lib/articles/thumbnail';
 import type { ReaderDetailArticle } from './types';
 import { formatDate } from './utils';
 

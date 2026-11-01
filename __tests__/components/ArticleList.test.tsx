@@ -11,7 +11,7 @@ import {
   createMockArticleWithRelations,
   createMockSource,
   mockArticleWithRelations,
-} from '@/test/utils/mock-factories';
+} from '@/__tests__/helpers/mock-factories';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({
@@ -42,7 +42,7 @@ jest.mock('@/lib/auth/auth-client', () => ({
 }));
 
 const mockToast = jest.fn();
-jest.mock('@/hooks/use-toast', () => ({
+jest.mock('@/app/hooks/use-toast', () => ({
   toast: (...args: unknown[]) => mockToast(...args),
 }));
 

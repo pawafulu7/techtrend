@@ -11,7 +11,7 @@ import {
   useArticleQA,
   type ArticleQAResult,
   type ArticleQAError,
-} from '@/lib/hooks/useArticleQA';
+} from '@/app/hooks/use-article-qa';
 import { Button } from '@/components/ui-v2/button-v2';
 
 const ENABLE_STREAMING_UI =

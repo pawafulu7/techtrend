@@ -3,7 +3,7 @@ import { CACHE_TTL } from './constants';
 import logger from '@/lib/logger';
 
 /**
- * 「いま伸びている話題」の集計（lib/services/trending-keywords.ts）のキー。
+ * 「いま伸びている話題」の集計（lib/trends/trending-keywords.ts）のキー。
  * 急上昇の一覧・7 区間の件数・総数を1つの値に載せる
  */
 export const TRENDING_SERIES_CACHE_KEY = 'trending-series:v1';

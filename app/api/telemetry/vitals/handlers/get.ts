@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import type {
   MetricName,
   MetricRating,
-} from '@/lib/telemetry/web-vitals-types';
+} from '@/lib/metrics/web-vitals-types';
 import { bufferedMetrics, bufferSize, MAX_BUFFER_SIZE } from './store';
 
 interface MetricSamples {

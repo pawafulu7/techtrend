@@ -8,7 +8,7 @@
 import {
   pickStoryRepresentative,
   type StoryRepresentativeCandidate,
-} from '@/lib/utils/story-representative';
+} from '@/lib/articles/story-representative';
 
 export interface StoryGroupable extends StoryRepresentativeCandidate {
   storyId?: string | null;

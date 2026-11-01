@@ -6,15 +6,15 @@ import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
-import { DeleteAccountDialog } from '@/components/profile/DeleteAccountDialog';
+import { PasswordChangeForm } from '@/app/profile/_components/PasswordChangeForm';
+import { DeleteAccountDialog } from '@/app/profile/_components/DeleteAccountDialog';
 import {
   RATE_LIMITED_MESSAGE,
   SESSION_EXPIRED_MESSAGE,
 } from '@/lib/utils/action-error-messages';
 
 const mockToast = jest.fn();
-jest.mock('@/hooks/use-toast', () => ({
+jest.mock('@/app/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 jest.mock('@/lib/auth/auth-client', () => ({

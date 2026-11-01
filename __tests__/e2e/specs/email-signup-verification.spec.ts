@@ -12,7 +12,7 @@
  */
 import { test, expect, type Page } from '@playwright/test';
 import { createHmac } from 'node:crypto';
-import { TIMEOUTS } from '../../../e2e/helpers/wait-utils';
+import { TIMEOUTS } from '../helpers/wait-utils';
 
 const PASSWORD = 'Signup832!Pass';
 const VERIFY_CALLBACK_URL = '/auth/verify?success=true';

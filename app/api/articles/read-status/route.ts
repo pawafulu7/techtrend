@@ -19,7 +19,7 @@ import {
   type WithUserValidationContext,
 } from '@/lib/middleware/with-user-validation';
 import { handlePrismaError } from '@/lib/utils/prisma-error-handler';
-import { digestService } from '@/lib/services/digest-service';
+import { digestService } from '@/lib/personalization/digest-service';
 
 // GET: 記事の既読状態を取得
 /**

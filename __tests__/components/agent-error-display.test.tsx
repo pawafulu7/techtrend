@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import { AgentErrorDisplay } from '@/app/search/agent/_components/agent-error-display';
-import type { AgentSearchError } from '@/lib/hooks/useAgentSearch';
+import type { AgentSearchError } from '@/app/hooks/use-agent-search';
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),

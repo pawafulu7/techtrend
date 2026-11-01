@@ -8,10 +8,10 @@
 import {
   createMockArticleWithRelations,
   resetMockCounters,
-} from '@/test/utils/mock-factories';
+} from '@/__tests__/helpers/mock-factories';
 
 // Mock all dependencies before any imports
-jest.mock('@/lib/database', () => ({
+jest.mock('@/lib/prisma', () => ({
   prisma: {
     article: {
       findMany: jest.fn(),
@@ -34,7 +34,7 @@ jest.mock('@/lib/logger');
 
 describe('API /api/articles Integration Tests', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { prisma } = require('@/lib/database');
+  const { prisma } = require('@/lib/prisma');
 
   beforeEach(() => {
     jest.clearAllMocks();

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import type { PaginatedResponse, ApiResponse } from '@/lib/types/api';
+import type { PaginatedResponse, ApiResponse } from '@/types/api';
 import { DatabaseError, formatErrorResponse } from '@/lib/errors';
 import type { Prisma } from '@/lib/prisma-exports';
 import logger from '@/lib/logger';

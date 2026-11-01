@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { invalidateUserAuthCache } from '@/lib/auth/user-auth-cache';
 
 jest.mock('@/lib/logger', () => ({
@@ -27,7 +27,7 @@ jest.mock('@/lib/auth/auth', () => ({
 }));
 jest.mock('@/lib/auth/user-auth-cache');
 
-jest.mock('@/lib/database', () => ({
+jest.mock('@/lib/prisma', () => ({
   prisma: {
     user: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
     userDeletionLog: { create: jest.fn() },

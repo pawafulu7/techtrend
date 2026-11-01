@@ -7,8 +7,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   createMockArticleWithRelations,
   createMockSource,
-} from '@/test/utils/mock-factories';
-import { findPaletteColorClasses } from '@/test/utils/palette-classes';
+} from '@/__tests__/helpers/mock-factories';
+import { findPaletteColorClasses } from '@/__tests__/helpers/palette-classes';
 
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),

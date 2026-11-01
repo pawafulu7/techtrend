@@ -1,6 +1,6 @@
 'use client';
 
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
+import { getTagDisplayName } from '@/lib/tags/tag-labels';
 import { useQueries } from '@tanstack/react-query';
 import { useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';

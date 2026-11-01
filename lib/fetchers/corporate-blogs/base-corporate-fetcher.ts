@@ -5,7 +5,7 @@ import Parser from 'rss-parser';
 import { fetchFeedXml } from '../fetch-feed';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
-import { getContentFromItem, getAuthorFromItem } from '@/lib/types/rss';
+import { getContentFromItem, getAuthorFromItem } from '@/lib/fetchers/rss-types';
 import { env } from '@/lib/config/env';
 
 /**

@@ -5,7 +5,7 @@ import type { TagWithCount } from '@/types/models';
 import { findTopTags } from '@/lib/database/tag-article-counts';
 import { findNewTags } from '@/lib/database/new-tags';
 import { daysAgo } from '@/lib/database/article-aggregation-filter';
-import { findTagNamesByAlias } from '@/lib/constants/tag-labels';
+import { findTagNamesByAlias } from '@/lib/tags/tag-labels';
 import { createHash } from 'crypto';
 
 export class TagCache {

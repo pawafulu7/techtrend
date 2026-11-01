@@ -7,9 +7,9 @@ import { prisma } from '@/lib/prisma';
 import { SUMMARY_VERSION } from '@/types/article';
 import { env } from '@/lib/config/env';
 import { getAppDependencies } from '@/lib/di/bootstrap';
-import { validateArticleContent } from '@/lib/services/summary/summary-orchestrator';
+import { validateArticleContent } from '@/lib/summary/summary-orchestrator';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
-import { calculateArticleQualityScore } from '../../lib/utils/quality-score';
+import { calculateArticleQualityScore } from '../../lib/articles/quality-score';
 import { reportResults, rateLimitDelay } from './utils/regeneration-helpers';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 

@@ -10,14 +10,14 @@ import {
   Download,
 } from 'lucide-react';
 import { formatDateWithTime } from '@/lib/utils/date';
-import { getSourceColor } from '@/lib/utils/source/source-colors';
-import { isSlideArticle, isSlideSource } from '@/lib/utils/source/slide-source';
+import { getSourceColor } from '@/lib/sources/source-colors';
+import { isSlideArticle, isSlideSource } from '@/lib/sources/slide-source';
 import { cn } from '@/lib/utils';
 import { NewLabel } from '@/app/components/article/article-meta';
 import { RelatedArticles } from '@/app/components/article/related-articles';
 import { ArticleTracker } from '@/app/components/analytics/ArticleTracker';
-import { ViewTracker } from '@/components/article/view-tracker';
-import { ReadTracker } from '@/components/article/read-tracker';
+import { ViewTracker } from '@/app/components/article/view-tracker';
+import { ReadTracker } from '@/app/components/article/read-tracker';
 import { DetailedSummaryDisplay } from '@/app/components/article/detailed-summary-display';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
 import { FavoriteButton } from '@/app/components/article/favorite-button';
@@ -26,7 +26,7 @@ import { ArticleQAPanel } from '@/app/articles/_components/article-qa-panel';
 import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import { CommentSection } from '@/app/components/comment';
 import { ReadOriginalLink } from '@/app/components/article/read-original-link';
-import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
+import { hasValidThumbnail } from '@/lib/articles/thumbnail';
 import { ArticleTags } from '@/app/articles/_components/article-tags';
 import { toInternalPath } from '@/lib/routes/internal-path';
 import {

@@ -5,7 +5,7 @@ import {
   type Request,
   type TestInfo,
 } from '@playwright/test';
-import { getTimeout } from '../../../e2e/helpers/wait-utils';
+import { getTimeout } from '../helpers/wait-utils';
 import { SELECTORS } from '../constants/selectors';
 import { loginTestUser } from '../utils/e2e-helpers';
 

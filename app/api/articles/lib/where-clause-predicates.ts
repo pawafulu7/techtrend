@@ -24,15 +24,15 @@ import {
   getDateRangeFilter,
   parseDateFromTo,
   getDateFieldForSort,
-} from '@/app/lib/date-utils';
+} from '@/lib/utils/date-range';
 import logger from '@/lib/logger';
 import { containsFilter } from '@/lib/utils/like-pattern';
-import { slideWithoutSummaryWhere } from '@/lib/utils/source/slide-source';
-import { findTagIdGroupsByNames } from '@/lib/services/tag-service';
+import { slideWithoutSummaryWhere } from '@/lib/sources/slide-source';
+import { findTagIdGroupsByNames } from '@/lib/tags/tag-service';
 import {
   MAX_TAG_FILTER_COUNT,
   MAX_TAG_NAME_LENGTH,
-} from '@/lib/constants/tag-filter';
+} from '@/lib/tags/tag-filter';
 import {
   MAX_SEARCH_KEYWORDS,
   MAX_SEARCH_QUERY_LENGTH,

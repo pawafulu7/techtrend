@@ -7,7 +7,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/auth/auth-client';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { findPaletteColorClasses } from '@/test/utils/palette-classes';
+import { findPaletteColorClasses } from '@/__tests__/helpers/palette-classes';
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({

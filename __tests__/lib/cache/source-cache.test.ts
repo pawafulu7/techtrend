@@ -1,6 +1,6 @@
 import { SourceCache } from '@/lib/cache/source-cache';
-import { prisma } from '@/lib/database';
-import { resetPrismaMock } from '../../../test/utils/prisma-mock';
+import { prisma } from '@/lib/prisma';
+import { resetPrismaMock } from '../../helpers/prisma-mock';
 import { articleDetailCache } from '../../../lib/cache/article-detail-cache';
 import { keywordsCache } from '../../../lib/cache/keywords-cache';
 import { trendsCache } from '../../../lib/cache/trends-cache';

@@ -11,6 +11,7 @@
  */
 
 import path from 'path';
+import type { Source } from '@/lib/prisma-exports';
 import { assertSourceIdentity } from './utils/source-identity';
 
 /**
@@ -77,7 +78,7 @@ async function main() {
     // 5件を単一トランザクションで登録（1件でも失敗したら全件ロールバックし、
     // 部分登録状態を作らない）
     const results = await prisma.$transaction(async (tx) => {
-      const upserted = [];
+      const upserted: Source[] = [];
       for (const source of BATCH3_SOURCES) {
         await assertSourceIdentity(tx, source);
         const row = await tx.source.upsert({

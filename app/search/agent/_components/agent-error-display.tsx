@@ -4,7 +4,7 @@ import { AlertTriangle, RefreshCw, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { useRouter } from 'next/navigation';
-import type { AgentSearchError } from '@/lib/hooks/useAgentSearch';
+import type { AgentSearchError } from '@/app/hooks/use-agent-search';
 
 interface AgentErrorDisplayProps {
   error: AgentSearchError;

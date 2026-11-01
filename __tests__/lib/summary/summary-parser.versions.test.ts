@@ -1,0 +1,247 @@
+import { parseSummary } from '@/lib/summary/summary-parser';
+
+describe('parseSummary with summaryVersion 8', () => {
+  it('コロン後が空のメイン項目を正しく処理する', () => {
+    const summary = `・項目1：内容1
+・項目2：
+- サブ項目1：サブ内容1
+- サブ項目2：サブ内容2
+・項目3：内容3`;
+    
+    const sections = parseSummary(summary, { summaryVersion: 8 });
+    
+    expect(sections).toHaveLength(3);
+    expect(sections[0].title).toBe('項目1');
+    expect(sections[0].content).toBe('内容1');
+    expect(sections[1].title).toBe('項目2');
+    expect(sections[1].content).toContain('サブ項目1');
+    expect(sections[1].content).toContain('サブ内容1');
+    expect(sections[1].content).toContain('サブ項目2');
+    expect(sections[1].content).toContain('サブ内容2');
+    expect(sections[2].title).toBe('項目3');
+    expect(sections[2].content).toBe('内容3');
+  });
+  
+  it('問題のある実際のデータを正しく処理する', () => {
+    const summary = `・コメントの基本方針：「What」より「Why」：優れたコメントは内容です
+・コードの価値を高める「良いコメント」の具体例：
+- 意図や背景を説明するコメント：内容1
+- 複雑なロジックを要約するコメント：内容2`;
+    
+    const sections = parseSummary(summary, { summaryVersion: 8 });
+    
+    // 「詳細」というデフォルトタイトルが出現しないこと
+    const detailSections = sections.filter(s => s.title === '詳細');
+    expect(detailSections).toHaveLength(0);
+    
+    // 項目が正しく処理されること
+    expect(sections[0].title).toBe('コメントの基本方針');
+    expect(sections[1].title).toBe('コードの価値を高める「良いコメント」の具体例');
+    expect(sections[1].content).toContain('意図や背景を説明するコメント');
+    expect(sections[1].content).toContain('複雑なロジックを要約するコメント');
+  });
+
+  it('サブ項目がないコロン後が空のメイン項目は除外される', () => {
+    const summary = `・項目1：内容1
+・項目2：
+・項目3：内容3`;
+
+    const sections = parseSummary(summary, { summaryVersion: 8 });
+
+    // 空のセクション（項目2）は除外されるので、2つのセクションのみ
+    expect(sections).toHaveLength(2);
+    expect(sections[0].title).toBe('項目1');
+    expect(sections[0].content).toBe('内容1');
+    expect(sections[1].title).toBe('項目3');
+    expect(sections[1].content).toBe('内容3');
+  });
+
+  it('独立したサブ項目を正しく処理する', () => {
+    const summary = `・項目1：内容1
+- サブ項目1：サブ内容1
+- サブ項目2：サブ内容2`;
+    
+    const sections = parseSummary(summary, { summaryVersion: 8 });
+    
+    expect(sections).toHaveLength(3);
+    expect(sections[0].title).toBe('項目1');
+    expect(sections[0].content).toBe('内容1');
+    expect(sections[1].title).toBe('サブ項目1');
+    expect(sections[1].content).toBe('サブ内容1');
+    expect(sections[2].title).toBe('サブ項目2');
+    expect(sections[2].content).toBe('サブ内容2');
+  });
+
+  it('コロンがない項目も処理する', () => {
+    const summary = `・項目1：内容1
+・これはコロンがない項目です
+・項目3：内容3`;
+    
+    const sections = parseSummary(summary, { summaryVersion: 8 });
+    
+    expect(sections).toHaveLength(3);
+    expect(sections[0].title).toBe('項目1');
+    expect(sections[0].content).toBe('内容1');
+    expect(sections[1].title).toBe('詳細');
+    expect(sections[1].content).toBe('これはコロンがない項目です');
+    expect(sections[2].title).toBe('項目3');
+    expect(sections[2].content).toBe('内容3');
+  });
+
+  it('コロンなしのサブ項目も正しく処理する（実際の問題データ）', () => {
+    const summary = `・発生した3つのインフラバグ：
+  - 8月5日、Sonnet 4のリクエストの一部が失敗
+  - 8月25日、Claude API TPUサーバーへのネットワーク問題
+  - 9月13日、Haikuモデルのサブセットがクラッシュ
+
+・検出困難だった理由：
+  - 社内使用が少なく、問題の顕在化が遅れた
+  - モニタリングツールのアラート設定が不適切だった`;
+
+    const sections = parseSummary(summary, { summaryVersion: 8 });
+
+    expect(sections).toHaveLength(2);
+
+    // 1つ目のセクション
+    expect(sections[0].title).toBe('発生した3つのインフラバグ');
+    expect(sections[0].content).toContain('8月5日、Sonnet 4のリクエストの一部が失敗');
+    expect(sections[0].content).toContain('8月25日、Claude API TPUサーバーへのネットワーク問題');
+    expect(sections[0].content).toContain('9月13日、Haikuモデルのサブセットがクラッシュ');
+
+    // 2つ目のセクション
+    expect(sections[1].title).toBe('検出困難だった理由');
+    expect(sections[1].content).toContain('社内使用が少なく、問題の顕在化が遅れた');
+    expect(sections[1].content).toContain('モニタリングツールのアラート設定が不適切だった');
+  });
+
+  it('複雑な階層構造を持つ実際のデータを処理する', () => {
+    const actualSummary = `・コメントの基本方針：「What」より「Why」：優れたコメントは、コードから読み取れる「何をしているか(What)」ではなく、「なぜそうしているか(Why)」を説明する必要がある。ビジネス上の背景や技術的な意図を記述することで、コードの理解度を高め、保守性を向上させる。例として、新規ユーザーの強制リダイレクト処理における背景説明が挙げられている。
+・コードの価値を高める「良いコメント」の具体例：
+- 意図や背景を説明するコメント：コードだけでは理解できないビジネス上の理由や技術的な判断を記述する。例として、GitHub経由の新規ユーザーの電話番号未入力状態への対応が挙げられている。これにより、他の開発者や将来の自分が仕様を理解しやすくなる。
+- 複雑なロジックを要約するコメント：正規表現や難解なアルゴリズムなど、理解しにくいコードの前に、平易な言葉で要約する。例として、全角カタカナ、半角カタカナ、長音符のみを許可する正規表現の解説が挙げられている。
+- \`TODO\` や \`FIXME\` といったコメント：将来的な対応が必要な事項や既知の問題点を明確に示す。\`TODO\`は今後の機能追加やリファクタリング、\`FIXME\`は修正が必要な箇所を示す。例として、N+1問題の最適化や外部APIのタイムアウト処理への対応が挙げられている。
+・コードの価値を下げる「悪いコメント」の具体例：
+- コードの「日本語訳」にすぎないコメント：コードを読めばわかることをそのままコメントに書くことは、コードの重複でありノイズとなる。例として、「iを1増やす」というコメントが挙げられている。
+- メンテナンスされていない古いコメント：コードを修正した際にコメントを更新しないと、コードとコメントに食い違いが生じ、混乱を招く。間違ったコメントは、コメントがないよりも有害である。
+- コメントアウトされたコードの残骸：Gitなどのバージョン管理システムを使用している場合は、不要になったコードはコメントアウトせず、削除するべきである。過去のコードはGitの履歴で管理できる。`;
+
+    const sections = parseSummary(actualSummary, { summaryVersion: 8 });
+    
+    // セクション数の確認
+    expect(sections.length).toBeGreaterThan(0);
+    
+    // 「詳細」というデフォルトタイトルが出現しないこと
+    const detailSections = sections.filter(s => s.title === '詳細');
+    expect(detailSections).toHaveLength(0);
+    
+    // 主要な項目が存在すること
+    const titles = sections.map(s => s.title);
+    expect(titles).toContain('コメントの基本方針');
+    expect(titles).toContain('コードの価値を高める「良いコメント」の具体例');
+    expect(titles).toContain('コードの価値を下げる「悪いコメント」の具体例');
+    
+    // サブ項目が適切にグループ化されていること
+    const goodCommentSection = sections.find(s => s.title === 'コードの価値を高める「良いコメント」の具体例');
+    expect(goodCommentSection).toBeDefined();
+    if (goodCommentSection) {
+      expect(goodCommentSection.content).toContain('意図や背景を説明するコメント');
+      expect(goodCommentSection.content).toContain('複雑なロジックを要約するコメント');
+      expect(goodCommentSection.content).toContain('TODO');
+      expect(goodCommentSection.content).toContain('FIXME');
+    }
+    
+    const badCommentSection = sections.find(s => s.title === 'コードの価値を下げる「悪いコメント」の具体例');
+    expect(badCommentSection).toBeDefined();
+    if (badCommentSection) {
+      expect(badCommentSection.content).toContain('コードの「日本語訳」にすぎないコメント');
+      expect(badCommentSection.content).toContain('メンテナンスされていない古いコメント');
+      expect(badCommentSection.content).toContain('コメントアウトされたコードの残骸');
+    }
+  });
+});
+
+describe('parseSummary with summaryVersion 7', () => {
+  it('Version 7でも同様に処理される', () => {
+    const summary = `・項目1：内容1
+・項目2：
+- サブ項目1：サブ内容1
+・項目3：内容3`;
+    
+    const sections = parseSummary(summary, { summaryVersion: 7 });
+    
+    expect(sections).toHaveLength(3);
+    expect(sections[0].title).toBe('項目1');
+    expect(sections[1].title).toBe('項目2');
+    expect(sections[2].title).toBe('項目3');
+    
+    // 「詳細」というデフォルトタイトルが出現しないこと
+    const detailSections = sections.filter(s => s.title === '詳細');
+    expect(detailSections).toHaveLength(0);
+  });
+});
+
+describe('parseSummary - Fallback for flattened bullet data', () => {
+  it('splits flattened data with no newlines correctly', () => {
+    // Simulates data that lost newlines during finalCleanup
+    const flattenedSummary = '・項目1:内容1 ・項目2:内容2 ・項目3:内容3';
+    const result = parseSummary(flattenedSummary, { summaryVersion: 8 });
+
+    expect(result).toHaveLength(3);
+    expect(result[0].title).toBe('項目1');
+    expect(result[0].content).toBe('内容1');
+    expect(result[1].title).toBe('項目2');
+    expect(result[1].content).toBe('内容2');
+    expect(result[2].title).toBe('項目3');
+    expect(result[2].content).toBe('内容3');
+  });
+
+  it('does not split middle dots within prose', () => {
+    // Middle dot appears in the content, not as a bullet marker
+    const summary = '・比較結果:GPU ・ CPU の性能差は顕著';
+    const result = parseSummary(summary, { summaryVersion: 8 });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('比較結果');
+    expect(result[0].content).toContain('GPU ・ CPU');
+  });
+
+  it('uses normal parsing when newlines are present', () => {
+    const normalSummary = '・項目1:内容1\n・項目2:内容2\n・項目3:内容3';
+    const result = parseSummary(normalSummary, { summaryVersion: 8 });
+
+    expect(result).toHaveLength(3);
+    expect(result[0].title).toBe('項目1');
+    expect(result[1].title).toBe('項目2');
+    expect(result[2].title).toBe('項目3');
+  });
+
+  it('handles real flattened data from production', () => {
+    // Actual example from cmhpkash4001yte1zr0pl5jz4
+    const flattenedSummary = '・Kiro導入の準備:GitHubリポジトリとZenn CLIの連携、Kiroの初期設定、UIの日本語化 ・Kiroの主要機能:Agent SteeringによるZenn知識のインプット、MCPサーバーによる外部リソースへのアクセス設定 ・Agent Steeringの設定:product.mdでプロジェクトの目的を定義、structure.mdでファイル構造を把握、tech.mdで技術詳細を記述';
+    const result = parseSummary(flattenedSummary, { summaryVersion: 8 });
+
+    expect(result).toHaveLength(3);
+    expect(result[0].title).toBe('Kiro導入の準備');
+    expect(result[0].content).toContain('GitHubリポジトリとZenn CLIの連携');
+    expect(result[1].title).toBe('Kiroの主要機能');
+    expect(result[1].content).toContain('Agent Steering');
+    expect(result[2].title).toBe('Agent Steeringの設定');
+    expect(result[2].content).toContain('product.md');
+  });
+
+  it('returns empty array when detailedSummary is empty', () => {
+    const result = parseSummary('', { summaryVersion: 8 });
+    expect(result).toEqual([]);
+  });
+
+  it('handles mixed flattened and normal data gracefully', () => {
+    // Some bullets with colon, some without
+    const mixedSummary = '・項目1:内容1 ・項目2 without colon ・項目3:内容3';
+    const result = parseSummary(mixedSummary, { summaryVersion: 8 });
+
+    // Should still parse the valid bullets
+    expect(result.length).toBeGreaterThan(0);
+    const validSections = result.filter(s => s.title !== '詳細');
+    expect(validSections.length).toBeGreaterThanOrEqual(2);
+  });
+});

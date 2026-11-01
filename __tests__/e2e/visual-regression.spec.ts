@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { isRunningInCI, getTimeout, waitForArticles } from '../../e2e/helpers/wait-utils';
+import { isRunningInCI, getTimeout, waitForArticles } from './helpers/wait-utils';
 import { loginAsAdmin } from './utils/e2e-helpers';
 
 // CI環境ではVRTテストをスキップ（環境依存のため）

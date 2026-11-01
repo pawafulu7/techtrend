@@ -7,7 +7,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { EmptyState } from '@/components/ui-v2/empty-state';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { authClient } from '@/lib/auth/auth-client';
-import { useIsHydrated } from '@/lib/hooks/use-is-hydrated';
+import { useIsHydrated } from '@/app/hooks/use-is-hydrated';
 import {
   INQUIRY_STATUSES,
   INQUIRY_STATUS_LABELS,

@@ -1,15 +1,15 @@
 import logger from '@/lib/logger';
-import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/constants/daily-trend';
+import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/trends/daily-trend';
 import {
   getDailyTrendReport,
   previousJSTDay,
   type DailyTrendResponse,
-} from '@/lib/services/trend-report/daily-report';
+} from '@/lib/trends/report/daily-report';
 
 export type {
   DailyTrendResponse,
   SerializedTrendReport,
-} from '@/lib/services/trend-report/daily-report';
+} from '@/lib/trends/report/daily-report';
 
 /**
  * 日間トレンドレポートの初期データを取得（Server Component用）

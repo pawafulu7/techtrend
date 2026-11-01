@@ -1,10 +1,10 @@
-import { getTrendAnalysis } from '@/lib/services/trend-analysis';
-import { getTrendingSeries } from '@/lib/services/trending-keywords';
-import { getDashboardStats } from '@/lib/services/dashboard-stats';
+import { getTrendAnalysis } from '@/lib/trends/trend-analysis';
+import { getTrendingSeries } from '@/lib/trends/trending-keywords';
+import { getDashboardStats } from '@/lib/trends/dashboard-stats';
 import logger from '@/lib/logger';
 
-export type { TrendingKeywordWithSeries as TrendingKeyword } from '@/lib/services/trending-keywords';
-export type { TrendAnalysis } from '@/lib/services/trend-analysis';
+export type { TrendingKeywordWithSeries as TrendingKeyword } from '@/lib/trends/trending-keywords';
+export type { TrendAnalysis } from '@/lib/trends/trend-analysis';
 export interface SourceDataItem {
   name: string;
   value: number;

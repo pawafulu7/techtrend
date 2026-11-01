@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CompanySelectionDialog } from '@/app/components/source-filters/company-selection-dialog';
-import type { CompanySource } from '@/lib/providers/company-source';
+import type { CompanySource } from '@/lib/sources/company-source';
 
 const mockSources: CompanySource[] = [
   { id: 'cyberagent', name: 'CyberAgent', isActive: true },

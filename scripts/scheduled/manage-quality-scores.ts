@@ -1,7 +1,7 @@
 import { Prisma } from '@/lib/prisma-exports';
 import { prisma } from '@/lib/prisma';
-import { calculateArticleQualityScore } from '@/lib/utils/quality-score';
-import { getLastProcessedTime, saveProcessingStatus } from '../utils/processing-status';
+import { calculateArticleQualityScore } from '@/lib/articles/quality-score';
+import { getLastProcessedTime, saveProcessingStatus } from '../lib/processing-status';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface Options {
@@ -101,17 +101,10 @@ async function calculateAllQualityScores(options: Options) {
     const checkpoint = new Date();
     const lastProcessedAt = await getLastProcessedTime(processName);
 
-    // 記事を取得
-    const query: Prisma.ArticleFindManyArgs = {
-      include: {
-        source: true,
-        tags: true,
-      },
-    };
-
-    // 差分処理のための条件追加（contentUpdatedAtベース）
+    // 差分処理のための条件（contentUpdatedAtベース）
+    let where: Prisma.ArticleWhereInput | undefined;
     if (lastProcessedAt && !options.force) {
-      query.where = {
+      where = {
         AND: [
           { contentUpdatedAt: { lte: checkpoint } },
           {
@@ -125,14 +118,20 @@ async function calculateAllQualityScores(options: Options) {
       };
     }
 
-    // ソート順を追加（contentUpdatedAt優先）
-    query.orderBy = [{ contentUpdatedAt: 'asc' }, { updatedAt: 'asc' }];
-
     if (options.source) {
-      query.where = { ...(query.where ?? {}), source: { name: options.source } };
+      where = { ...(where ?? {}), source: { name: options.source } };
     }
 
-    const articles = await prisma.article.findMany(query);
+    // 記事を取得（include を findMany に直接渡し、結果の型に source・tags を残す）
+    const articles = await prisma.article.findMany({
+      where,
+      include: {
+        source: true,
+        tags: true,
+      },
+      // ソート順（contentUpdatedAt優先）
+      orderBy: [{ contentUpdatedAt: 'asc' }, { updatedAt: 'asc' }],
+    });
 
     console.error(`📄 処理対象の記事数: ${articles.length}件`);
     if (options.source) {
@@ -245,17 +244,12 @@ async function calculateAllQualityScores(options: Options) {
     });
 
     // 上位10記事を表示
-    const topArticlesQuery: Prisma.ArticleFindManyArgs = {
+    const topArticles = await prisma.article.findMany({
+      where: options.source ? { source: { name: options.source } } : undefined,
       take: 10,
       orderBy: { qualityScore: 'desc' },
       include: { source: true },
-    };
-
-    if (options.source) {
-      topArticlesQuery.where = { source: { name: options.source } };
-    }
-
-    const topArticles = await prisma.article.findMany(topArticlesQuery);
+    });
 
     console.error('\n【品質スコア上位10記事】');
     topArticles.forEach((article, index) => {
@@ -303,20 +297,15 @@ async function fixZeroScores(options: Options) {
 
   try {
     // 品質スコアが0の記事を取得
-    const query: Prisma.ArticleFindManyArgs = {
+    const articlesWithoutScore = await prisma.article.findMany({
       where: {
-        qualityScore: 0
+        qualityScore: 0,
+        ...(options.source ? { source: { name: options.source } } : {}),
       },
       include: {
         source: true
       }
-    };
-
-    if (options.source) {
-      query.where.source = { name: options.source };
-    }
-
-    const articlesWithoutScore = await prisma.article.findMany(query);
+    });
 
     console.error(`📄 品質スコア0の記事数: ${articlesWithoutScore.length}件`);
     if (options.source) {

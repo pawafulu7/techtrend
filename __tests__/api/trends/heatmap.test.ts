@@ -12,7 +12,7 @@ jest.mock('@/lib/middleware/with-rate-limit', () => ({
   withRateLimit: jest.fn((_key: string, handler: Function) => handler),
 }));
 
-jest.mock('@/lib/database', () => ({
+jest.mock('@/lib/prisma', () => ({
   prisma: {
     $queryRaw: jest.fn(),
   },
@@ -29,7 +29,7 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 import { GET } from '@/app/api/trends/heatmap/route';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { resetEnvCache } from '@/lib/config/env';
 import { NextRequest } from 'next/server';
 import {

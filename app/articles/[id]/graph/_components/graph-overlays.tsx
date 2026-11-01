@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { Network, ArrowLeft, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui-v2/button-v2';
 import { useMediaQuery } from '@/app/hooks/use-media-query';
-import type { GraphNode } from '@/lib/types/graph';
+import type { GraphNode } from '@/lib/graph/types';
 import { graphNodeColors } from '@/lib/design-tokens';
-import { removeCenterPrefix } from '@/lib/utils/graph-helpers';
+import { removeCenterPrefix } from '@/lib/graph/graph-helpers';
 
 const PANEL =
   'rounded-lg border border-[var(--tt-color-border)] bg-[var(--tt-color-surface)]/95 shadow-xl';

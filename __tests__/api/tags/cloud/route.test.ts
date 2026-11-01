@@ -12,7 +12,7 @@ const lastOptions = () => mockFindTopTags.mock.calls.at(-1)?.[1];
 const lastClient = () => mockFindTopTags.mock.calls.at(-1)?.[0];
 // lib/prisma は jest.setup.node.js がモックした PrismaClient（= prismaMock）を返す
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { prismaMock: sharedPrismaMock } = require('../../../../test/utils/prisma-mock');
+const { prismaMock: sharedPrismaMock } = require('../../../helpers/prisma-mock');
 const mockCountTagArticlesInRange = jest.fn();
 jest.mock('@/lib/database/tag-article-counts', () => ({
   findTopTags: (...args: unknown[]) => mockFindTopTags(...args),

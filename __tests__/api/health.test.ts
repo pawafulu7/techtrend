@@ -2,7 +2,7 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { NextRequest } from 'next/server';
 
 // Mock Prisma and Redis
-jest.mock('@/lib/database', () => ({
+jest.mock('@/lib/prisma', () => ({
   prisma: {
     $queryRaw: jest.fn()
   }
@@ -20,7 +20,7 @@ describe('Health Check API', () => {
   });
 
   it('should return healthy status when all services are up', async () => {
-    const { prisma } = require('@/lib/database');
+    const { prisma } = require('@/lib/prisma');
     const { getRedisClient } = require('@/lib/redis/client');
     
     // Mock successful responses
@@ -41,7 +41,7 @@ describe('Health Check API', () => {
   });
 
   it('should return unhealthy status when database is down', async () => {
-    const { prisma } = require('@/lib/database');
+    const { prisma } = require('@/lib/prisma');
     
     // Mock database failure
     (prisma.$queryRaw as any).mockRejectedValue(new Error('Database connection failed'));

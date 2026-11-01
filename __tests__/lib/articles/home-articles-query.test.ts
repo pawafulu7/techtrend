@@ -14,7 +14,7 @@ import {
 import {
   ARXIV_SOURCE_ID,
   HUGGINGFACE_PAPERS_SOURCE_ID,
-} from '@/lib/constants/source-categories';
+} from '@/lib/sources/source-categories';
 
 const NO_PERSONALIZATION = {
   filterEnabled: false,

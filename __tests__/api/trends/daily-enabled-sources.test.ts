@@ -8,7 +8,7 @@ const mockGetTrendReport = jest.fn();
 const mockGetLatestReport = jest.fn();
 const mockGetAdjacentReportDates = jest.fn();
 
-jest.mock('@/lib/services/trend-report/trend-report-generator', () => ({
+jest.mock('@/lib/trends/report/trend-report-generator', () => ({
   TrendReportGenerator: jest.fn().mockImplementation(() => ({
     getTrendReport: mockGetTrendReport,
     getLatestReport: mockGetLatestReport,
@@ -37,7 +37,7 @@ import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';
 
 // lib/prisma は jest.setup.node.js がモックした PrismaClient（= prismaMock）を返す
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { prismaMock } = require('../../../test/utils/prisma-mock');
+const { prismaMock } = require('../../helpers/prisma-mock');
 
 function createReport() {
   const periodStart = new Date('2026-09-30T00:00:00+09:00');

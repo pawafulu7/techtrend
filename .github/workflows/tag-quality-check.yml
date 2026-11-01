@@ -67,7 +67,7 @@ jobs:
       - name: Run tag quality check
         id: tag_check
         run: |
-          npx tsx scripts/monitoring/check-tag-quality.ts | tee tag-quality-report.txt
+          npx tsx scripts/scheduled/check-tag-quality.ts | tee tag-quality-report.txt
           echo "exit_code=$?" >> $GITHUB_OUTPUT
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/techtrend_test

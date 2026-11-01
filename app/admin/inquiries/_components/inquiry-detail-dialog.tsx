@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui-v2/button-v2';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/app/hooks/use-toast';
 import { formatDateWithTime } from '@/lib/utils/date';
 import {
   INQUIRY_CATEGORY_LABELS,

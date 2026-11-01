@@ -11,7 +11,7 @@ import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
-import { aiLLMFilter } from '@/lib/filters/ai-llm-filter';
+import { aiLLMFilter } from '@/lib/fetchers/ai-llm-filter';
 import { fetchFeedXml } from './fetch-feed';
 
 export class DeepMindBlogFetcher extends BaseFetcher {

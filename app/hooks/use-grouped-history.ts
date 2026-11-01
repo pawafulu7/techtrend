@@ -5,8 +5,8 @@ import {
   groupHistoryByDate,
   type GroupedHistoryItem,
   type DateGroupingOptions,
-} from '@/lib/utils/date-grouping';
-import type { HistoryViewItem } from '@/lib/types/history';
+} from '@/lib/history/date-grouping';
+import type { HistoryViewItem } from '@/lib/history/types';
 
 /**
  * 閲覧履歴を日付でグループ化するカスタムフック

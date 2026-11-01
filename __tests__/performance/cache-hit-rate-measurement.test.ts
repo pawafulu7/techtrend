@@ -12,7 +12,7 @@
  */
 
 import { RedisCache } from '@/lib/cache/redis-cache';
-import { prisma } from '@/lib/database';
+import { prisma } from '@/lib/prisma';
 import { getRedisClient } from '@/lib/redis/client';
 import { measureMultipleRuns } from './helpers/performance-utils';
 

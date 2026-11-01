@@ -11,12 +11,12 @@ import {
 import dynamic from 'next/dynamic';
 import { useRouter, useParams } from 'next/navigation';
 import { forceCollide } from 'd3-force';
-import type { GraphData, GraphNode, GraphLink } from '@/lib/types/graph';
+import type { GraphData, GraphNode, GraphLink } from '@/lib/graph/types';
 import {
   darkenColor,
   removeCenterPrefix,
   truncateLabel,
-} from '@/lib/utils/graph-helpers';
+} from '@/lib/graph/graph-helpers';
 import { GraphOverlays } from './_components/graph-overlays';
 import { GraphError, GraphSkeleton } from './_components/graph-status';
 import { darkColors, withAlpha } from '@/lib/design-tokens';

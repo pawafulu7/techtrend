@@ -38,7 +38,7 @@ jobs:
           TRANSLATION_ENABLED: true
         run: |
           echo "Starting translation fix process..."
-          npx tsx scripts/maintenance/fix-missing-translations.ts
+          npx tsx scripts/scheduled/fix-missing-translations.ts
           echo "Translation fix completed."
       - name: Notify failure to Slack
         if: failure()

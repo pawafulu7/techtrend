@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useRelatedArticles } from '@/hooks/use-related-articles';
+import { useRelatedArticles } from '@/app/hooks/use-related-articles';
 
 /**
  * 関連記事の取得（issue #703）

@@ -22,7 +22,7 @@ import { ENABLED_SOURCE_SQL, sqlFragmentsOf } from '../../helpers/sql-fragments'
 
 // lib/prisma は jest.setup.node.js がモックした PrismaClient（= prismaMock）を返す
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { prismaMock } = require('../../../test/utils/prisma-mock');
+const { prismaMock } = require('../../helpers/prisma-mock');
 
 describe('articleDetailCache.getRelatedArticles', () => {
   beforeEach(() => {

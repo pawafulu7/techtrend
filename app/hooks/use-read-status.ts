@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
-import { useIsSessionPendingLatched } from '@/lib/auth/use-session-resolved';
+import { useIsSessionPendingLatched } from '@/app/hooks/use-session-resolved';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const STORAGE_KEY_PREFIX = 'techtrend-read-articles';
@@ -92,8 +92,8 @@ export function useReadStatus(articleIds?: string[]) {
   // 再遷移で TanStack Query の shouldFetchOptionally 経路が走り、タブ復帰ごとに
   // 既読状態が再取得される。そこで「一度 false になったら以降 false 固定」の
   // ラッチを掛ける。
-  // ラッチはモジュールスコープの共有状態（lib/auth/use-session-resolved.ts）で、
-  // lib/hooks/use-personalization-preferences.ts と同じ実体を使う。インスタンス
+  // ラッチはモジュールスコープの共有状態（app/hooks/use-session-resolved.ts）で、
+  // app/hooks/use-personalization-preferences.ts と同じ実体を使う。インスタンス
   // 単位だと記事詳細 → ホームのような再マウント経路でラッチが効かない。
   const isSessionPendingLatched = useIsSessionPendingLatched();
 

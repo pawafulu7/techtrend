@@ -7,7 +7,7 @@ import {
   waitForLoadingToDisappear,
   waitForSearchResults,
 } from '../utils/e2e-helpers';
-import { waitForArticles, getTimeout, waitForUrlParam } from '../../../e2e/helpers/wait-utils';
+import { waitForArticles, getTimeout, waitForUrlParam } from '../helpers/wait-utils';
 import { SELECTORS } from '../constants/selectors';
 
 // CI環境の検出

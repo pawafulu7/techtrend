@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 import { ShareButton } from '@/app/components/popular/share-button';
 
 // Mock toast
-jest.mock('@/hooks/use-toast', () => ({
+jest.mock('@/app/hooks/use-toast', () => ({
   useToast: () => ({ toast: jest.fn() }),
 }));
 

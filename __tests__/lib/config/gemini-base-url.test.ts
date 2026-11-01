@@ -2,7 +2,7 @@
  * GEMINI_BASE_URL・GEMINI_MODEL が全経路の Gemini 呼び出しに反映されることを検証する（issue #655 項目 3・4）
  *
  * DI の主経路（GeminiTransportImpl）は以前から設定の base URL を使っている。
- * ここでは直書きが残っていた経路（週次差分要約・GeminiClient・トレンドレポート）を見る。
+ * ここでは直書きが残っていた経路（週次差分要約・トレンドレポート）を見る。
  */
 
 const mockGetGenerativeModel = jest.fn();
@@ -12,7 +12,7 @@ jest.mock('@google/generative-ai', () => ({
   })),
 }));
 
-jest.mock('@/lib/services/embedding-scheduler', () => ({
+jest.mock('@/lib/rag/embedding-scheduler', () => ({
   EmbeddingScheduler: jest.fn().mockImplementation(() => ({})),
 }));
 
@@ -34,10 +34,9 @@ import {
   getGeminiModel,
   getGeminiTrendModel,
   resetGeminiConfigCache,
-} from '@/lib/config/gemini';
+} from '@/lib/ai/gemini-config';
 import { LLMExtractionPipeline } from '@/lib/ai/extraction/llm-extraction-pipeline';
-import { GeminiClient } from '@/lib/ai/gemini';
-import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-generator';
+import { TrendReportGenerator } from '@/lib/trends/report/trend-report-generator';
 import { GEMINI_API } from '@/lib/constants';
 import { loadConfig } from '@/lib/di/config';
 
@@ -104,15 +103,6 @@ describe.each([
     expect(mockFetch).toHaveBeenCalledWith(
       `${expectedBaseUrl}/v1beta/models/gemini-2.5-flash-lite:generateContent`,
       expect.objectContaining({ method: 'POST' })
-    );
-  });
-
-  it('GeminiClient（SDK）に base URL を渡す', () => {
-    new GeminiClient('test-api-key');
-
-    expect(mockGetGenerativeModel).toHaveBeenCalledWith(
-      { model: 'gemini-2.5-flash-lite' },
-      { baseUrl: expectedBaseUrl }
     );
   });
 
@@ -191,32 +181,6 @@ describe('GEMINI_BASE_URL の末尾のスラッシュ', () => {
     expect(getGeminiBaseUrl()).toBe(PROXY_BASE_URL);
     expect(buildGeminiModelUrl('m1')).toBe(
       `${PROXY_BASE_URL}/v1beta/models/m1:generateContent`
-    );
-  });
-});
-
-describe('GeminiClient.generateSummaryWithTags の出力トークン', () => {
-  const originalEnv = process.env;
-
-  afterEach(() => {
-    process.env = originalEnv;
-    resetEnvCache();
-    resetGeminiConfigCache();
-  });
-
-  it('要約（150-250 字）とタグが収まる上限を使う', async () => {
-    process.env = { ...originalEnv, GEMINI_API_KEY: 'test-api-key' };
-    resetEnvCache();
-    resetGeminiConfigCache();
-    const generateContent = jest.fn().mockResolvedValue({
-      response: { text: () => `要約: ${'あ'.repeat(199)}。\nタグ: React, TypeScript` },
-    });
-    mockGetGenerativeModel.mockReturnValue({ generateContent });
-
-    await new GeminiClient('test-api-key').generateSummaryWithTags('t', 'c');
-
-    expect(generateContent.mock.calls[0][0].generationConfig.maxOutputTokens).toBe(
-      GEMINI_API.DETAILED_MAX_TOKENS
     );
   });
 });

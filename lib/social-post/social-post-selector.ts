@@ -12,13 +12,13 @@ import {
   type DiffSummary,
   ArticleCategory,
 } from '@/lib/prisma-exports';
-import { findTagIdsByNames } from '@/lib/services/tag-service';
+import { findTagIdsByNames } from '@/lib/tags/tag-service';
 import type { OpinionForPrompt } from './types';
 import { containsFilter } from '@/lib/utils/like-pattern';
 import {
   ARXIV_SOURCE_ID,
   HUGGINGFACE_PAPERS_SOURCE_ID,
-} from '@/lib/constants/source-categories';
+} from '@/lib/sources/source-categories';
 import {
   type ArticleCandidatesSearchInput,
   ARTICLE_CATEGORIES,

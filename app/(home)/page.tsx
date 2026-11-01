@@ -25,12 +25,12 @@ import { parseViewModeFromCookie } from '@/lib/cookies/view-mode-cookie';
 import { resolveHomeFilterDefaults } from '@/lib/articles/home-filter-defaults';
 import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
-import { groupSourcesStatic } from '@/lib/utils/source/source-grouping-static';
+import { groupSourcesStatic } from '@/lib/sources/source-grouping-static';
 import {
   PAPER_SOURCE_IDS_PARAM,
   withoutPaperSourceGroups,
   withoutPaperSources,
-} from '@/lib/utils/source/paper-source';
+} from '@/lib/sources/paper-source';
 
 interface PageProps {
   // 同じ名前が複数あると配列で届く。クライアントの useSearchParams と同じく、

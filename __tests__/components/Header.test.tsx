@@ -34,7 +34,7 @@ jest.mock('next/link', () => {
 });
 
 // UserMenuコンポーネントのモック
-jest.mock('@/components/auth/UserMenu', () => ({
+jest.mock('@/app/components/auth/UserMenu', () => ({
   UserMenu: () => <div data-testid="user-menu">User Menu</div>,
 }));
 

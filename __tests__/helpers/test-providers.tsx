@@ -1,5 +1,5 @@
 import React from 'react';
-import { ThemeProvider } from '@/components/providers/theme-provider';
+import { ThemeProvider } from '@/app/providers/theme-provider';
 
 // テスト用のThemeProviderラッパー（本番の app/layout.tsx と同じ next-themes の Provider と設定）
 export const TestProviders = ({ children }: { children: React.ReactNode }) => {

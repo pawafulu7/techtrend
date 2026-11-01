@@ -1,4 +1,4 @@
-import type { DigestSection as DigestSectionType } from '@/lib/services/digest-service';
+import type { DigestSection as DigestSectionType } from '@/lib/personalization/digest-service';
 import { DigestArticleCard } from './digest-article-card';
 
 interface DigestSectionProps {

@@ -21,7 +21,7 @@ import { authClient } from '@/lib/auth/auth-client';
 import type { SortOption } from '../_types';
 import { FavoritesToolbar } from './favorites-toolbar';
 import { ErrorState } from '@/components/ui-v2/error-state';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/app/hooks/use-toast';
 import { loginWithCallback } from '@/lib/routes/auth';
 
 // 解除に失敗して一覧に戻すときは、黙って戻さずに通知する（issue #701）

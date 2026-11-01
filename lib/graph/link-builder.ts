@@ -1,4 +1,4 @@
-import type { GraphNode } from '@/lib/types/graph';
+import type { GraphNode } from '@/lib/graph/types';
 import type { SearchResult } from '@/lib/rag/vector-search-service';
 import type { GraphNodeInput } from './graph-node-input';
 import { clamp01 } from './graph-utils';
