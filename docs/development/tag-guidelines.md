@@ -261,7 +261,7 @@ npx tsx scripts/monitoring/check-tag-quality.ts
 ### 関連ファイル
 
 - [lib/ai/adapter/prompt-builder.ts](../../lib/ai/adapter/prompt-builder.ts): AI要約プロンプト定義
-- [lib/services/tag-normalizer.ts](../../lib/services/tag-normalizer.ts): タグ正規化処理
+- [lib/tags/tag-normalizer.ts](../../lib/services/tag-normalizer.ts): タグ正規化処理
 - [scripts/maintenance/remove-source-based-tags.ts](../../scripts/maintenance/remove-source-based-tags.ts): タグクリーンアップ
 - [scripts/monitoring/check-tag-quality.ts](../../scripts/monitoring/check-tag-quality.ts): タグ品質監視
 

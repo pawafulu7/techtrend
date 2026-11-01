@@ -5,7 +5,7 @@ import { articleAggregationWhere } from '@/lib/database/article-aggregation-filt
 import { popularCache, type PopularPeriod } from '@/lib/cache/popular-cache';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import { publicCacheHeaders } from '@/lib/api/cache-headers';
-import { findTagIdsByNames } from '@/lib/services/tag-service';
+import { findTagIdsByNames } from '@/lib/tags/tag-service';
 import type { Prisma } from '@/lib/prisma-exports';
 import {
   pushLowQualityFilter,

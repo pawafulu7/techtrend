@@ -8,7 +8,7 @@ import {
   normalizeDetailedSummary,
   stripHtmlTags,
   truncateText
-} from '@/lib/services/summary-generation/text-processor';
+} from '@/lib/summary/generation/text-processor';
 
 describe('text-processor', () => {
   describe('cleanupText', () => {

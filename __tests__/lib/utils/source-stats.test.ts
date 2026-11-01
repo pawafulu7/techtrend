@@ -1,4 +1,4 @@
-import { calculateGrowthRateFromStats } from '@/lib/utils/source/source-stats';
+import { calculateGrowthRateFromStats } from '@/lib/sources/source-stats';
 
 describe('calculateGrowthRateFromStats', () => {
   it('should return 0 for undefined stats', () => {

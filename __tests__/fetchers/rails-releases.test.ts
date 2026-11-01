@@ -6,7 +6,7 @@
  */
 
 import { RailsReleasesFetcher } from '@/lib/fetchers/rails-releases';
-import { isDuplicate } from '@/lib/utils/duplicate-detection';
+import { isDuplicate } from '@/lib/articles/duplicate-detection';
 import type { Source } from '@/lib/prisma-exports';
 import { fetchFeedXml } from '@/lib/fetchers/fetch-feed';
 

@@ -12,7 +12,7 @@ import { getISOWeek, getPreviousISOWeek } from '@/lib/ai/diff-summary/iso-week';
 import {
   SOURCE_CATEGORIES,
   SourceCategoryId,
-} from '@/lib/constants/source-categories';
+} from '@/lib/sources/source-categories';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';

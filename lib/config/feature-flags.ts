@@ -1,11 +1,10 @@
 /**
  * Feature Flags for TechTrend
  *
- * Centralized feature flag management for server-side only.
- * All flags are evaluated from environment variables.
+ * 機能フラグはこのファイルにまとめる。値はすべて環境変数から読む。
  */
 
-// NOTE: This file is imported by client components via source-presets.ts.
+// NOTE: This file is imported by client components (source-presets.ts, primary-nav.ts).
 // Do NOT import from env.ts (server-only due to pino/zod dependencies).
 export const FEATURE_FLAGS = {
   /**
@@ -21,3 +20,11 @@ export const FEATURE_FLAGS = {
 } as const;
 
 export type FeatureFlags = typeof FEATURE_FLAGS;
+
+/**
+ * 画面の出し分けに使うフラグ。クライアントでも読むので NEXT_PUBLIC_ の環境変数だけを使う
+ */
+export const features = {
+  /** AI エージェント検索（/search/agent）を出す。Environment: NEXT_PUBLIC_ENABLE_AI_SEARCH */
+  aiSearch: process.env.NEXT_PUBLIC_ENABLE_AI_SEARCH === 'true',
+} as const;

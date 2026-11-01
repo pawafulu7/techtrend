@@ -38,8 +38,8 @@ jest.mock('@/lib/auth/utils', () => ({
 // agent-search はレート制限を handler の中で行う（withRateLimit を使わない）。
 // handler に届いたかどうかと、レート制限のキーに使われたユーザー ID をこれで確かめる
 const mockCheckRateLimit = jest.fn();
-jest.mock('@/lib/rate-limiter', () => {
-  const actual = jest.requireActual('@/lib/rate-limiter');
+jest.mock('@/lib/middleware/rate-limiter', () => {
+  const actual = jest.requireActual('@/lib/middleware/rate-limiter');
   return {
     ...actual,
     checkRateLimit: (...args: unknown[]) => mockCheckRateLimit(...args),
@@ -133,7 +133,7 @@ import * as profile from '@/app/api/user/profile/route';
 import * as password from '@/app/api/user/password/route';
 import * as agentSearch from '@/app/api/rag/agent-search/route';
 import { changePassword } from '@/lib/auth/utils';
-import { RateLimitError } from '@/lib/rate-limiter';
+import { RateLimitError } from '@/lib/middleware/rate-limiter';
 import { features } from '@/lib/config/env';
 
 type RouteHandler = (request: NextRequest, context?: unknown) => Promise<Response>;

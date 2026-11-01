@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { ArticleLink } from '@/lib/types/article-link';
-import { extractArticlesFromToolCalls } from '@/lib/utils/article/article-link-extractor';
+import type { ArticleLink } from '@/lib/articles/article-link-types';
+import { extractArticlesFromToolCalls } from '@/lib/articles/article-link-extractor';
 import { CLIENT_TIMEOUT_MS } from '@/lib/rag/agent-timeouts';
 
 export interface AgentSearchResult {

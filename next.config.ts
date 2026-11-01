@@ -74,7 +74,7 @@ const nextConfig: NextConfig = {
 
   // セキュリティヘッダはproxy.tsで管理
   // Phase 3: Complete migration to proxy.ts
-  // See: proxy.ts, config/security-headers.ts
+  // See: proxy.ts, lib/config/security-headers.ts
 
   // 画像最適化（Issue #718）
   // サムネイルは 2,000 を超えるホストから集めるので allowlist は作れない。https の全ホストを許可し、

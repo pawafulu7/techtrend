@@ -6,7 +6,7 @@ import { night, slate, white } from './palette';
  *
  * 系列（タグ・ソースなど）を見分けるための色。状態色（positive / warning など）とは別に持ち、
  * 状態色の調整がチャートに波及しないようにする。塗りに文字を載せるときは
- * lib/utils/design-tokens/contrast.ts の readableTextColor で文字色を選ぶ。
+ * lib/design-tokens/contrast.ts の readableTextColor で文字色を選ぶ。
  */
 export const chartColors = {
   light: [

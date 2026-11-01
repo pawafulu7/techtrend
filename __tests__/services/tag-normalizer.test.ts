@@ -1,4 +1,4 @@
-import { TagNormalizer } from '../../lib/services/tag-normalizer';
+import { TagNormalizer } from '../../lib/tags/tag-normalizer';
 
 describe('TagNormalizer', () => {
   describe('normalize', () => {

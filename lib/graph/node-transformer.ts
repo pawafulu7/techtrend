@@ -1,4 +1,4 @@
-import type { GraphNode } from '@/lib/types/graph';
+import type { GraphNode } from '@/lib/graph/types';
 import { graphNodeColors } from '@/lib/design-tokens';
 import type { Article } from '@/lib/prisma-exports';
 import { logger } from '@/lib/logger';

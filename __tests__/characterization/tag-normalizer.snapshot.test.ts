@@ -4,10 +4,10 @@
  * Purpose: Capture current behavior to detect unintended changes during refactoring.
  * These tests use snapshots to record the current normalization rules behavior.
  *
- * @see lib/services/tag-normalizer.ts
+ * @see lib/tags/tag-normalizer.ts
  */
 
-import { TagNormalizer } from '../../lib/services/tag-normalizer';
+import { TagNormalizer } from '../../lib/tags/tag-normalizer';
 
 describe('TagNormalizer Characterization Tests', () => {
   describe('normalizeTags - comprehensive input variations', () => {

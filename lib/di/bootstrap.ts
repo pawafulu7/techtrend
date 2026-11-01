@@ -5,7 +5,7 @@ import { SummaryQualityChecker } from '../ai/service/quality-checker';
 import { SummaryPostProcessor } from '../ai/service/post-processor';
 import { UnifiedSummaryServiceImpl } from '../ai/service/unified-summary-service';
 import { GeminiTitleTranslator } from '../ai/translator/gemini-title-translator';
-import { EmbeddingScheduler } from '../services/embedding-scheduler';
+import { EmbeddingScheduler } from '../rag/embedding-scheduler';
 import { AppConfig, loadConfig } from './config';
 
 type DeepPartial<T> = {

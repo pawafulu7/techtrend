@@ -15,7 +15,7 @@ import {
   GenericForeignRssFetcher,
   FOREIGN_SOURCE_CONFIGS,
 } from '@/lib/fetchers/generic-foreign-rss';
-import { SOURCE_CATEGORIES } from '@/lib/constants/source-categories';
+import { SOURCE_CATEGORIES } from '@/lib/sources/source-categories';
 import { BATCH3_SOURCES } from '@/scripts/maintenance/add-batch3-sources';
 import Parser from 'rss-parser';
 import {
@@ -44,7 +44,7 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
-jest.mock('@/lib/utils/duplicate-detection', () => ({
+jest.mock('@/lib/articles/duplicate-detection', () => ({
   isDuplicate: jest.fn().mockReturnValue(false),
 }));
 

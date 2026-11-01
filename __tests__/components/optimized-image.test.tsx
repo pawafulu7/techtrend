@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { OptimizedImage } from '@/app/components/common/optimized-image';
-import { canOptimizeImage } from '@/lib/utils/article/thumbnail';
+import { canOptimizeImage } from '@/lib/articles/thumbnail';
 
 // next/image に渡した props を見るため、unoptimized を属性に写す。
 // 最適化するときは本物と同じく /_next/image の URL を src にする

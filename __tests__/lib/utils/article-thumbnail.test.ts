@@ -1,5 +1,5 @@
-import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
-import { isSlideArticle, isSlideSource } from '@/lib/utils/source/slide-source';
+import { hasValidThumbnail } from '@/lib/articles/thumbnail';
+import { isSlideArticle, isSlideSource } from '@/lib/sources/slide-source';
 
 describe('hasValidThumbnail', () => {
   it.each([

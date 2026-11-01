@@ -1,4 +1,4 @@
-import { TrendAiSummarySchema, extractFirstJsonObject } from '@/lib/types/trend-ai-summary';
+import { TrendAiSummarySchema, extractFirstJsonObject } from '@/lib/trends/report/trend-ai-summary-types';
 
 describe('trend-ai-summary', () => {
   describe('extractFirstJsonObject', () => {

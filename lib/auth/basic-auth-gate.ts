@@ -5,7 +5,7 @@ import {
   extractBasicToken,
   extractBearerToken,
 } from '@/lib/auth/authorization-header';
-import { compareSecrets } from '@/lib/utils/compare-secrets';
+import { compareSecrets } from '@/lib/auth/compare-secrets';
 
 /**
  * サイト全体の Basic 認証ゲート。

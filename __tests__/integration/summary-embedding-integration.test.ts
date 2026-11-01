@@ -13,7 +13,7 @@ import type { SummaryProvider } from '@/lib/ai/adapter/summary-provider.interfac
 import type { QualityChecker } from '@/lib/ai/service/quality-checker.interface';
 import { SummaryPostProcessor } from '@/lib/ai/service/post-processor';
 import type { TitleTranslator } from '@/lib/ai/translator/gemini-title-translator';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { EmbeddingScheduler } from '@/lib/rag/embedding-scheduler';
 import type { Article } from '@/lib/prisma-exports';
 
 const TIMESTAMP_PRECISION_DELAY_MS = 100;

@@ -9,11 +9,11 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import type { Prisma } from '@/lib/prisma-exports';
-import { checkSummaryQuality } from '../../lib/utils/summary/summary-quality-checker';
+import { checkSummaryQuality } from '../../lib/summary/quality/summary-quality-checker';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { getAppDependencies } from '@/lib/di/bootstrap';
-import { resolveTags } from '@/lib/services/tag-service';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { resolveTags } from '@/lib/tags/tag-service';
+import { EmbeddingScheduler } from '@/lib/rag/embedding-scheduler';
 import { closeRedisConnection } from '@/lib/redis/client';
 
 const prisma = createPrismaClient();

@@ -72,12 +72,12 @@ function setupSignalHandlers(): void {
   process.on('SIGINT', () => cleanup('SIGINT', 130));
   process.on('SIGTERM', () => cleanup('SIGTERM', 143));
 }
-import { isDuplicate } from '@/lib/utils/duplicate-detection';
+import { isDuplicate } from '@/lib/articles/duplicate-detection';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { adjustTimezoneForArticle } from '@/lib/utils/date';
-import { CategoryClassifier } from '@/lib/services/category-classifier';
-import { normalizeTag } from '@/lib/utils/tag/tag-normalizer';
-import { resolveTags } from '@/lib/services/tag-service';
+import { CategoryClassifier } from '@/lib/articles/category-classifier';
+import { normalizeTag } from '@/lib/tags/tag-input-normalizer';
+import { resolveTags } from '@/lib/tags/tag-service';
 import { transferSourceIfNeeded } from './utils/source-transfer';
 import {
   countSourceFormatErrors,

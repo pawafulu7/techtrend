@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll } from '@jest/globals';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { EmbeddingScheduler } from '@/lib/rag/embedding-scheduler';
 import type { Article, PrismaClient } from '@/lib/prisma-exports';
 
 // Use real Prisma client (bypass all mocks)

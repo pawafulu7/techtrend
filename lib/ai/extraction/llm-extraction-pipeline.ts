@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { logger } from '@/lib/logger';
 import { BatchExecutor, BatchJob } from './batch-executor';
 import { env } from '@/lib/config/env';
-import { buildGeminiModelUrl, getGeminiModel } from '@/lib/config/gemini';
+import { buildGeminiModelUrl, getGeminiModel } from '@/lib/ai/gemini-config';
 
 // Types
 export interface ExtractionOptions {

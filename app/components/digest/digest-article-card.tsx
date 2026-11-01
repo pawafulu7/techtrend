@@ -5,7 +5,7 @@ import { ExternalLink, Calendar } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { BadgeV2 } from '@/components/ui-v2/badge-v2';
 import { formatDateWithTime } from '@/lib/utils/date';
-import type { DigestArticle } from '@/lib/services/digest-service';
+import type { DigestArticle } from '@/lib/personalization/digest-service';
 
 interface DigestArticleCardProps {
   article: DigestArticle;

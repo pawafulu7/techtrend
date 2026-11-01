@@ -7,7 +7,7 @@
 import type { Prisma } from '@/lib/prisma-exports';
 
 const findTagIdGroupsByNames = jest.fn();
-jest.mock('@/lib/services/tag-service', () => ({
+jest.mock('@/lib/tags/tag-service', () => ({
   findTagIdGroupsByNames: (...args: unknown[]) =>
     findTagIdGroupsByNames(...args),
 }));
@@ -30,7 +30,7 @@ import {
   isSlideArticle,
   slideArticleWhere,
   slideWithoutSummaryWhere,
-} from '@/lib/utils/source/slide-source';
+} from '@/lib/sources/slide-source';
 
 describe('parseTagList', () => {
   it('prefers tag over tags', () => {

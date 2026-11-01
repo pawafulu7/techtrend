@@ -1,4 +1,4 @@
-import { normalizeCommentContent } from '@/lib/utils/comment/comment-content-normalizer';
+import { normalizeCommentContent } from '@/lib/comments/comment-content-normalizer';
 
 describe('normalizeCommentContent', () => {
   it('should handle empty input', () => {

@@ -18,7 +18,7 @@ import { getLLMExtractionPipeline } from '@/lib/ai/extraction';
 import {
   classifyOffTopicArticles,
   OFF_TOPIC_BATCH_SIZE,
-} from '@/lib/services/off-topic-classifier';
+} from '@/lib/articles/off-topic-classifier';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 const CACHE_INVALIDATION_TIMEOUT_MS = 30_000;

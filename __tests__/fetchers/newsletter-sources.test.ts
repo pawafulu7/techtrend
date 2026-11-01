@@ -12,8 +12,8 @@ import { NEWSLETTER_SOURCES, DORMANT_SOURCES } from '@/scripts/maintenance/add-n
 import { CURATED_NEWSLETTER_CONFIGS, CURATED_NEWSLETTER_SOURCE_IDS } from '@/lib/fetchers/curated-newsletter/configs';
 import { CuratedNewsletterFetcher } from '@/lib/fetchers/curated-newsletter';
 import { createFetcher } from '@/lib/fetchers';
-import { SOURCE_CATEGORIES } from '@/lib/constants/source-categories';
-import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
+import { SOURCE_CATEGORIES } from '@/lib/sources/source-categories';
+import { HATENA_SOURCE_ID } from '@/lib/sources/source-ids';
 import { shouldTransferSource } from '@/lib/fetchers/source-transfer';
 import type { Source } from '@/lib/prisma-exports';
 

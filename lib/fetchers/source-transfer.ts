@@ -10,7 +10,7 @@
  * 変わらないようにもなる）。
  * 付け替えの書き込みは scripts/scheduled/utils/source-transfer.ts。
  */
-import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
+import { HATENA_SOURCE_ID } from '@/lib/sources/source-ids';
 import { CURATED_NEWSLETTER_SOURCE_IDS } from '@/lib/fetchers/curated-newsletter/configs';
 
 /** 外部の記事へのリンクを集めるソース（出し手ではない） */

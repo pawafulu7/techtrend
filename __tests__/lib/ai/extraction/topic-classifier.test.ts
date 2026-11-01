@@ -8,7 +8,7 @@ import {
   topicSearchTags,
 } from '@/lib/ai/extraction/topic-classifier';
 import { topicSearchHref } from '@/app/trends/diff/_components/diff-utils';
-import { TAG_NORMALIZATION_MAP } from '@/lib/utils/tag/tag-normalizer';
+import { TAG_NORMALIZATION_MAP } from '@/lib/tags/tag-input-normalizer';
 import type { TopicData } from '@/lib/ai/extraction/prompts/diff-summary-prompt';
 
 /** テスト用トピック生成ヘルパー */

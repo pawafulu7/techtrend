@@ -3,20 +3,20 @@ import { createPrismaClient } from '@/lib/prisma/create-client';
 const prisma = createPrismaClient();
 
 // arXiv AI source uses a fixed ID for consistent filtering across the app
-// IMPORTANT: This value MUST match lib/constants/source-categories.ts ARXIV_SOURCE_ID
+// IMPORTANT: This value MUST match lib/sources/source-categories.ts ARXIV_SOURCE_ID
 // We duplicate it here because seed scripts can't use TypeScript path aliases (@/)
 const ARXIV_SOURCE_ID = 'cmfxa7efs0001teo0kjt70c5k';
 
 // Hugging Face Papers も論文として、ホームから外し論文ページに出す（固定 ID で判定する）
-// IMPORTANT: This value MUST match lib/constants/source-categories.ts HUGGINGFACE_PAPERS_SOURCE_ID
+// IMPORTANT: This value MUST match lib/sources/source-categories.ts HUGGINGFACE_PAPERS_SOURCE_ID
 const HUGGINGFACE_PAPERS_SOURCE_ID = 'cmfxa7efj0000teo06dhbox6e';
 
 // Claude Blog source uses a fixed ID for consistent filtering
-// IMPORTANT: This value MUST match lib/constants/source-categories.ts
+// IMPORTANT: This value MUST match lib/sources/source-categories.ts
 const CLAUDE_BLOG_SOURCE_ID = 'claude_blog_official';
 
 // Anthropic News source uses a fixed ID for consistent filtering
-// IMPORTANT: This value MUST match lib/constants/source-categories.ts
+// IMPORTANT: This value MUST match lib/sources/source-categories.ts
 const ANTHROPIC_NEWS_SOURCE_ID = 'anthropic_news';
 
 // Sources that require fixed IDs for app-wide filtering

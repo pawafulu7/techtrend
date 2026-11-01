@@ -6,9 +6,9 @@ import {
   isQualityCheckEnabled,
   getMinQualityScore,
   getMaxRegenerationAttempts,
-} from '../../../lib/utils/summary/summary-quality-checker';
+} from '../../../lib/summary/quality/summary-quality-checker';
 
-import { ContentAnalysis } from '../../../lib/utils/content/content-analyzer';
+import { ContentAnalysis } from '../../../lib/summary/quality/content-analyzer';
 import { resetEnvCache } from '@/lib/config/env';
 
 describe('summary-quality-checker', () => {

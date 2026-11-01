@@ -3,14 +3,14 @@
  *
  * This script reads lib/design-tokens/ and generates app/generated-tokens.css
  * to ensure a single source of truth and prevent token drift.
- * The CSS itself is built in lib/utils/design-tokens/build-css.ts.
+ * The CSS itself is built in lib/design-tokens/build-css.ts.
  *
  * Usage: npm run generate:tokens
  */
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { buildTokensCss } from '../../lib/utils/design-tokens/build-css';
+import { buildTokensCss } from '../../lib/design-tokens/build-css';
 
 const outPath = path.join(process.cwd(), 'app/generated-tokens.css');
 

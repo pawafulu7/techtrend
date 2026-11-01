@@ -70,7 +70,7 @@ jest.mock('@/lib/logger', () => ({
     debug: jest.fn(),
   },
 }));
-jest.mock('@/lib/services/digest-service', () => ({
+jest.mock('@/lib/personalization/digest-service', () => ({
   digestService: {
     getDigest: jest.fn(),
     invalidateUserCache: jest.fn(),
@@ -85,7 +85,7 @@ jest.mock('@/lib/comments/comment-service', () => ({
 jest.mock('@/lib/utils/prisma-error-handler', () => ({
   handlePrismaError: jest.fn(),
 }));
-jest.mock('@/lib/rate-limiter', () => ({
+jest.mock('@/lib/middleware/rate-limiter', () => ({
   checkRateLimit: jest.fn(),
   createRateLimiterFromConfig: jest.fn(),
   RateLimitError: class RateLimitError extends Error {},

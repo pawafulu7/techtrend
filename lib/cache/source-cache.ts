@@ -8,7 +8,7 @@ import {
   estimateSourceCategory,
   SourceCategory,
   calculateGrowthRateFromStats,
-} from '@/lib/utils/source/source-stats';
+} from '@/lib/sources/source-stats';
 
 interface SourceWithCount extends Source {
   _count: {
@@ -411,10 +411,10 @@ export class SourceCache {
    * TTL: 5分
    */
   async getCompanySources(): Promise<
-    import('@/lib/providers/company-source/interface').CompanySource[]
+    import('@/lib/sources/company-source/interface').CompanySource[]
   > {
     const { sourceInclude, toCompanySource } =
-      await import('@/lib/providers/company-source/transforms');
+      await import('@/lib/sources/company-source/transforms');
 
     return this.cache.getOrSet(
       'company-sources',
@@ -441,10 +441,10 @@ export class SourceCache {
   async getCompanySourcesByGroup(
     groupId: string
   ): Promise<
-    import('@/lib/providers/company-source/interface').CompanySource[]
+    import('@/lib/sources/company-source/interface').CompanySource[]
   > {
     const { sourceInclude, toCompanySource } =
-      await import('@/lib/providers/company-source/transforms');
+      await import('@/lib/sources/company-source/transforms');
 
     return this.cache.getOrSet(
       `company-sources:group:${groupId}`,
@@ -470,10 +470,10 @@ export class SourceCache {
   async getCompanySourcesByTag(
     tagId: string
   ): Promise<
-    import('@/lib/providers/company-source/interface').CompanySource[]
+    import('@/lib/sources/company-source/interface').CompanySource[]
   > {
     const { sourceInclude, toCompanySource } =
-      await import('@/lib/providers/company-source/transforms');
+      await import('@/lib/sources/company-source/transforms');
 
     return this.cache.getOrSet(
       `company-sources:tag:${tagId}`,

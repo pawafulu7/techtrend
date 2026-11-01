@@ -19,7 +19,7 @@ import { FreeeFetcher } from '@/lib/fetchers/corporate-blogs/freee-fetcher';
 import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { normalizeUrl } from '@/lib/utils/url/url-normalizer';
-import { getContentFromItem } from '@/lib/types/rss';
+import { getContentFromItem } from '@/lib/fetchers/rss-types';
 import { fetchFeedXml } from '@/lib/fetchers/fetch-feed';
 
 jest.mock('rss-parser', () => {
@@ -40,7 +40,7 @@ jest.mock('@/lib/logger', () => {
   return { __esModule: true, logger: noop, default: noop };
 });
 
-jest.mock('@/lib/utils/duplicate-detection', () => ({
+jest.mock('@/lib/articles/duplicate-detection', () => ({
   isDuplicate: jest.fn().mockReturnValue(false),
 }));
 
@@ -48,8 +48,8 @@ jest.mock('@/lib/utils/url/url-normalizer', () => ({
   normalizeUrl: jest.fn((url: string) => url),
 }));
 
-jest.mock('@/lib/types/rss', () => {
-  const actual = jest.requireActual('@/lib/types/rss');
+jest.mock('@/lib/fetchers/rss-types', () => {
+  const actual = jest.requireActual('@/lib/fetchers/rss-types');
   return {
     ...actual,
     getContentFromItem: jest.fn(actual.getContentFromItem),
@@ -149,7 +149,7 @@ describe('BaseCorporateFetcher (via FreeeFetcher): errors伝播', () => {
     jest.clearAllMocks();
     mockedFetchFeedXml.mockResolvedValue('<rss></rss>');
     mockedGetContentFromItem.mockImplementation(
-      jest.requireActual('@/lib/types/rss').getContentFromItem
+      jest.requireActual('@/lib/fetchers/rss-types').getContentFromItem
     );
   });
 

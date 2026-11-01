@@ -3,7 +3,7 @@ import {
   getCategoryInfo,
   getAllCategories,
   TAG_CATEGORIES,
-} from '@/lib/constants/tag-categories';
+} from '@/lib/tags/tag-categories';
 
 describe('Tag Categories', () => {
   describe('getTagCategory', () => {

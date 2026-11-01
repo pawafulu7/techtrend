@@ -13,7 +13,7 @@ import {
   buildCriticalCss,
   buildTokensCss,
   CRITICAL_COLOR_VARS,
-} from '@/lib/utils/design-tokens/build-css';
+} from '@/lib/design-tokens/build-css';
 
 const read = (rel: string) =>
   fs.readFileSync(path.join(process.cwd(), rel), 'utf8');

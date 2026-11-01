@@ -1,5 +1,5 @@
 /**
- * トレンド概要の分析の集計（lib/services/trend-analysis.ts）が、DB のセッションのタイムゾーンに
+ * トレンド概要の分析の集計（lib/trends/trend-analysis.ts）が、DB のセッションのタイムゾーンに
  * 左右されないことの結合テスト。
  *
  * 以前は期間の ISO 文字列を `::timestamp`（タイムゾーンなし）で読み、日別のまとめを
@@ -45,7 +45,7 @@ import { createPrismaClient } from '@/lib/prisma/create-client';
 import {
   getTrendAnalysis,
   type TrendAnalysis,
-} from '@/lib/services/trend-analysis';
+} from '@/lib/trends/trend-analysis';
 
 // テストのデータは UTC のセッションで作る。Prisma の pg アダプターは日時をオフセット無しで送るので、
 // LA のセッションで書くと保存される時刻が時差の分ずれる（読む側の集計だけを LA のセッションにする）。

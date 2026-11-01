@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { CategoryClassifier } from '@/lib/services/category-classifier';
+import { CategoryClassifier } from '@/lib/articles/category-classifier';
 import { RedisCache } from '@/lib/cache';
 import logger from '@/lib/logger';
 import { enabledSourceWhere } from '@/lib/database/enabled-source-filter';

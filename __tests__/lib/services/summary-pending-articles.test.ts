@@ -7,10 +7,10 @@ import {
   PENDING_SUMMARY_ORDER_BY,
   pendingSummaryWhere,
   recordContentSkipReasons,
-} from '@/lib/services/summary/pending-articles';
-import { checkNewArticles } from '@/lib/services/summary/batch-processor';
-import { generateMissingSummaries } from '@/lib/services/summary/summary-orchestrator';
-import { SummaryManager } from '@/lib/services/summary/summary-manager';
+} from '@/lib/summary/pending-articles';
+import { checkNewArticles } from '@/lib/summary/batch-processor';
+import { generateMissingSummaries } from '@/lib/summary/summary-orchestrator';
+import { SummaryManager } from '@/lib/summary/summary-manager';
 
 jest.mock('@/lib/di/bootstrap', () => ({
   getAppDependencies: jest.fn(() => ({

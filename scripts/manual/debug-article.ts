@@ -1,6 +1,6 @@
 import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { createPrismaClient } from '@/lib/prisma/create-client';
-import { generateUnifiedPrompt } from '../../lib/utils/article/article-type-prompts';
+import { generateUnifiedPrompt } from '../../lib/summary/article-type-prompts';
 import fetch from 'node-fetch';
 
 const prisma = createPrismaClient();

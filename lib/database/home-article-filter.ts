@@ -1,9 +1,9 @@
 import { Prisma } from '@/lib/prisma-exports';
-import { PAPER_SOURCE_IDS } from '@/lib/constants/source-categories';
+import { PAPER_SOURCE_IDS } from '@/lib/sources/source-categories';
 import {
   SLIDE_SOURCE_NAME_LIST,
   SLIDE_URL_PREFIXES,
-} from '@/lib/utils/source/slide-source';
+} from '@/lib/sources/slide-source';
 import {
   articleAggregationSql,
   type ArticlePeriod,

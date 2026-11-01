@@ -10,7 +10,7 @@
  */
 
 import { Command } from 'commander';
-import { addArticleManually, addArticlesBatch } from '../../lib/utils/article/article-manual-adder';
+import { addArticleManually, addArticlesBatch } from '../../lib/articles/article-manual-adder';
 import * as fs from 'fs';
 import * as path from 'path';
 

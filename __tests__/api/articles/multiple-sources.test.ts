@@ -5,8 +5,8 @@ import { getRedisClient } from '@/lib/redis/client';
 
 // Mock dependencies
 // タグ名は lower(name) で ID にしてから絞る（#681）。テストでは名前の小文字から ID を作る
-jest.mock('@/lib/services/tag-service', () => ({
-  ...jest.requireActual('@/lib/services/tag-service'),
+jest.mock('@/lib/tags/tag-service', () => ({
+  ...jest.requireActual('@/lib/tags/tag-service'),
   findTagIdGroupsByNames: async (names: string[]) =>
     names.map((name) => [`tag-${name.toLowerCase()}`]),
 }));

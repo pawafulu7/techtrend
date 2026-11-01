@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTrendAnalysis } from '@/lib/services/trend-analysis';
+import { getTrendAnalysis } from '@/lib/trends/trend-analysis';
 import { parseIntParam, VALIDATION_RANGES } from '@/lib/utils/validation';
 import logger from '@/lib/logger';
 import { applyPublicCacheHeaders } from '@/lib/api/cache-headers';

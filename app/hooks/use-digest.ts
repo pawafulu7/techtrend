@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import type {
   DigestResponse,
   DigestPeriod,
-} from '@/lib/services/digest-service';
+} from '@/lib/personalization/digest-service';
 
 /** 画面で文言を選べるよう、HTTP ステータスを持たせる（issue #701） */
 export class DigestFetchError extends Error {

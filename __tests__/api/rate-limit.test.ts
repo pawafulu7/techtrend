@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
-import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
+import { createRateLimiterFromConfig } from '@/lib/middleware/rate-limiter';
 import { getRateLimitConfig } from '@/lib/config/rate-limits';
 
 // Mock auth

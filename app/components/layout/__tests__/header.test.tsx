@@ -27,7 +27,8 @@ jest.mock('@/lib/auth/auth-client', () => ({
   },
 }));
 
-jest.mock('@/config/features', () => ({
+jest.mock('@/lib/config/feature-flags', () => ({
+  ...jest.requireActual('@/lib/config/feature-flags'),
   features: { aiSearch: true },
 }));
 

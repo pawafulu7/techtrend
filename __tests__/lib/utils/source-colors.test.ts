@@ -1,4 +1,4 @@
-import { getSourceColor } from '@/lib/utils/source/source-colors';
+import { getSourceColor } from '@/lib/sources/source-colors';
 
 describe('getSourceColor', () => {
   // New sources that need color mappings

@@ -15,11 +15,11 @@ import {
   Cpu,
   Home,
 } from 'lucide-react';
-import type { SourceCategory } from '@/lib/constants/source-categories';
+import type { SourceCategory } from '@/lib/sources/source-categories';
 import { CompanyFilter } from '@/app/components/source-filters/company-filter';
 import { CustomPresetDropdown } from '@/app/components/source-filters/custom-preset-dropdown';
-import { getPrimaryCategoryByGroupId } from '@/lib/compatibility/category-group-mapping';
-import type { CompanySource } from '@/lib/providers/company-source';
+import { getPrimaryCategoryByGroupId } from '@/lib/sources/category-group-mapping';
+import type { CompanySource } from '@/lib/sources/company-source';
 
 // カテゴリごとのアイコンマッピング（Legacy categories only）
 const categoryIcons: Record<string, React.ReactNode> = {

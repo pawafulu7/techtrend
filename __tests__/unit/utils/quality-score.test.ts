@@ -5,7 +5,7 @@
 import {
   calculateQualityScore,
   calculateSummaryLengthPoints,
-} from '@/lib/utils/quality-score';
+} from '@/lib/articles/quality-score';
 
 describe('Quality Score Calculation', () => {
   const baseArticle = {

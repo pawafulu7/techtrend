@@ -12,7 +12,7 @@ import { ThemeProvider } from '@/app/providers/theme-provider';
 import { AuthProvider } from '@/app/providers/auth-provider';
 import { ScrollToTopButton } from '@/app/components/layout/ScrollToTopButton';
 import { WebVitalsReporter } from '@/app/components/analytics/web-vitals-reporter';
-import { buildCriticalCss } from '@/lib/utils/design-tokens/build-css';
+import { buildCriticalCss } from '@/lib/design-tokens/build-css';
 // import { OnboardingProvider } from "@/app/components/onboarding/onboarding-provider";
 import './globals.css';
 

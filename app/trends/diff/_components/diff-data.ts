@@ -4,7 +4,7 @@ import { getPreviousISOWeek } from '@/lib/ai/diff-summary';
 import {
   SOURCE_CATEGORIES,
   SourceCategoryId,
-} from '@/lib/constants/source-categories';
+} from '@/lib/sources/source-categories';
 import { DiffChange } from '@/lib/ai/extraction/extraction-schemas';
 import type { DiffSummaryResponse } from './diff-utils';
 

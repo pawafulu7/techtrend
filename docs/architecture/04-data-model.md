@@ -208,7 +208,7 @@ erDiagram
 | モデル | 用途 | 生成元（書き込み箇所） | 他テーブルとの関係 |
 |--------|------|----------------------|-------------------|
 | `DiffSummary` | カテゴリ別の週次差分サマリー（AI生成） | `lib/ai/diff-summary/diff-summary-service.ts`（`scripts/ai/generate-diff-summaries.ts`、週次） | `@relation` なし。`categorySlug`/`currentPeriod` は論理キー |
-| `TrendReport` | 日次/週次/月次トレンドレポート（AI生成） | `lib/services/trend-report/trend-report-generator.ts`（`generate-trend-report.ts`、日次） | `@relation` なし。`topArticles`/`tags` は Json で記事情報を保持 |
+| `TrendReport` | 日次/週次/月次トレンドレポート（AI生成） | `lib/trends/report/trend-report-generator.ts`（`generate-trend-report.ts`、日次） | `@relation` なし。`topArticles`/`tags` は Json で記事情報を保持 |
 | `SocialPost` | X（Twitter）投稿下書きの管理 | `lib/social-post/social-post-service.ts`（`app/api/admin/social-posts/*` からオンデマンド生成） | `@relation` なし。`sourceIds` は `String[]` の論理参照（`Article` 等への FK ではない） |
 | `SocialPostAuditLog` | `SocialPost` の操作監査ログ | 同上 `social-post-service.ts` 内（`socialPostAuditLog.create`） | `SocialPost` への `@relation`（`onDelete: SetNull`）を持つ。他系列とは独立 |
 | `ViewpointMap` | トピック別の論点マップ（AI生成） | [未確認] `lib/ai/extraction/extraction-schemas.ts` に出力スキーマ（zod）はあるが、DB への `create`/`upsert` 呼び出しはリポジトリ内で確認できず | `@relation` なし。`articleIds` は `String[]` の論理参照 |

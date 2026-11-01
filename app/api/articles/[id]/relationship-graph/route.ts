@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import { GraphDataSerializer } from '@/lib/graph/graph-data-serializer';
-import { graphOptionsSchema } from '@/lib/types/graph';
+import { graphOptionsSchema } from '@/lib/graph/types';
 import { graphNodeColors } from '@/lib/design-tokens';
 import { trace, SpanStatusCode } from '@opentelemetry/api';
 import { logger, sanitizeError } from '@/lib/logger';

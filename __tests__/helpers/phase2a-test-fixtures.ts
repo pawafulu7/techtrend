@@ -7,9 +7,9 @@
  * @see Plan: plan_20251116_103350_791_phase2a-day5-7-tests.md
  */
 
-import type { SourceGroupPlain, GroupedSources } from '@/lib/types/source-grouping';
-import type { SourceCategoryId } from '@/lib/constants/source-categories';
-import { SOURCE_CATEGORIES } from '@/lib/constants/source-categories';
+import type { SourceGroupPlain, GroupedSources } from '@/lib/sources/source-grouping-types';
+import type { SourceCategoryId } from '@/lib/sources/source-categories';
+import { SOURCE_CATEGORIES } from '@/lib/sources/source-categories';
 import type { DeepMockProxy } from 'jest-mock-extended';
 import type { PrismaClient } from '@/lib/prisma-exports';
 
@@ -175,7 +175,7 @@ export function createInMemoryCompanyProvider(options?: {
  *
  * Usage:
  *   await withFeatureFlag(true, async () => {
- *     const { getSourceIdsForPreset } = await import('@/lib/constants/source-presets');
+ *     const { getSourceIdsForPreset } = await import('@/lib/sources/source-presets');
  *     const result = getSourceIdsForPreset('company');
  *     expect(result).toBe(...);
  *   });

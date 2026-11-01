@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkRateLimit, RateLimitError } from '@/lib/rate-limiter';
+import { checkRateLimit, RateLimitError } from '@/lib/middleware/rate-limiter';
 import {
   getRateLimitConfig,
   type RateLimitPolicyKey,
 } from '@/lib/config/rate-limits';
-import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
+import { createRateLimiterFromConfig } from '@/lib/middleware/rate-limiter';
 import { trace } from '@opentelemetry/api';
 import { resolveSessionFromRequest } from './session-context';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 import logger from '@/lib/logger';
-import { toRateLimitIP } from '@/lib/utils/http/rate-limit-ip';
+import { toRateLimitIP } from '@/lib/middleware/rate-limit-ip';
 
 type RouteHandler = (
   request: NextRequest,
@@ -44,7 +44,7 @@ interface WithRateLimitOptions {
  * Wraps a Next.js route handler with rate limiting logic. Automatically:
  * - Fetches session once and reuses it
  * - Resolves identity key based on config strategy
- * - Checks rate limit using existing lib/rate-limiter.ts
+ * - Checks rate limit using existing lib/middleware/rate-limiter.ts
  * - Sets standard rate limit headers
  * - Returns 429 with Retry-After on limit exceeded
  * - Integrates with OpenTelemetry for observability

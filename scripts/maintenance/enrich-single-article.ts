@@ -12,7 +12,7 @@ import {
   contentStateWhere,
   summaryUpdatesForReplacedContent,
 } from '../scheduled/utils/summary-reset';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { EmbeddingScheduler } from '@/lib/rag/embedding-scheduler';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { closeRedisConnection } from '@/lib/redis/client';
 

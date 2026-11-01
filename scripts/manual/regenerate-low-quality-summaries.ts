@@ -19,13 +19,13 @@ import { createPrismaClient } from '@/lib/prisma/create-client';
 import { Article, Source, SkipReason } from '@/lib/prisma-exports';
 import { SummaryQualityChecker } from '@/lib/ai/service/quality-checker';
 import { contentAnalysisForLength } from '@/lib/ai/constants';
-import { validateArticleContent } from '@/lib/services/summary/summary-orchestrator';
+import { validateArticleContent } from '@/lib/summary/summary-orchestrator';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
-import { calculateArticleQualityScore } from '../../lib/utils/quality-score';
-import { resolveTags } from '@/lib/services/tag-service';
-import { extractSkipReason, getSkipReasonLabel } from '../../lib/utils/skip-reason-extractor';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { calculateArticleQualityScore } from '../../lib/articles/quality-score';
+import { resolveTags } from '@/lib/tags/tag-service';
+import { extractSkipReason, getSkipReasonLabel } from '../../lib/summary/skip-reason-extractor';
+import { EmbeddingScheduler } from '@/lib/rag/embedding-scheduler';
 import { closeRedisConnection } from '@/lib/redis/client';
 
 const prisma = createPrismaClient();

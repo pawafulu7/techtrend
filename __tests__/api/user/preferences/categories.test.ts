@@ -58,7 +58,7 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 // Mock digest service
-jest.mock('@/lib/services/digest-service', () => ({
+jest.mock('@/lib/personalization/digest-service', () => ({
   digestService: {
     invalidateUserCache: jest.fn().mockResolvedValue(undefined),
   },
@@ -493,7 +493,7 @@ describe('User Category Preferences API', () => {
     it('should invalidate the digest cache before responding', async () => {
       prismaMock.interestCategory.findMany.mockResolvedValue([{ id: 'cat-1' }]);
       // 応答を受けたクライアントはすぐにダイジェストを取り直すので、消し終わってから応答する
-      const { digestService } = require('@/lib/services/digest-service');
+      const { digestService } = require('@/lib/personalization/digest-service');
       let invalidated = false;
       digestService.invalidateUserCache.mockImplementationOnce(async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));

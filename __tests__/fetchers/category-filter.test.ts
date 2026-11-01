@@ -33,7 +33,7 @@ jest.mock('@/lib/logger', () => ({
 const mockedLogger = jest.mocked(logger);
 
 // duplicate-detectionをモック
-jest.mock('@/lib/utils/duplicate-detection', () => ({
+jest.mock('@/lib/articles/duplicate-detection', () => ({
   isDuplicate: jest.fn().mockReturnValue(false),
 }));
 

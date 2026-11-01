@@ -5,7 +5,7 @@
  * and content level categorization.
  */
 
-import { analyzeContent } from '@/lib/utils/content/content-analyzer';
+import { analyzeContent } from '@/lib/summary/quality/content-analyzer';
 
 describe('content-analyzer', () => {
   describe('analyzeContent', () => {

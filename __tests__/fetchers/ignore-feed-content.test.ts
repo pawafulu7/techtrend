@@ -15,7 +15,7 @@ import {
   isEnrichmentSkipped,
 } from '@/lib/fetchers/generic-foreign-rss';
 import { Source } from '@/lib/prisma-exports';
-import { HUGGINGFACE_PAPERS_SOURCE_NAME } from '@/lib/constants/source-categories';
+import { HUGGINGFACE_PAPERS_SOURCE_NAME } from '@/lib/sources/source-categories';
 import Parser from 'rss-parser';
 
 jest.mock('rss-parser', () => {
@@ -39,7 +39,7 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
-jest.mock('@/lib/utils/duplicate-detection', () => ({
+jest.mock('@/lib/articles/duplicate-detection', () => ({
   isDuplicate: jest.fn().mockReturnValue(false),
 }));
 

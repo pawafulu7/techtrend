@@ -7,7 +7,7 @@ import type {
   MetricName,
   MetricRating,
   NavigationType,
-} from '@/lib/telemetry/web-vitals-types';
+} from '@/lib/metrics/web-vitals-types';
 
 // web-vitals が送る値のすべて。web-vitals の更新で値が増えたら、ここに足さないと
 // コンパイルが止まる（足し忘れると、その値の計測を 400 で捨ててしまう）

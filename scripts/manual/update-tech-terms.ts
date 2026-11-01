@@ -1,4 +1,4 @@
-import { techTermsManager } from '@/lib/utils/tech-terms-manager';
+import { techTermsManager } from '@/lib/summary/quality/tech-terms-manager';
 import readline from 'readline';
 
 const rl = readline.createInterface({

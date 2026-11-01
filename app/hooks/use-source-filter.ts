@@ -8,12 +8,12 @@ import {
   type SourceCategoryId,
   VALID_CATEGORY_IDS,
   SOURCE_CATEGORIES,
-} from '@/lib/constants/source-categories';
-import { getSourceIdsForPreset } from '@/lib/constants/source-presets';
+} from '@/lib/sources/source-categories';
+import { getSourceIdsForPreset } from '@/lib/sources/source-presets';
 import { useCompanyFilter } from '@/app/hooks/use-company-filter';
-import type { CompanySource } from '@/lib/providers/company-source';
-import type { GroupedSources } from '@/lib/types/source-grouping';
-import { getPrimaryCategoryByGroupId } from '@/lib/compatibility/category-group-mapping';
+import type { CompanySource } from '@/lib/sources/company-source';
+import type { GroupedSources } from '@/lib/sources/source-grouping-types';
+import { getPrimaryCategoryByGroupId } from '@/lib/sources/category-group-mapping';
 import {
   buildFilterUrl,
   clearTransientFilterParams,

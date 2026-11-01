@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { waitForPageLoad, waitForArticles, openFilterSidebar } from './helpers/wait-utils';
 import { LAPTOP_VIEWPORT } from './constants/viewports';
-import { getSourceIdsForPreset } from '../../lib/constants/source-presets';
+import { getSourceIdsForPreset } from '../../lib/sources/source-presets';
 
 test.describe('ソースフィルタープリセット機能', () => {
   test.beforeEach(async ({ page }) => {

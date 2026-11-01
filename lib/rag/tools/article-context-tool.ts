@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { sanitizeArticleHtml, stripHtmlTags } from '@/lib/utils/html-sanitizer';
-import { countTokens, chunkByTokens } from '@/lib/utils/chunking';
+import { countTokens, chunkByTokens } from '@/lib/rag/chunking';
 import { cosineSimilarity } from '@/lib/utils/vector-math';
 import { EmbeddingService } from '@/lib/rag/embedding-service';
 

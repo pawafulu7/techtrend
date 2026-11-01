@@ -114,8 +114,8 @@ flowchart LR
 | `DiffSummary` | `scripts/ai/generate-diff-summaries.ts --week <ISO週> --force` | `scheduler-diff-summary`（週次、月曜 JST 06:00） | 対象週の記事から差分要約を `DiffSummary` に upsert。実行後 Redis の `@techtrend/cache:diff-summary*` キーを削除 |
 | `Changelog` | `scripts/scheduled/collect-changelog.ts` | `scheduler-changelog`（1 日 1 回） | `ChangelogProject` → `ChangelogVersion`（upsert）→ `ChangelogEntry`（createMany）の順に書き込み |
 | `CleanTags` | `scripts/scheduled/clean-tags.ts` | `scheduler-cleanup`（週次、土曜 JST 02:00） | ①**名前が空文字（`name: ''`）の Tag** を `_ArticleToTag` ごと削除（`clean-tags.ts:60-84`。「記事 0 件のタグ」ではない）②スクリプト内に定義された固定の `tagMappings`（`:88-103`）に従ってタグを統合し、統合元の `TagCategoryMapping` を統合先へ移送する（`mergeTagInto`、`:16-54`） |
-| `AssignStories` | `scripts/scheduled/assign-stories.ts`（`lib/services/story-clustering.ts`） | `scheduler-embedding-worker`（ワーカーの後。ワーカーが失敗しても走る） | 埋め込みの近い記事を同じ出来事としてまとめ、`Article.storyId`・`storySize` を書く。記事詳細の「同じ出来事の記事」（`/api/stories/[id]`）が読む |
-| `OffTopic` | `scripts/scheduled/classify-off-topic.ts`（`lib/services/off-topic-classifier.ts`） | `scheduler-off-topic`（毎時 40 分） | タイトルと一覧要約を Gemini に渡して判定し、`Article.isOffTopic`・`offTopicCheckedAt` を書く。ホームは既定で `isOffTopic` の記事を出さない |
+| `AssignStories` | `scripts/scheduled/assign-stories.ts`（`lib/articles/story-clustering.ts`） | `scheduler-embedding-worker`（ワーカーの後。ワーカーが失敗しても走る） | 埋め込みの近い記事を同じ出来事としてまとめ、`Article.storyId`・`storySize` を書く。記事詳細の「同じ出来事の記事」（`/api/stories/[id]`）が読む |
+| `OffTopic` | `scripts/scheduled/classify-off-topic.ts`（`lib/articles/off-topic-classifier.ts`） | `scheduler-off-topic`（毎時 40 分） | タイトルと一覧要約を Gemini に渡して判定し、`Article.isOffTopic`・`offTopicCheckedAt` を書く。ホームは既定で `isOffTopic` の記事を出さない |
 | `RefreshPersonalization` | `scripts/scheduled/refresh-personalization.ts`（`lib/personalization/tag-category-mapping.ts`・`centroid-service.ts`） | `scheduler-personalization`（週次、月曜 JST 04:45） | ①`TagCategoryMapping` を `lib/personalization/constants.ts` のパターンに合わせる（合うのに無い組を足し、合わなくなった組を消す）②分野の重心を「分野の記事の平均 − 全記事の平均」で作り直し、全記事の `ArticleInterestScore` を書き直す（同じトランザクション）③`/api/articles` の一覧のキャッシュ（L1・L3）とダイジェストのキャッシュを捨てる。ホームの「興味の分野で絞り込む」とダイジェストの「あなたへのおすすめ」がこの点数を読む |
 
 ---

@@ -18,7 +18,7 @@ import {
   checkRateLimit,
   createRateLimiterFromConfig,
   RateLimitError,
-} from '@/lib/rate-limiter';
+} from '@/lib/middleware/rate-limiter';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@/lib/prisma-exports';
 import logger from '@/lib/logger';

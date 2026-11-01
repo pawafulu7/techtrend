@@ -1,4 +1,4 @@
-import { extractArticlesFromToolCalls } from '../article/article-link-extractor';
+import { extractArticlesFromToolCalls } from '../../articles/article-link-extractor';
 import { RAG_TOOL_NAMES } from '@/lib/rag/constants';
 
 describe('extractArticlesFromToolCalls', () => {

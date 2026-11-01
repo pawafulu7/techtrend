@@ -14,7 +14,7 @@
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { INSTRUCTION_PATTERNS, CATEGORY_LABELS, TITLE_CHAR_THRESHOLD, SENTENCE_MARKERS } from '../../lib/ai/constants';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { EmbeddingScheduler } from '@/lib/rag/embedding-scheduler';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { closeRedisConnection } from '@/lib/redis/client';
 

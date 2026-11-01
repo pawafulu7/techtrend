@@ -8,7 +8,7 @@ import { parseRSSDate } from '@/lib/utils/date';
 import {
   extractContent,
   checkContentQuality,
-} from '@/lib/utils/content/content-extractor';
+} from '@/lib/fetchers/content-extractor';
 import { logger } from '@/lib/cli/utils/logger';
 
 interface OpenAIRSSItem {

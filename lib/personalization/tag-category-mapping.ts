@@ -8,7 +8,7 @@
  */
 
 import { PrismaClient } from '@/lib/prisma-exports';
-import { TagNormalizer } from '@/lib/services/tag-normalizer';
+import { TagNormalizer } from '@/lib/tags/tag-normalizer';
 import { INTEREST_CATEGORIES, isGenericTag } from './constants';
 import type { InterestCategorySlug } from './types';
 

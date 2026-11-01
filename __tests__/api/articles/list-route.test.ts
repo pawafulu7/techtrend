@@ -30,7 +30,7 @@ jest.mock('@/lib/auth/get-session', () => ({
 }));
 
 // タグ名をそのまま 1 件の ID に解決する（tagMode の解釈だけを確かめるため）
-jest.mock('@/lib/services/tag-service', () => ({
+jest.mock('@/lib/tags/tag-service', () => ({
   findTagIdGroupsByNames: jest.fn((names: string[]) =>
     Promise.resolve(names.map((name) => [`id-${name}`]))
   ),

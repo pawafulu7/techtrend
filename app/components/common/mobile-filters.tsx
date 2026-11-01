@@ -14,7 +14,7 @@ import {
 import { Filters } from './filters';
 import { TagFilter } from './tag-filter';
 import type { Source } from '@/lib/prisma-exports';
-import type { GroupedSources } from '@/lib/types/source-grouping';
+import type { GroupedSources } from '@/lib/sources/source-grouping-types';
 import {
   TOOLBAR_CONTROL,
   TOOLBAR_OUTLINE,

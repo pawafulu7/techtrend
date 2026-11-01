@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { SummaryManager } from '@/lib/services/summary/summary-manager';
+import { SummaryManager } from '@/lib/summary/summary-manager';
 import { createNotifierFromEnv } from '@/lib/notification';
 import type { ArticleInfo } from '@/lib/notification/types';
 import { summarizeError } from '@/lib/utils/sanitize-error';

@@ -10,7 +10,7 @@ import * as cheerio from 'cheerio';
 import type { Element } from 'domhandler';
 import RSSParser from 'rss-parser';
 import { fetchFeedXml } from './fetch-feed';
-import { docswellConfig } from '../config/docswell';
+import { docswellConfig } from './config/docswell';
 
 interface DocswellRSSItem {
   title?: string;

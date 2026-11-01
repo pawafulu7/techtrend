@@ -23,7 +23,7 @@ import {
 import {
   SOURCE_CATEGORIES,
   SourceCategoryId,
-} from '@/lib/constants/source-categories';
+} from '@/lib/sources/source-categories';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface ParsedArgs {

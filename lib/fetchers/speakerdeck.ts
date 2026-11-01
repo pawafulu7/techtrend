@@ -3,7 +3,7 @@ import { BaseFetcher } from './base';
 import RSSParser from 'rss-parser';
 import { fetchFeedXml } from './fetch-feed';
 import type { CreateArticleInput } from '@/types';
-import { speakerDeckConfig } from '@/lib/config/speakerdeck';
+import { speakerDeckConfig } from '@/lib/fetchers/config/speakerdeck';
 import * as cheerio from 'cheerio';
 
 interface PresentationCandidate {

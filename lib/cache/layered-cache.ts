@@ -1,5 +1,5 @@
 import { RedisCache } from './index';
-import type { PaginatedResponse } from '@/lib/types/api';
+import type { PaginatedResponse } from '@/types/api';
 import type { ArticleWithRelations } from '@/types/models';
 import logger from '@/lib/logger';
 import { env } from '@/lib/config/env';

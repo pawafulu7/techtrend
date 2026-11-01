@@ -85,18 +85,18 @@ jest.mock('@/lib/di/bootstrap', () => ({
 }));
 
 // ---- タグサービスモック ----
-jest.mock('@/lib/services/tag-service', () => ({
+jest.mock('@/lib/tags/tag-service', () => ({
   getTagIdsForConnect: jest.fn().mockResolvedValue([]),
 }));
 
 // ---- category normalizer モック ----
-jest.mock('@/lib/utils/article/article-category-normalizer', () => ({
+jest.mock('@/lib/articles/article-category-normalizer', () => ({
   normalizeArticleCategory: jest.fn((c: string) => c),
 }));
 
 // ---- 記事スコアのモック（式は quality-score のテストで検証する） ----
 const mockCalculateArticleQualityScore = jest.fn().mockReturnValue(66);
-jest.mock('@/lib/utils/quality-score', () => ({
+jest.mock('@/lib/articles/quality-score', () => ({
   calculateArticleQualityScore: (...args: unknown[]) =>
     mockCalculateArticleQualityScore(...args),
 }));

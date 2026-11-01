@@ -4,7 +4,7 @@ import { DateRangeFilter } from './date-range-filter';
 import { useSourceFilter } from '../../hooks/use-source-filter';
 import { SourceFilterPanel } from './SourceFilterPanel';
 import CategoryFilter from '@/app/components/common/CategoryFilter';
-import type { GroupedSources } from '@/lib/types/source-grouping';
+import type { GroupedSources } from '@/lib/sources/source-grouping-types';
 
 interface FiltersProps {
   sources: Array<{ id: string; name: string }>;

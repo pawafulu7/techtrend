@@ -3,7 +3,7 @@ import {
   calculateKeywordSimilarity,
   isDuplicate,
   removeDuplicates
-} from '@/lib/utils/duplicate-detection';
+} from '@/lib/articles/duplicate-detection';
 
 describe('duplicate-detection', () => {
   describe('calculateTitleSimilarity', () => {

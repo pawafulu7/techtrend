@@ -1,6 +1,6 @@
 # #715 集計キャッシュの検証
 
-ページと API の取得を `lib/services/trend-analysis.ts`、`trending-keywords.ts`、`dashboard-stats.ts` に集約した。キャッシュが無ければ共通の集計を実行して完全な payload を保存する。ページ側だけの部分 payload は保存しない。
+ページと API の取得を `lib/trends/trend-analysis.ts`、`trending-keywords.ts`、`dashboard-stats.ts` に集約した。キャッシュが無ければ共通の集計を実行して完全な payload を保存する。ページ側だけの部分 payload は保存しない。
 
 `/api/tags/new` は `days`、`/api/tags/search` は既存の空白除去・200コードポイント制限後の `q` ごとに、300秒キャッシュする。検索キーにはその文字列の SHA-256 を使う。タグの個別無効化では新しい集約キーも無効化する。
 

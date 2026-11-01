@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { sanitizeTrendAiText } from '@/lib/utils/trend-ai-text';
+import { sanitizeTrendAiText } from '@/lib/trends/report/trend-ai-text';
 
 import {
   TrendingUp,
@@ -21,7 +21,7 @@ import type {
   TrendAiSummary,
   TrendAiSummaryV2,
   EvidenceArticleMap,
-} from '@/lib/types/trend-ai-summary';
+} from '@/lib/trends/report/trend-ai-summary-types';
 import { KeyTopicArticleCards, type TopArticle } from './KeyTopicArticleCards';
 
 function TrendChangesBadges({

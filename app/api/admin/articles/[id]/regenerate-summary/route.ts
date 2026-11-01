@@ -14,9 +14,9 @@ import { prisma } from '@/lib/prisma';
 import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { articleDetailCache } from '@/lib/cache/article-detail-cache';
 import { getAppDependencies } from '@/lib/di/bootstrap';
-import { normalizeArticleCategory } from '@/lib/utils/article/article-category-normalizer';
-import { getTagIdsForConnect } from '@/lib/services/tag-service';
-import { calculateArticleQualityScore } from '@/lib/utils/quality-score';
+import { normalizeArticleCategory } from '@/lib/articles/article-category-normalizer';
+import { getTagIdsForConnect } from '@/lib/tags/tag-service';
+import { calculateArticleQualityScore } from '@/lib/articles/quality-score';
 import logger from '@/lib/logger';
 import { serializeArticleDetail } from '@/app/api/admin/articles/[id]/route';
 

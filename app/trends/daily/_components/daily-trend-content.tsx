@@ -17,9 +17,9 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PageHeader } from '@/components/ui-v2/page-header';
-import type { EvidenceArticleMap } from '@/lib/types/trend-ai-summary';
+import type { EvidenceArticleMap } from '@/lib/trends/report/trend-ai-summary-types';
 import type { SerializedTrendReport, DailyTrendResponse } from './daily-data';
-import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/constants/daily-trend';
+import { DAILY_REPORT_NOT_FOUND_ERROR } from '@/lib/trends/daily-trend';
 
 function formatDateJP(dateStr: string): string {
   const [, m, d] = dateStr.split('-');

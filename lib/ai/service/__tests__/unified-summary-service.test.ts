@@ -3,7 +3,7 @@ import { SummaryProvider } from '../../adapter/summary-provider.interface';
 import { QualityChecker } from '../quality-checker.interface';
 import { PostProcessor } from '../post-processor.interface';
 import { TitleTranslator } from '../../translator/gemini-title-translator';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { EmbeddingScheduler } from '@/lib/rag/embedding-scheduler';
 import { SummaryServiceParams } from '../unified-summary-service.interface';
 import { SUMMARY_VERSION } from '@/types/article';
 

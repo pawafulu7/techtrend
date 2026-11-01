@@ -1,6 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useCompanyFilter } from '@/app/hooks/use-company-filter';
-import type { CompanySource } from '@/lib/providers/company-source';
+import type { CompanySource } from '@/lib/sources/company-source';
 
 const mockSources: CompanySource[] = [
   { id: 'cyberagent', name: 'CyberAgent', isActive: true },

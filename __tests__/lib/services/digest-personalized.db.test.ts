@@ -1,10 +1,10 @@
 /**
- * ダイジェストの「あなたへのおすすめ」（lib/services/digest-service.ts の getPersonalizedArticles）の SQL を、
+ * ダイジェストの「あなたへのおすすめ」（lib/personalization/digest-service.ts の getPersonalizedArticles）の SQL を、
  * マイグレーションを適用したテスト DB で確かめる
  */
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import type { PrismaClient } from '@/lib/prisma-exports';
-import { DigestService } from '@/lib/services/digest-service';
+import { DigestService } from '@/lib/personalization/digest-service';
 import type { RedisCache } from '@/lib/cache/redis-cache';
 
 // 実 DB の PrismaClient は jest.requireActual で取る（article-knn.db.test.ts と同じ）

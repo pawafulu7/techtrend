@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useDebounce } from './use-debounce';
-import type { CompanySource } from '@/lib/providers/company-source';
+import type { CompanySource } from '@/lib/sources/company-source';
 
 const SEARCH_DEBOUNCE_MS = 300;
 

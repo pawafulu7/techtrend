@@ -39,7 +39,7 @@ npm test -- --testNamePattern="calculateQualityScore"
 ### 単体テスト
 
 ```typescript
-import { calculateQualityScore } from '@/lib/utils/quality-score';
+import { calculateQualityScore } from '@/lib/articles/quality-score';
 import { createMockArticle } from '../../__mocks__/prisma';
 
 describe('calculateQualityScore', () => {

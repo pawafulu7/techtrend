@@ -2,7 +2,7 @@ import {
   checkEnglishMixing, 
   checkContentQuality,
   fixSummary
-} from '@/lib/utils/content/content-quality-checker';
+} from '@/lib/summary/quality/content-quality-checker';
 
 describe('content-quality-checker', () => {
   describe('checkEnglishMixing', () => {

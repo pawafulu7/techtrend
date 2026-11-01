@@ -7,7 +7,7 @@
 
 import { createLoaders } from '@/lib/dataloader';
 import { getCursorManager } from '@/lib/pagination/cursor-manager';
-import type { PaginatedResponse } from '@/lib/types/api';
+import type { PaginatedResponse } from '@/types/api';
 import logger from '@/lib/logger';
 
 import type { LightweightArticle } from './types';

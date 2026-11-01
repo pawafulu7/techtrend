@@ -1,5 +1,5 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
-import { HATENA_SOURCE_ID } from '@/lib/constants/source-ids';
+import { HATENA_SOURCE_ID } from '@/lib/sources/source-ids';
 
 const prisma = createPrismaClient();
 

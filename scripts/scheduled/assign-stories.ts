@@ -11,7 +11,7 @@
  */
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
-import { assignStories } from '@/lib/services/story-clustering';
+import { assignStories } from '@/lib/articles/story-clustering';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 const CACHE_INVALIDATION_TIMEOUT_MS = 30_000;

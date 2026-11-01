@@ -1,6 +1,6 @@
 'use client';
 
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
+import { getTagDisplayName } from '@/lib/tags/tag-labels';
 import { memo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import {

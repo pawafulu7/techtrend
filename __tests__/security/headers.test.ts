@@ -1,4 +1,4 @@
-import { getDevelopmentCSP, getProductionCSP } from '@/config/security-headers';
+import { getDevelopmentCSP, getProductionCSP } from '@/lib/config/security-headers';
 
 describe('Security Headers - CSP', () => {
   describe('Development CSP', () => {

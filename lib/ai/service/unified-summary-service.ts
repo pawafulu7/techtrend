@@ -10,7 +10,7 @@ import {
   SummaryServiceResult,
 } from './unified-summary-service.interface';
 import { TitleTranslator } from '../translator/gemini-title-translator';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { EmbeddingScheduler } from '@/lib/rag/embedding-scheduler';
 import { logger } from '@/lib/logger';
 
 import { SUMMARY_VERSION } from '@/types/article';

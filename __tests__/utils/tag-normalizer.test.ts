@@ -5,7 +5,7 @@ import {
   normalizeTagInput,
   isValidTagArray,
   validateAndNormalizeTags
-} from '@/lib/utils/tag/tag-normalizer';
+} from '@/lib/tags/tag-input-normalizer';
 
 describe('Tag Normalizer', () => {
   describe('normalizeTag', () => {

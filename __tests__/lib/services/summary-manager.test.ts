@@ -8,7 +8,7 @@ import { createPrismaClient } from '@/lib/prisma/create-client';
 import {
   SummaryManager,
   SummaryGenerationOptions,
-} from '@/lib/services/summary/summary-manager';
+} from '@/lib/summary/summary-manager';
 
 describe('SummaryManager', () => {
   let prisma: PrismaClient;

@@ -79,7 +79,7 @@ flowchart LR
 | API Routes | `app/api/` 配下 62 件の `route.ts`（一覧は [05 機能一覧](./05-features.md#4-api62本)） | - |
 | Better Auth | `lib/auth/auth.ts`（email+password, admin プラグインで RBAC） | `AUTH_SECRET`（フォールバック `NEXTAUTH_SECRET`） |
 | PostgreSQL + pgvector | Prisma 7（`prisma/schema.prisma`, 33 model）。マネージド。バージョン・提供元は注記参照 | `DATABASE_URL` |
-| Redis | `lib/cache/`（LayeredCache: 用途別キャッシュ）+ `lib/rate-limiter.ts`（`getRedisClient()` 兼用） | `REDIS_URL` |
+| Redis | `lib/cache/`（LayeredCache: 用途別キャッシュ）+ `lib/middleware/rate-limiter.ts`（`getRedisClient()` 兼用） | `REDIS_URL` |
 | Gemini | 要約・抽出（`lib/ai/`） | `GEMINI_API_KEY` |
 | OpenAI embeddings | `text-embedding-3-small`（RAG, `lib/rag/`） | `OPENAI_API_KEY` |
 | Resend / SMTP | メールアドレスの確認メール（Better Auth、`lib/auth/auth.ts`）。ほかにメールを送る処理は無い | `RESEND_API_KEY`, `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD`/`SMTP_SECURE` |
@@ -132,7 +132,7 @@ flowchart LR
 ## 注記
 
 - **本番 PostgreSQL のバージョンと提供元は断定しない**。`pg17` と確認できるのはローカル用の `Dockerfile.postgres-pgvector`（`FROM pgvector/pgvector:pg17`、`docker-compose.dev.yml` が使用）だけで、本番の接続先バージョンはコードから取得していない [推測]。提供元についても、運用手順書 `docs/operations/rag-rollback-procedure.md` では Neon の操作（Snapshot 取得、`console.neon.tech`）を記載しているが、`docs/VERCEL_MIGRATION_SETUP.md` は Prisma Postgres（db.prisma.io）と記述が混在しており、現行の提供元はコードからは確定できない [推測]。GitHub Actions は `secrets.DATABASE_URL` のみを参照しており、接続先そのものはワークフロー定義から特定できない
-- **Upstash は使っていない**。レート制限の実体は `lib/rate-limiter.ts` で、`REDIS_URL` の ioredis クライアント（未設定時はメモリ）を使う。したがってキャッシュとレート制限は同じ Redis 1 ノードを共有している（Upstash 用の env の定義は使われていなかったので削除した）
+- **Upstash は使っていない**。レート制限の実体は `lib/middleware/rate-limiter.ts` で、`REDIS_URL` の ioredis クライアント（未設定時はメモリ）を使う。したがってキャッシュとレート制限は同じ Redis 1 ノードを共有している（Upstash 用の env の定義は使われていなかったので削除した）
 - Source 87 件は 2026-10-25 時点の **dev DB** の値（本番の件数は未確認）。取得コマンド: `docker exec techtrend-postgres psql -U postgres -d techtrend_dev -c 'SELECT COUNT(*), COUNT(*) FILTER (WHERE enabled) FROM "Source";'`
 - API routes 62 件の取得コマンド: `find app/api -name route.ts | wc -l`
 - GitHub Actions スケジューラ 14 本の取得コマンド: `ls .github/workflows/scheduler-*.yml | wc -l`

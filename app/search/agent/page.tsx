@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { Sparkles } from 'lucide-react';
 import { PageHeader } from '@/components/ui-v2/page-header';
 import { getSession } from '@/lib/auth/get-session';
-import { features } from '@/config/features';
+import { features } from '@/lib/config/feature-flags';
 import { AgentSearchClient } from './_components/agent-search-client';
 
 export default async function AgentSearchPage() {

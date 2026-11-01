@@ -4,14 +4,14 @@
 import {
   ARXIV_SOURCE_ID,
   HUGGINGFACE_PAPERS_SOURCE_ID,
-} from '@/lib/constants/source-categories';
+} from '@/lib/sources/source-categories';
 import {
   PAPER_SOURCE_IDS_PARAM,
   isPaperSourceId,
   withoutPaperSourceGroups,
   withoutPaperSourceIds,
   withoutPaperSources,
-} from '@/lib/utils/source/paper-source';
+} from '@/lib/sources/paper-source';
 
 describe('paper-source', () => {
   it('arXiv AI と Hugging Face Papers を論文のソースとする', () => {

@@ -10,7 +10,7 @@
 
 // タグの解決（lower(name) をキーにした探索・作成。実 DB の結合テストで確かめる）。
 // ここでは lower(name) から ID を作り、大文字小文字だけが違う名前を同じタグにする
-jest.mock('@/lib/services/tag-service', () => ({
+jest.mock('@/lib/tags/tag-service', () => ({
   resolveTags: jest.fn(async (tags: Array<{ name: string }>) =>
     tags.map((tag) => ({
       id: `tag:${tag.name.toLowerCase()}`,
@@ -35,7 +35,7 @@ jest.mock('@/lib/logger', () => ({
   sanitizeError: jest.fn((e) => e),
 }));
 
-import { processArticleWithTimeout } from '@/lib/services/summary/batch-processor';
+import { processArticleWithTimeout } from '@/lib/summary/batch-processor';
 import { env } from '@/lib/config/env';
 import type { ArticleWithSource } from '@/types/models';
 
@@ -162,7 +162,7 @@ describe('batch-processor', () => {
         expect(result.articleId).toBe('article-with-tags');
 
         // タグの解決は要約の保存と同じトランザクション（tx）で行う
-        const { resolveTags } = jest.requireMock('@/lib/services/tag-service') as {
+        const { resolveTags } = jest.requireMock('@/lib/tags/tag-service') as {
           resolveTags: jest.Mock;
         };
         const [resolvedNames, resolvedClient] = resolveTags.mock.lastCall!;
@@ -233,7 +233,7 @@ describe('batch-processor', () => {
 
       it('should not attach a duplicate tag with another id but the same key', async () => {
         // 統合前の重複: 記事には MCP（tag:mcp）、DB には別 ID の Mcp もある
-        const { resolveTags } = jest.requireMock('@/lib/services/tag-service') as {
+        const { resolveTags } = jest.requireMock('@/lib/tags/tag-service') as {
           resolveTags: jest.Mock;
         };
         resolveTags.mockResolvedValueOnce([

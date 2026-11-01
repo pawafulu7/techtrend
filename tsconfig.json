@@ -83,9 +83,9 @@
     "scripts/fetch-*.ts",
     "scripts/regenerate-*.ts",
     "lib/services/**",
-    "lib/utils/article/article-manual-adder.ts",
-    "lib/utils/content/content-quality-checker.ts",
-    "lib/utils/tech-terms-manager.ts",
+    "lib/articles/article-manual-adder.ts",
+    "lib/summary/quality/content-quality-checker.ts",
+    "lib/summary/quality/tech-terms-manager.ts",
     "prisma/**",
     "types/test-fixtures.ts"
   ]

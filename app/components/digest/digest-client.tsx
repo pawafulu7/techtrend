@@ -14,7 +14,7 @@ import { CategoryPreferenceDialog } from '@/app/components/personalization/categ
 import { useUpdatePreferences } from '@/app/hooks/use-personalization-preferences';
 import { DigestFetchError, useDigest } from '@/app/hooks/use-digest';
 import { loginWithCallback } from '@/lib/routes/auth';
-import type { DigestPeriod } from '@/lib/services/digest-service';
+import type { DigestPeriod } from '@/lib/personalization/digest-service';
 import type { PeriodPreset } from '@/lib/personalization/types';
 
 export function DigestClient() {

@@ -24,8 +24,8 @@ jest.mock('@/lib/middleware/with-rate-limit', () => {
   };
 });
 
-jest.mock('@/lib/rate-limiter', () => {
-  const actual = jest.requireActual('@/lib/rate-limiter');
+jest.mock('@/lib/middleware/rate-limiter', () => {
+  const actual = jest.requireActual('@/lib/middleware/rate-limiter');
   return {
     ...actual,
     checkRateLimit: jest.fn(),
@@ -48,7 +48,7 @@ jest.mock('@/lib/prisma');
 import { prisma } from '@/lib/prisma';
 import logger from '@/lib/logger';
 import { Prisma } from '@/lib/prisma-exports';
-import { checkRateLimit, RateLimitError } from '@/lib/rate-limiter';
+import { checkRateLimit, RateLimitError } from '@/lib/middleware/rate-limiter';
 import { POST } from '@/app/api/inquiries/route';
 import { INQUIRY_REQUEST_MAX_BYTES } from '@/lib/inquiries/constants';
 

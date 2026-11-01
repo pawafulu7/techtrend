@@ -13,7 +13,7 @@ import {
 } from '@/app/api/articles/lib/types';
 import { MetricsCollector } from '@/lib/metrics/performance';
 
-jest.mock('@/lib/services/tag-service', () => ({
+jest.mock('@/lib/tags/tag-service', () => ({
   findTagIdGroupsByNames: async (names: string[]) =>
     names.map((name) => [`tag-${name.toLowerCase()}`]),
 }));

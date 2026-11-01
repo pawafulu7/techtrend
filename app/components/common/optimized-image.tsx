@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useState, type SyntheticEvent } from 'react';
-import { canOptimizeImage } from '@/lib/utils/article/thumbnail';
+import { canOptimizeImage } from '@/lib/articles/thumbnail';
 
 interface OptimizedImageProps {
   src: string;

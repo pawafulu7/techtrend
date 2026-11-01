@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDashboardStats } from '@/lib/services/dashboard-stats';
+import { getDashboardStats } from '@/lib/trends/dashboard-stats';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
 import logger from '@/lib/logger';
 import { applyPublicCacheHeaders } from '@/lib/api/cache-headers';

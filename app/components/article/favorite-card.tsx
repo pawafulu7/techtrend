@@ -1,6 +1,6 @@
 'use client';
 
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
+import { getTagDisplayName } from '@/lib/tags/tag-labels';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ExternalLink, Calendar, Clock, Heart } from 'lucide-react';
@@ -14,7 +14,7 @@ import { TranslationBadge } from '@/components/ui/translation-badge';
 import { ShareButton } from '@/app/components/article/share-button';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import type { FavoriteArticle } from '@/lib/types/favorites';
+import type { FavoriteArticle } from '@/lib/favorites/types';
 import { getReadingTime } from '@/app/components/article/hooks/get-reading-time';
 
 export interface FavoriteArticleCardProps {

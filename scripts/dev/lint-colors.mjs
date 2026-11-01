@@ -541,19 +541,19 @@ async function runSelfCheck() {
   const allowlistCases = [
     {
       name: 'accept directory entry with TODO comment',
-      pattern: 'lib/utils/source/source-colors.ts',
+      pattern: 'lib/sources/source-colors.ts',
       comment: '# TODO: remove after PR-2 棚卸し',
       expectOk: true,
     },
     {
       name: 'accept brand-only marker',
-      pattern: 'lib/utils/source/source-colors.ts',
+      pattern: 'lib/sources/source-colors.ts',
       comment: '# brand-only: source identity colors',
       expectOk: true,
     },
     {
       name: 'reject entry without comment',
-      pattern: 'lib/constants/tag-categories.ts',
+      pattern: 'lib/tags/tag-categories.ts',
       comment: '',
       expectOk: false,
     },

@@ -230,7 +230,7 @@ SELECT COUNT(*) FROM "Source" WHERE "groupId" IS NOT NULL;  -- Expected: 40+
 ### Legacy Provider Validation
 
 **Static Provider Data Source**:
-- Verify that Static Provider reads from `lib/constants/source-categories.ts`
+- Verify that Static Provider reads from `lib/sources/source-categories.ts`
 - Confirm SOURCE_CATEGORIES contains expected company sources
 - No database dependency in static provider path
 

@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
-import type { TrendingKeywordWithSeries } from '@/lib/services/trending-series';
+import { getTagDisplayName } from '@/lib/tags/tag-labels';
+import type { TrendingKeywordWithSeries } from '@/lib/trends/trending-series';
 import { cn } from '@/lib/utils';
 import { Sparkline } from '../sparkline';
 import { heatColorVar, heatLevel } from '../trend-heat';

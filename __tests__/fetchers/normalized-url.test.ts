@@ -34,7 +34,7 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
-jest.mock('@/lib/utils/duplicate-detection', () => ({
+jest.mock('@/lib/articles/duplicate-detection', () => ({
   isDuplicate: jest.fn().mockReturnValue(false),
 }));
 

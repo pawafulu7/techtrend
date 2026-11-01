@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
-import { RateLimitError } from '@/lib/rate-limiter';
+import { RateLimitError } from '@/lib/middleware/rate-limiter';
 
 // Mock dependencies (preserve RateLimitError class)
 jest.mock('@/lib/auth/get-session');
-jest.mock('@/lib/rate-limiter', () => {
-  const actual = jest.requireActual('@/lib/rate-limiter');
+jest.mock('@/lib/middleware/rate-limiter', () => {
+  const actual = jest.requireActual('@/lib/middleware/rate-limiter');
   return {
     ...actual,
     checkRateLimit: jest.fn(),
@@ -19,7 +19,7 @@ import { getSession } from '@/lib/auth/get-session';
 import {
   checkRateLimit,
   createRateLimiterFromConfig,
-} from '@/lib/rate-limiter';
+} from '@/lib/middleware/rate-limiter';
 import { getRateLimitConfig } from '@/lib/config/rate-limits';
 
 const mockAuth = getSession as jest.MockedFunction<typeof getSession>;

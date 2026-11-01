@@ -13,7 +13,7 @@
  * - prisma.$transaction → コールバックを即実行し、tx の呼び出しを検証
  */
 
-jest.mock('@/lib/services/tag-service', () => ({
+jest.mock('@/lib/tags/tag-service', () => ({
   getOrCreateTags: jest.fn(),
 }));
 
@@ -33,7 +33,7 @@ jest.mock('@/lib/config/env', () => ({
 // node-fetch は jest.config.node.js で __tests__/__mocks__/node-fetch.ts に自動マップ済み
 import fetch from 'node-fetch';
 import { prisma } from '@/lib/prisma';
-import { getOrCreateTags } from '@/lib/services/tag-service';
+import { getOrCreateTags } from '@/lib/tags/tag-service';
 import { generateTagsForArticles } from '@/scripts/scheduled/generate-tags';
 
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;

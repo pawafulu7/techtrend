@@ -10,7 +10,7 @@
  */
 
 import type { Prisma } from '@/lib/prisma-exports';
-import { normalizeArticleCategory } from '@/lib/utils/article/article-category-normalizer';
+import { normalizeArticleCategory } from '@/lib/articles/article-category-normalizer';
 import {
   getDateRangeFilter,
   parseDateFromTo,

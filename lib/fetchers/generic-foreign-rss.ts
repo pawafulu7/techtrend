@@ -10,8 +10,8 @@ import { BaseFetcher } from './base';
 import { FetchResult, CreateArticleInput } from '@/types/fetchers';
 import { logger } from '@/lib/logger';
 import { normalizeUrl } from '@/lib/utils/url/url-normalizer';
-import { isDuplicate } from '@/lib/utils/duplicate-detection';
-import { HUGGINGFACE_PAPERS_SOURCE_NAME } from '@/lib/constants/source-categories';
+import { isDuplicate } from '@/lib/articles/duplicate-detection';
+import { HUGGINGFACE_PAPERS_SOURCE_NAME } from '@/lib/sources/source-categories';
 
 // Atom形式のカテゴリ型
 interface AtomCategory {

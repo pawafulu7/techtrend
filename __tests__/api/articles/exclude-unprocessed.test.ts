@@ -68,7 +68,7 @@ import { GET } from '@/app/api/articles/route';
 import { prisma } from '@/lib/prisma';
 import { NextRequest } from 'next/server';
 import { __mockGetArticles } from '@/lib/cache/layered-cache';
-import { slideWithoutSummaryWhere } from '@/lib/utils/source/slide-source';
+import { slideWithoutSummaryWhere } from '@/lib/sources/slide-source';
 
 // excludeUnprocessed で足す条件（要約の無い記事を除く。画像のあるスライドは残す）
 const processedCondition = {

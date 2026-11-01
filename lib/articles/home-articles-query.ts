@@ -14,7 +14,7 @@ import type { HomePersonalization } from '@/lib/personalization/preferences-stat
 import {
   isPaperSourceId,
   withoutPaperSourceIds,
-} from '@/lib/utils/source/paper-source';
+} from '@/lib/sources/paper-source';
 
 export type ArticleFilterValue = string | boolean | undefined;
 export type ArticleFilters = Record<string, ArticleFilterValue>;

@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import { BarChart3, Home, Newspaper, Sparkles } from 'lucide-react';
 import { authClient } from '@/lib/auth/auth-client';
 import { useIsHydrated } from '@/app/hooks/use-is-hydrated';
-import { features } from '@/config/features';
+import { features } from '@/lib/config/feature-flags';
 import { isNavActive, navAriaCurrent } from '@/components/ui-v2/nav-tab';
 
 export interface PrimaryNavItem {

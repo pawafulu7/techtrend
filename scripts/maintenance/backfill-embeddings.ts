@@ -1,5 +1,5 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
-import { EmbeddingScheduler } from '@/lib/services/embedding-scheduler';
+import { EmbeddingScheduler } from '@/lib/rag/embedding-scheduler';
 
 const prisma = createPrismaClient();
 const embeddingScheduler = new EmbeddingScheduler(prisma);

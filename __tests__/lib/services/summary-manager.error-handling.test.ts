@@ -5,7 +5,7 @@
 
 import { PrismaClient } from '@/lib/prisma-exports';
 import { createPrismaClient } from '@/lib/prisma/create-client';
-import { SummaryManager } from '@/lib/services/summary/summary-manager';
+import { SummaryManager } from '@/lib/summary/summary-manager';
 import { UnifiedSummaryService } from '@/lib/ai/service/unified-summary-service';
 
 // Mock dependencies

@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 
 // Mock rate limiter to prevent actual Redis calls
-jest.mock('@/lib/rate-limiter', () => ({
+jest.mock('@/lib/middleware/rate-limiter', () => ({
   checkRateLimit: jest.fn().mockResolvedValue({
     limit: 30,
     remaining: 29,

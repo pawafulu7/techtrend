@@ -3,11 +3,11 @@
  * Tests script execution, command dispatch, and error handling
  */
 
-import { SummaryManager } from '@/lib/services/summary/summary-manager';
+import { SummaryManager } from '@/lib/summary/summary-manager';
 import { getPrismaClient } from '@/lib/cli/utils/database';
 
 // Mocks
-jest.mock('@/lib/services/summary/summary-manager');
+jest.mock('@/lib/summary/summary-manager');
 jest.mock('@/lib/cli/utils/database');
 
 // スクリプトは GEMINI_API_KEY が無いと記事を処理する前に止まる（issue #710）。

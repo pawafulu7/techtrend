@@ -1,7 +1,7 @@
 /**
  * APIレスポンスのZodスキーマ検証テスト
  *
- * このテストは lib/schemas/article-views.ts で定義されている
+ * このテストは lib/history/article-views-schema.ts で定義されている
  * ArticleViewSchema/ArticleViewsResponseSchema が
  * 実際のAPIレスポンス形式と整合していることを検証する。
  */
@@ -9,7 +9,7 @@
 import {
   ArticleViewSchema,
   ArticleViewsResponseSchema,
-} from '@/lib/schemas/article-views';
+} from '@/lib/history/article-views-schema';
 
 describe('ArticleViewsResponseSchema', () => {
   describe('Valid responses', () => {

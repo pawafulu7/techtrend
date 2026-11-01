@@ -2,11 +2,11 @@
 
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FavoritesResponseSchema } from '@/lib/schemas/favorites';
+import { FavoritesResponseSchema } from '@/lib/favorites/schema';
 import type {
   FavoriteArticle,
   FavoritesApiResponse,
-} from '@/lib/types/favorites';
+} from '@/lib/favorites/types';
 
 /** 画面で文言を選べるよう、HTTP ステータスを持たせる（issue #729） */
 export class FavoritesFetchError extends Error {

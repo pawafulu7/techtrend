@@ -10,7 +10,7 @@
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { TrendingKeywordWithSeries } from '@/lib/services/trending-series';
+import type { TrendingKeywordWithSeries } from '@/lib/trends/trending-series';
 import { TrendingKeywordsSection } from '@/app/trends/_components/keyword-sections';
 import { heatLevel } from '@/app/components/trends/trend-heat';
 

@@ -8,7 +8,7 @@
  * 「未使用の @ts-expect-error」として型チェックが失敗する。
  */
 import { withRateLimit } from '@/lib/middleware/with-rate-limit';
-import { createRateLimiterFromConfig } from '@/lib/rate-limiter';
+import { createRateLimiterFromConfig } from '@/lib/middleware/rate-limiter';
 
 const handler = () => new Response(null);
 

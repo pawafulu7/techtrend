@@ -12,7 +12,7 @@ jest.mock('@google/generative-ai', () => ({
   })),
 }));
 
-jest.mock('@/lib/services/embedding-scheduler', () => ({
+jest.mock('@/lib/rag/embedding-scheduler', () => ({
   EmbeddingScheduler: jest.fn().mockImplementation(() => ({})),
 }));
 
@@ -34,9 +34,9 @@ import {
   getGeminiModel,
   getGeminiTrendModel,
   resetGeminiConfigCache,
-} from '@/lib/config/gemini';
+} from '@/lib/ai/gemini-config';
 import { LLMExtractionPipeline } from '@/lib/ai/extraction/llm-extraction-pipeline';
-import { TrendReportGenerator } from '@/lib/services/trend-report/trend-report-generator';
+import { TrendReportGenerator } from '@/lib/trends/report/trend-report-generator';
 import { GEMINI_API } from '@/lib/constants';
 import { loadConfig } from '@/lib/di/config';
 

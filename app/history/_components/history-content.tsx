@@ -13,9 +13,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { HistoryArticleCard } from '@/app/components/article/history-card';
 import { useGroupedHistory } from '@/app/hooks/use-grouped-history';
 import { useFavoriteStatuses } from '@/app/hooks/use-favorite-statuses';
-import { getDateGroupHeadingId } from '@/lib/utils/date-grouping';
-import { ArticleViewsResponseSchema } from '@/lib/schemas/article-views';
-import type { HistoryViewItem } from '@/lib/types/history';
+import { getDateGroupHeadingId } from '@/lib/history/date-grouping';
+import { ArticleViewsResponseSchema } from '@/lib/history/article-views-schema';
+import type { HistoryViewItem } from '@/lib/history/types';
 
 // Skeleton component for loading state (grid layout)
 function HistoryCardSkeleton() {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { hasValidThumbnail } from '@/lib/utils/article/thumbnail';
+import { hasValidThumbnail } from '@/lib/articles/thumbnail';
 import { cn } from '@/lib/utils';
 import { formatDate } from './utils';
 import { OptimizedImage } from '@/app/components/common/optimized-image';

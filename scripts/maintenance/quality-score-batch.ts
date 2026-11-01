@@ -8,7 +8,7 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { Prisma, ProcessingStatus } from '@/lib/prisma-exports';
 import logger from '@/lib/logger';
-import { calculateArticleQualityScore } from '../../lib/utils/quality-score';
+import { calculateArticleQualityScore } from '../../lib/articles/quality-score';
 
 const prisma = createPrismaClient();
 

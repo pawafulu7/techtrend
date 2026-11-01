@@ -3,7 +3,7 @@ import { BaseFetcher } from './base';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { logger } from '@/lib/cli/utils/logger';
-import { ledgeAiConfig } from '@/lib/config/ledge-ai';
+import { ledgeAiConfig } from '@/lib/fetchers/config/ledge-ai';
 
 interface StrapiArticle {
   id: number;

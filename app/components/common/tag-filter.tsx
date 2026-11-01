@@ -1,6 +1,6 @@
 'use client';
 
-import { getTagDisplayName } from '@/lib/constants/tag-labels';
+import { getTagDisplayName } from '@/lib/tags/tag-labels';
 import { useState, useEffect, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui-v2/badge-v2';
@@ -20,14 +20,14 @@ import { cn } from '@/lib/utils';
 import {
   TAG_CATEGORIES,
   getCategoryInfo,
-} from '@/lib/constants/tag-categories';
+} from '@/lib/tags/tag-categories';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { useDebounce } from '@/app/hooks/use-debounce';
-import { MAX_TAG_FILTER_COUNT } from '@/lib/constants/tag-filter';
+import { MAX_TAG_FILTER_COUNT } from '@/lib/tags/tag-filter';
 import {
   buildFilterUrl,
   clearTransientFilterParams,

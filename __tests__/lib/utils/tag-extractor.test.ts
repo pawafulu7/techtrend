@@ -9,7 +9,7 @@ import {
   mergeWithBaseTags,
   extractTagsFromText,
   extractTagsFromRSSItem,
-} from '@/lib/utils/tag/tag-extractor';
+} from '@/lib/tags/tag-extractor';
 
 describe('tag-extractor', () => {
   describe('normalizeTag', () => {

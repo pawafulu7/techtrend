@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { logger } from '../utils/logger';
 import { getPrismaClient } from '../utils/database';
-import { SummaryManager } from '@/lib/services/summary/summary-manager';
+import { SummaryManager } from '@/lib/summary/summary-manager';
 
 // Root command
 export const summariesCommand = new Command('summaries').description(

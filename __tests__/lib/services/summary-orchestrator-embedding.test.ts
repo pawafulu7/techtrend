@@ -6,8 +6,8 @@
 import {
   generateMissingSummaries,
   regenerateSummaries,
-} from '@/lib/services/summary/summary-orchestrator';
-import { SummaryManager } from '@/lib/services/summary/summary-manager';
+} from '@/lib/summary/summary-orchestrator';
+import { SummaryManager } from '@/lib/summary/summary-manager';
 
 jest.mock('@/lib/di/bootstrap', () => ({
   getAppDependencies: jest.fn(() => ({ service: {} })),

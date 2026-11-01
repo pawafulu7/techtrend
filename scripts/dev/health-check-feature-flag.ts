@@ -13,7 +13,7 @@
  */
 
 import { FEATURE_FLAGS } from '@/lib/config/feature-flags';
-import { createCompanySourceProvider } from '@/lib/providers/company-source/factory';
+import { createCompanySourceProvider } from '@/lib/sources/company-source/factory';
 
 async function checkFeatureFlag() {
   console.log('=== Phase 2-A Feature Flag Health Check ===\n');

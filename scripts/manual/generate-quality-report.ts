@@ -1,6 +1,6 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
-import { checkContentQuality } from '@/lib/utils/content/content-quality-checker';
-import { techTermsManager } from '@/lib/utils/tech-terms-manager';
+import { checkContentQuality } from '@/lib/summary/quality/content-quality-checker';
+import { techTermsManager } from '@/lib/summary/quality/tech-terms-manager';
 import fs from 'fs/promises';
 import path from 'path';
 

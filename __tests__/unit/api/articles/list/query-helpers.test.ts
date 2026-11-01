@@ -41,7 +41,7 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 // article-category-normalizerのモック
-jest.mock('@/lib/utils/article/article-category-normalizer', () => ({
+jest.mock('@/lib/articles/article-category-normalizer', () => ({
   normalizeArticleCategory: jest.fn((c: string) => c),
 }));
 

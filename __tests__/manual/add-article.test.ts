@@ -23,8 +23,8 @@ jest.mock('@/lib/prisma-exports', () => {
   };
 });
 
-import { detectSourceFromUrl, normalizeSourceName, isValidUrl, isSupportedUrl } from '../../lib/utils/source/source-detector';
-import { addArticleManually, setPrismaClient } from '../../lib/utils/article/article-manual-adder';
+import { detectSourceFromUrl, normalizeSourceName, isValidUrl, isSupportedUrl } from '../../lib/sources/source-detector';
+import { addArticleManually, setPrismaClient } from '../../lib/articles/article-manual-adder';
 import { PrismaClient } from '@/lib/prisma-exports';
 import { WebFetcher } from '../../lib/utils/web-fetcher';
 import { getAppDependencies } from '@/lib/di/bootstrap';

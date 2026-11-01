@@ -3,11 +3,11 @@
  * Tests the integration between CLI and SummaryManager
  */
 
-import { SummaryManager } from '@/lib/services/summary/summary-manager';
+import { SummaryManager } from '@/lib/summary/summary-manager';
 import { getPrismaClient } from '@/lib/cli/utils/database';
 
 // Mocks
-jest.mock('@/lib/services/summary/summary-manager');
+jest.mock('@/lib/summary/summary-manager');
 jest.mock('@/lib/cli/utils/database');
 
 describe('summaries CLI command', () => {

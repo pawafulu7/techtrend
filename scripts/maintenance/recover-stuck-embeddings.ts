@@ -25,7 +25,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import { EmbeddingScheduler, stuckJobWhere } from '@/lib/services/embedding-scheduler';
+import { EmbeddingScheduler, stuckJobWhere } from '@/lib/rag/embedding-scheduler';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
 interface Options {

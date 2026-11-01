@@ -61,7 +61,7 @@ const eslintConfig = defineConfig([
       'lib/hooks/**',
       'lib/cookies/**',
       'lib/errors/**',
-      'lib/utils/article/article-link-extractor.ts',
+      'lib/articles/article-link-extractor.ts',
       'lib/config/feature-flags.ts',
     ],
     rules: {

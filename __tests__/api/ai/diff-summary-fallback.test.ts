@@ -34,7 +34,7 @@ jest.mock('@/lib/prisma', () => ({
   },
 }));
 
-jest.mock('@/lib/constants/source-categories', () => ({
+jest.mock('@/lib/sources/source-categories', () => ({
   SOURCE_CATEGORIES: {
     frontend: { id: 'frontend', name: 'フロントエンド', description: 'Frontend', sourceIds: [] },
     ai_ml: { id: 'ai_ml', name: 'AI/ML', description: 'AI and ML', sourceIds: [] },
