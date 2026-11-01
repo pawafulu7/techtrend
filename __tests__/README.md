@@ -22,7 +22,7 @@ __tests__/
 |------|------|
 | `jest.config.node.js` | `*.test.ts`（Node 環境）。`*.db.test.ts` はテスト用の DB を使う |
 | `jest.config.dom.js` | `*.test.tsx`（jsdom） |
-| `jest.config.integration.js` | `__tests__/integration/` |
+| `jest.config.integration.js` | `__tests__/integration/`。実際の OpenAI を呼ぶもの（`rag-agent-integration.test.ts`）は、テストのコンテナに OpenAI のキーを渡していない（`.env` はイメージに入れない）ので手元では動かない |
 | `playwright.config.ts` | `__tests__/e2e/**/*.spec.ts` |
 
 ## テストの実行

@@ -32,7 +32,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Local env files
+# Local env files（API キーなどの実際の値が入る。イメージに入れると、テストが手元のキーで有料の API を
+# 実際に呼ぶ。テストのコンテナに渡す値は docker-compose.test.yml の environment に明示する）
+.env
 .env*.local
 .env.local
 .env.development.local
