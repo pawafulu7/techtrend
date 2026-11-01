@@ -7,7 +7,7 @@ import { useSession } from '@/lib/auth/auth-client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useReadStatus } from '@/app/hooks/use-read-status';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createMockArticleWithRelations } from '@/test/utils/mock-factories';
+import { createMockArticleWithRelations } from '@/__tests__/helpers/mock-factories';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({

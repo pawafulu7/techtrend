@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ArticleList } from '@/app/components/article/list';
-import { createMockArticleWithRelations } from '@/test/utils/mock-factories';
+import { createMockArticleWithRelations } from '@/__tests__/helpers/mock-factories';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),

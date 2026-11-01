@@ -74,8 +74,6 @@
     "__tests__/**",
     "tests/**",
     "__mocks__/**",
-    "test/**",
-    "e2e/**",
     "scripts/temp/**/*.ts",
     "scripts/test/**/*.ts",
     "scripts/manual/**/*.ts",

@@ -11,7 +11,7 @@ import {
   createMockArticleWithRelations,
   createMockSource,
   mockArticleWithRelations,
-} from '@/test/utils/mock-factories';
+} from '@/__tests__/helpers/mock-factories';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({

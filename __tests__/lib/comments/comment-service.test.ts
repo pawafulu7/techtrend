@@ -22,7 +22,7 @@ import { commentsCache } from '@/lib/cache/comments-cache';
 import type { Article, Comment } from '@/lib/prisma-exports';
 
 // Import prismaMock from test utilities (auto-mocked via jest.config.node.js)
-const { prismaMock, resetPrismaMock } = require('../../../test/utils/prisma-mock');
+const { prismaMock, resetPrismaMock } = require('../../helpers/prisma-mock');
 
 // Get mocked cache for assertions
 const mockCommentsCache = commentsCache as jest.Mocked<typeof commentsCache>;

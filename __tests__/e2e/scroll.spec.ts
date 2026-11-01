@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { isRunningInCI, waitForPageLoad } from '../../e2e/helpers/wait-utils';
+import { isRunningInCI, waitForPageLoad } from './helpers/wait-utils';
 import { loginAsAdmin } from './utils/e2e-helpers';
 
 test.describe('スクロール機能のテスト', () => {

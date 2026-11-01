@@ -4,8 +4,8 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { CompactCard } from '@/app/components/article/compact-card';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createMockArticleWithRelations } from '@/test/utils/mock-factories';
-import { findPaletteColorClasses } from '@/test/utils/palette-classes';
+import { createMockArticleWithRelations } from '@/__tests__/helpers/mock-factories';
+import { findPaletteColorClasses } from '@/__tests__/helpers/palette-classes';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({

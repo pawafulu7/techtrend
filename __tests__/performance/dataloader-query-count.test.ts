@@ -20,7 +20,7 @@ import DataLoader from 'dataloader';
 import { prisma } from '@/lib/prisma';
 import { createLoaders } from '@/lib/dataloader';
 import { resetFavoriteLoaderCaches } from '@/lib/dataloader/favorite-loader';
-import { resetPrismaMock } from '../../test/utils/prisma-mock';
+import { resetPrismaMock } from '../helpers/prisma-mock';
 
 // prismaを型アサーション
 const prismaMock = prisma as any;

@@ -6,7 +6,7 @@
  * - カテゴリーごとにグループ化
  * - **data-testid プライマリ**（Issue #611 で class 依存セレクタを全廃）
  *
- * testid 命名規則の詳細は `e2e/testid-naming.md` を参照。
+ * testid 命名規則の詳細は `docs/development/e2e-testid-naming.md` を参照。
  *
  * Fallback として使用してよいもの:
  * - ARIA role / live region (`role="alert"`, `role="status"`)

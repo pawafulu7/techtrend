@@ -80,7 +80,6 @@ const customJestConfig = {
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
     '<rootDir>/__tests__/e2e/',
-    '<rootDir>/e2e/',
     '<rootDir>/__tests__/integration/', // 統合テストは別コマンドで実行
     '\\.test\\.tsx$', // Reactコンポーネントテストは除外
     // DB 共有テストは並列側から除外し、test:node:serial で --runInBand 実行する

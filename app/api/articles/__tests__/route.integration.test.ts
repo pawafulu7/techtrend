@@ -8,7 +8,7 @@
 import {
   createMockArticleWithRelations,
   resetMockCounters,
-} from '@/test/utils/mock-factories';
+} from '@/__tests__/helpers/mock-factories';
 
 // Mock all dependencies before any imports
 jest.mock('@/lib/prisma', () => ({

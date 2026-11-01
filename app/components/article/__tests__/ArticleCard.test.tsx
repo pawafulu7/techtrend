@@ -5,7 +5,7 @@ import '@testing-library/jest-dom';
 import { ArticleCard } from '@/app/components/article/card';
 import { useSession } from '@/lib/auth/auth-client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createMockArticleWithRelations } from '@/test/utils/mock-factories';
+import { createMockArticleWithRelations } from '@/__tests__/helpers/mock-factories';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({

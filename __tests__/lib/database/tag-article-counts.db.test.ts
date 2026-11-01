@@ -21,7 +21,7 @@ const { PrismaClient: RealPrismaClient } = jest.requireActual(
 const { PrismaPg } = jest.requireActual('@prisma/adapter-pg');
 // route の prisma（lib/prisma）は jest.setup.node.js がモックした PrismaClient（= prismaMock）
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { prismaMock } = require('../../../test/utils/prisma-mock');
+const { prismaMock } = require('../../helpers/prisma-mock');
 const DB_URL = process.env.DATABASE_URL;
 
 // 書き込むので、DB 名が _test で終わるときだけ走らせる（開発 DB に行を残さないため）

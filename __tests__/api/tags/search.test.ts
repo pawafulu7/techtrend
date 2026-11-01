@@ -14,7 +14,7 @@ const lastClient = () => mockFindTopTags.mock.calls.at(-1)?.[0];
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
   prismaMock: sharedPrismaMock,
-} = require('../../../test/utils/prisma-mock');
+} = require('../../helpers/prisma-mock');
 jest.mock('@/lib/database/tag-article-counts', () => ({
   findTopTags: (...args: unknown[]) => mockFindTopTags(...args),
 }));

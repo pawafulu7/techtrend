@@ -17,7 +17,7 @@ import { NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth/get-session';
 import { Prisma } from '@/lib/prisma-exports';
 
-const { prismaMock, resetPrismaMock } = require('../../../../test/utils/prisma-mock');
+const { prismaMock, resetPrismaMock } = require('../../../helpers/prisma-mock');
 
 const authMock = getSession as jest.MockedFunction<typeof getSession>;
 

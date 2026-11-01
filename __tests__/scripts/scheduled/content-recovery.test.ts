@@ -18,7 +18,7 @@ import {
 } from '@/scripts/scheduled/utils/summary-reset';
 
 // @/lib/prisma は jest.config の moduleNameMapper で共有の prismaMock に置き換わる。
-// $transaction はコールバックに prismaMock を渡す（test/utils/prisma-mock.js）
+// $transaction はコールバックに prismaMock を渡す（__tests__/helpers/prisma-mock.js）
 const mockPrisma = prisma as unknown as {
   article: { updateMany: jest.Mock };
   $transaction: jest.Mock;

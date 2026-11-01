@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { SELECTORS } from './constants/selectors';
+import { SELECTORS } from './constants/testid-selectors';
 import { MOBILE_VIEWPORT } from './constants/viewports';
 import { assertLocatorFound } from './utils/test-helpers';
 

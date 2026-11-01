@@ -25,7 +25,7 @@ jest.mock('@/lib/middleware/csrf-protection', () => ({
 import { NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth/get-session';
 
-const { prismaMock, resetPrismaMock } = require('../../../../test/utils/prisma-mock');
+const { prismaMock, resetPrismaMock } = require('../../../helpers/prisma-mock');
 
 // モック関数のヘルパー
 const authMock = getSession as jest.MockedFunction<typeof getSession>;

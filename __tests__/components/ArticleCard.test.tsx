@@ -17,8 +17,8 @@ import {
   createMockTag,
   createMockSource,
   mockArticleWithRelations,
-} from '@/test/utils/mock-factories';
-import { findPaletteColorClasses } from '@/test/utils/palette-classes';
+} from '@/__tests__/helpers/mock-factories';
+import { findPaletteColorClasses } from '@/__tests__/helpers/palette-classes';
 
 // Next.jsのモック
 jest.mock('next/navigation', () => ({

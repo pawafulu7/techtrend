@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForArticles, getTimeout } from '../../e2e/helpers/wait-utils';
+import { waitForArticles, getTimeout } from './helpers/wait-utils';
 
 // CI環境の検出
 const isCI = ['1', 'true', 'yes'].includes(String(process.env.CI).toLowerCase());

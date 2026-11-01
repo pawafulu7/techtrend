@@ -82,9 +82,6 @@ const eslintConfig = defineConfig([
   // Enforce centralized env access in app/ and scripts/scheduled/
   {
     files: ['app/**/*.ts', 'app/**/*.tsx', 'scripts/scheduled/**/*.ts', 'config/**/*.ts'],
-    ignores: [
-      'config/test.config.ts',
-    ],
     rules: {
       'no-restricted-syntax': ['error',
         loggerErrorKeyRestriction,
@@ -141,13 +138,11 @@ const eslintConfig = defineConfig([
     '.workflow/**',
     'tmp/**',
     'temp/**',
-    'test/**',
     'test_debug.ts',
     'test_*.ts',
     '**/test-*.ts',
     'testStability.ts',
     '*.tsbuildinfo',
-    'e2e/**',
     '**/*.spec.ts',
     '**/*.test.ts',
     '**/*.test.tsx',

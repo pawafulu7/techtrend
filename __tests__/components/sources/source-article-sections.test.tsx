@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { QueryProvider } from '@/app/providers/query-provider';
 import { SourceArticleSections } from '@/app/sources/[id]/_components/source-article-sections';
-import { createMockArticleWithRelations } from '@/test/utils/mock-factories';
+import { createMockArticleWithRelations } from '@/__tests__/helpers/mock-factories';
 
 /**
  * ソース詳細の記事一覧のお気に入り状態（issue #653）

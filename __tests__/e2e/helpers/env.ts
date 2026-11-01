@@ -2,7 +2,7 @@
  * E2Eテスト用の環境変数ユーティリティ
  */
 
-import { getTimeout as getWaitUtilsTimeout, isRunningInCI } from '../../../e2e/helpers/wait-utils';
+import { getTimeout as getWaitUtilsTimeout, isRunningInCI } from './wait-utils';
 
 /**
  * CI環境かどうかを判定

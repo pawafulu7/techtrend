@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { SELECTORS } from './constants/selectors';
+import { SELECTORS } from './constants/testid-selectors';
 import { openFilterSidebar } from './helpers/wait-utils';
 
 test.describe('無限スクロール機能', () => {

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { waitForPageLoad, waitForArticles, openFilterSidebar } from '../../e2e/helpers/wait-utils';
-import { LAPTOP_VIEWPORT } from '../../e2e/constants/viewports';
+import { waitForPageLoad, waitForArticles, openFilterSidebar } from './helpers/wait-utils';
+import { LAPTOP_VIEWPORT } from './constants/viewports';
 import { getSourceIdsForPreset } from '../../lib/constants/source-presets';
 
 test.describe('ソースフィルタープリセット機能', () => {

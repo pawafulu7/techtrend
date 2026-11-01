@@ -7,8 +7,8 @@ import {
   expectPageTitle,
   expectNoErrors,
 } from '../utils/e2e-helpers';
-import { getTimeout, waitForUrlParam } from '../../../e2e/helpers/wait-utils';
-import { MOBILE_VIEWPORT, LAPTOP_VIEWPORT } from '../../../e2e/constants/viewports';
+import { getTimeout, waitForUrlParam } from '../helpers/wait-utils';
+import { MOBILE_VIEWPORT, LAPTOP_VIEWPORT } from '../constants/viewports';
 import { SELECTORS } from '../constants/selectors';
 
 // CI環境の検出

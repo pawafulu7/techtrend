@@ -1,7 +1,7 @@
 import {
   findPaletteColorClasses,
   isColorClass,
-} from '@/test/utils/palette-classes';
+} from '@/__tests__/helpers/palette-classes';
 
 // Tailwind はテストファイルからもクラス名を拾い、本番の CSS に入れる。検体のクラス名をそのまま
 // 書くと、使われない色のルールが本番の CSS に増える（url() を含むものはビルドも壊す）。

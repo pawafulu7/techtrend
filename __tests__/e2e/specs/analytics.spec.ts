@@ -10,7 +10,7 @@ import {
   loginTestUser,
 } from '../utils/e2e-helpers';
 import { _SELECTORS } from '../constants/selectors';
-import { MOBILE_VIEWPORT, LAPTOP_VIEWPORT } from '../../../e2e/constants/viewports';
+import { MOBILE_VIEWPORT, LAPTOP_VIEWPORT } from '../constants/viewports';
 
 test.describe('分析ページ', () => {
   test.beforeEach(async ({ page }) => {

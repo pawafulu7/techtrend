@@ -34,7 +34,6 @@ const customJestConfig = {
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
     '<rootDir>/__tests__/e2e/',
-    '<rootDir>/e2e/',
     // FavoriteButtonテストはNode環境専用なのでDOM環境では除外
     '<rootDir>/components/article/__tests__/FavoriteButton.test.tsx',
     // window.location操作を含むテストはDOM環境では除外（jsdom制限）
