@@ -22,7 +22,7 @@ DROP INDEX "idx_article_chunk_embedding_hnsw_cosine";
 この索引は物理カタログ比較と、必要な HNSW 定義の明示検証によって保持を確認する。
 Prisma の更新等で出力が変わった場合、差分を広く無視するのではなく、全文と実物を確認して検証・回帰テストを更新する。
 
-Docker 初期化の `scripts/migration/init.sql` と `scripts/docker/init-pgvector-test.sql` は `unaccent` を追加するが、アプリの migration は利用しない。
+Docker 初期化の `scripts/docker/init-dev.sql` と `scripts/docker/init-pgvector-test.sql` は `unaccent` を追加するが、アプリの migration は利用しない。
 対象 DB にだけある public の `unaccent` は bootstrap 専用の追加として INFO に出す。その他の追加、または migration 側にも存在する拡張の定義変更は例外にしない。
 拡張内の関数は個別比較せず、拡張の namespace/version で比較する。
 
