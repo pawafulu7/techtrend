@@ -5,8 +5,10 @@
 import { SkipReason } from '@/lib/prisma-exports';
 import {
   PENDING_SUMMARY_ORDER_BY,
+  noContentSkipReason,
   pendingSummaryWhere,
   recordContentSkipReasons,
+  recordNoContentSkipReasons,
 } from '@/lib/summary/pending-articles';
 import { checkNewArticles } from '@/lib/summary/batch-processor';
 import { generateMissingSummaries } from '@/lib/summary/summary-orchestrator';
@@ -67,7 +69,7 @@ describe('pendingSummaryWhere', () => {
 });
 
 describe('recordContentSkipReasons', () => {
-  it('読んだときと本文の長さが同じ記事だけに印を付ける（記事ごとに比べる）', async () => {
+  it('読んだときと本文の長さが同じ記事だけに印を付け、本文が取れなかった理由（summaryError）は消さない', async () => {
     const prisma = createPrismaMock();
 
     await recordContentSkipReasons(
@@ -86,7 +88,7 @@ describe('recordContentSkipReasons', () => {
           OR: [{ summary: null }, { summary: '' }],
           contentLength: null,
         },
-        data: { skipReason: SkipReason.THIN_CONTENT, summaryError: null },
+        data: { skipReason: SkipReason.THIN_CONTENT },
       },
       {
         where: {
@@ -94,7 +96,7 @@ describe('recordContentSkipReasons', () => {
           OR: [{ summary: null }, { summary: '' }],
           contentLength: 42,
         },
-        data: { skipReason: SkipReason.THIN_CONTENT, summaryError: null },
+        data: { skipReason: SkipReason.THIN_CONTENT },
       },
     ]);
   });
@@ -105,6 +107,45 @@ describe('recordContentSkipReasons', () => {
     await recordContentSkipReasons(prisma as never, [], SkipReason.THIN_CONTENT);
 
     expect(prisma.article.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('noContentSkipReason', () => {
+  it.each([
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    'https://youtu.be/dQw4w9WgXcQ',
+    'https://m.youtube.com/shorts/dQw4w9WgXcQ',
+  ])('本文の無い YouTube の動画（%s）は VIDEO', (url) => {
+    expect(noContentSkipReason(url)).toBe(SkipReason.VIDEO);
+  });
+
+  it.each([
+    'https://example.com/watch?v=dQw4w9WgXcQ',
+    'https://www.youtube.com/playlist?list=PL0123456789',
+    'https://www.youtube.com/watch?v=short',
+  ])('動画でない URL（%s）は CONTENT_FETCH_FAILED', (url) => {
+    expect(noContentSkipReason(url)).toBe(SkipReason.CONTENT_FETCH_FAILED);
+  });
+});
+
+describe('recordNoContentSkipReasons', () => {
+  it('動画には VIDEO、それ以外には CONTENT_FETCH_FAILED を付ける', async () => {
+    const prisma = createPrismaMock();
+
+    await recordNoContentSkipReasons(prisma as never, [
+      { id: 'video', url: 'https://youtu.be/dQw4w9WgXcQ', contentLength: null },
+      { id: 'page', url: 'https://example.com/post', contentLength: 0 },
+    ]);
+
+    expect(
+      prisma.article.updateMany.mock.calls.map(([args]) => [
+        args.where.id,
+        args.data.skipReason,
+      ])
+    ).toEqual([
+      ['video', SkipReason.VIDEO],
+      ['page', SkipReason.CONTENT_FETCH_FAILED],
+    ]);
   });
 });
 
@@ -179,14 +220,25 @@ describe('本文の判定の書き込み', () => {
   const noContent = {
     id: 'no-content',
     title: 'No content',
+    url: 'https://example.com/no-content',
     content: '',
     contentLength: 0,
+    publishedAt: NOW,
+    source: { id: 's1', name: 'Test' },
+  };
+  const noContentVideo = {
+    id: 'video',
+    title: 'Video',
+    url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    content: null,
+    contentLength: null,
     publishedAt: NOW,
     source: { id: 's1', name: 'Test' },
   };
   const thinContent = {
     id: 'thin',
     title: 'Thin',
+    url: 'https://example.com/thin',
     content: 'short',
     contentLength: 5,
     publishedAt: NOW,
@@ -213,9 +265,9 @@ describe('本文の判定の書き込み', () => {
       },
     ],
   ])(
-    '%s は、読んだときと本文の長さが同じ記事にだけ本文なし・本文不足の印を付ける',
+    '%s は、読んだときと本文の長さが同じ記事にだけ本文なし・本文不足・動画の印を付ける',
     async (_name, run) => {
-      const prisma = createPrismaMock([noContent, thinContent]);
+      const prisma = createPrismaMock([noContent, noContentVideo, thinContent]);
 
       await run(prisma);
 
@@ -225,10 +277,11 @@ describe('本文の判定の書き込み', () => {
       ).toEqual(
         expect.arrayContaining([
           ['no-content', 0, SkipReason.CONTENT_FETCH_FAILED],
+          ['video', null, SkipReason.VIDEO],
           ['thin', 5, SkipReason.THIN_CONTENT],
         ])
       );
-      expect(updates).toHaveLength(2);
+      expect(updates).toHaveLength(3);
     }
   );
 });

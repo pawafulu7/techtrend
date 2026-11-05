@@ -26,15 +26,20 @@ import type { BaseFetcher } from '@/lib/fetchers/base';
 
 // エンリッチャーをインポート
 import { ContentEnricherFactory } from '@/lib/enrichers';
-import { classifyEnrichmentError } from '@/lib/enrichers/error-classifier';
 import { HATENA_BLOG_DEV_SOURCE_ID } from '@/lib/enrichers/hatena';
-import { logger } from '@/lib/logger';
 import { isEnrichmentSkipped } from '@/lib/fetchers/config/foreign-rss-sources';
+import { validateArticleContent } from '@/lib/summary/summary-orchestrator';
 import { summarizeError } from '@/lib/utils/sanitize-error';
+import { isYouTubeVideoUrl } from '@/lib/utils/url/youtube';
 import {
   fillExistingContentFromFeed,
   isValidThumbnailUrl,
 } from './utils/content-recovery';
+import {
+  describeEnrichmentFailure,
+  enrichWithTrace,
+  reportEnrichmentFailure,
+} from './utils/enrichment-failure';
 import {
   isAcceptableEnrichedContent,
   summaryResetOnContentRecovery,
@@ -227,7 +232,13 @@ async function processSource({
               } else {
                 debugLog(`   既存記事の更新スキップ（並行更新で本文既存）: ${article.title.substring(0, 50)}...`);
               }
-            } else if (env.SKIP_POST_SAVE_ENRICHMENT !== '1' && !isEnrichmentSkipped(sourceName)) {
+            } else if (
+              env.SKIP_POST_SAVE_ENRICHMENT !== '1' &&
+              !isEnrichmentSkipped(sourceName) &&
+              // 動画は本文を取る手段が無い（YouTubeEnricher はサムネイルだけ）。試すと毎回失敗して
+              // 1実行あたりの上限の枠を使い、取り直せる記事の番が回らない
+              !isYouTubeVideoUrl(article.url)
+            ) {
               // ignoreFeedContent ソース等でフィード本文が空のまま保存された既存記事を
               // エンリッチャーで自己修復する（skipEnrichment ソースは上書き禁止ポリシーを維持）
               const enricher = enricherFactory.getEnricher(article.url, source.id);
@@ -236,13 +247,17 @@ async function processSource({
                   debugLog(`   [INFO] 自己修復エンリッチ上限(${MAX_SELF_HEAL_ENRICH_PER_RUN}件)到達のためスキップ: ${article.title.substring(0, 50)}...`);
                 } else {
                   selfHealEnrichCount++;
+                  const attempt = await enrichWithTrace(
+                    enricher,
+                    article.url,
+                    POST_SAVE_ENRICH_TIMEOUT_MS,
+                    `Post-save enrichment timeout after ${POST_SAVE_ENRICH_TIMEOUT_MS}ms for ${sourceName}`
+                  );
+                  const enrichedData = attempt.data;
+                  const recovered =
+                    !!enrichedData?.content && isAcceptableEnrichedContent(enrichedData.content);
                   try {
-                    const enrichedData = await runWithTimeout(
-                      (signal) => enricher.enrich(article.url, signal),
-                      POST_SAVE_ENRICH_TIMEOUT_MS,
-                      `Post-save enrichment timeout after ${POST_SAVE_ENRICH_TIMEOUT_MS}ms for ${sourceName}`
-                    );
-                    if (enrichedData?.content && isAcceptableEnrichedContent(enrichedData.content)) {
+                    if (recovered && enrichedData?.content) {
                       // 本文回復時は要約まわりを戻して generateSummaries の再生成対象に載せる
                       // （PDF / SLIDE は戻さない。summaryResetOnContentRecovery）
                       const summaryReset = summaryResetOnContentRecovery(existing.skipReason);
@@ -276,24 +291,22 @@ async function processSource({
                       } else {
                         debugLog(`   既存記事の自己修復スキップ（並行更新で本文既存）: ${article.title.substring(0, 50)}...`);
                       }
-                    } else {
-                      debugLog(`   既存記事の自己修復エンリッチメント: 品質基準未達またはデータなし (${sourceName}, ${enrichedData?.content?.length ?? 0}文字)`);
                     }
-                  } catch (enrichError) {
-                    const classified = classifyEnrichmentError(enrichError);
-                    logger.warn(
-                      {
-                        url: article.url,
-                        sourceId: source.id,
-                        sourceName,
-                        enricher: enricher.constructor.name,
-                        errorCode: classified.errorCode,
-                        status: classified.status,
-                        errorName: classified.errorName,
-                      },
-                      '[Enrichment] self-heal failed: exception thrown'
-                    );
-                    console.error(`   [WARN] 既存記事の空本文エンリッチメント失敗: ${summarizeError(enrichError)}`);
+                  } catch (saveError) {
+                    console.error(`   [WARN] 既存記事の自己修復の保存に失敗: ${summarizeError(saveError)}`);
+                  }
+
+                  if (!recovered) {
+                    // 取り直しても取れなかった理由で summaryError を書き直す（最新の理由を残す）
+                    await reportEnrichmentFailure({
+                      article: { id: existing.id, url: article.url, contentLength: existing.contentLength },
+                      remainingContent: null,
+                      failure: describeEnrichmentFailure(attempt, enrichedData?.content?.length || undefined),
+                      enricherName: enricher.constructor.name,
+                      sourceId: source.id,
+                      sourceName,
+                      phase: 'self-heal',
+                    });
                   }
 
                   const enrichSleepMs = resolveEnrichSleepMs(source.id);
@@ -384,14 +397,17 @@ async function processSource({
         if (env.SKIP_POST_SAVE_ENRICHMENT !== '1' && !isEnrichmentSkipped(sourceName)) {
           const enricher = enricherFactory.getEnricher(article.url, source.id);
           if (enricher) {
+            debugLog(`   [INFO] エンリッチメント実行: ${article.title.substring(0, 40)}... (enricher=${enricher.constructor.name})`);
+            const attempt = await enrichWithTrace(
+              enricher,
+              article.url,
+              POST_SAVE_ENRICH_TIMEOUT_MS,
+              `Post-save enrichment timeout after ${POST_SAVE_ENRICH_TIMEOUT_MS}ms for ${sourceName}`
+            );
+            const enrichedData = attempt.data;
+            // 本文を採ったか（保存の成否とは別。保存の失敗は取得の失敗として扱わない）
+            let contentAccepted = false;
             try {
-              debugLog(`   [INFO] エンリッチメント実行: ${article.title.substring(0, 40)}... (enricher=${enricher.constructor.name})`);
-              const enrichedData = await runWithTimeout(
-                (signal) => enricher.enrich(article.url, signal),
-                POST_SAVE_ENRICH_TIMEOUT_MS,
-                `Post-save enrichment timeout after ${POST_SAVE_ENRICH_TIMEOUT_MS}ms for ${sourceName}`
-              );
-
               if (enrichedData) {
                 // サムネイル独立更新: コンテンツ品質に関係なくサムネイルを更新
                 const hasNewThumbnail = isValidThumbnailUrl(enrichedData.thumbnail);
@@ -409,6 +425,7 @@ async function processSource({
                     const passesQualityCheck = isAcceptableEnrichedContent(enrichedData.content);
 
                     if (passesQualityCheck) {
+                      contentAccepted = true;
                       await prisma.article.update({
                         where: { id: savedArticle.id },
                         data: {
@@ -447,41 +464,27 @@ async function processSource({
                     data: { thumbnail: enrichedData.thumbnail! }
                   });
                   console.error(`   [INFO] サムネイルのみ更新（コンテンツなし）`);
-                } else {
-                  console.error('   [WARN] エンリッチメント失敗: コンテンツもサムネイルもなし');
                 }
-              } else {
-                // データなし失敗: 観測性のためログを構造化
-                logger.warn(
-                  {
-                    url: article.url,
-                    sourceId: source.id,
-                    sourceName,
-                    enricher: enricher.constructor.name,
-                    errorCode: 'NO_DATA' as const,
-                  },
-                  '[Enrichment] failed: no data returned'
-                );
-                console.error('   [WARN] エンリッチメント失敗: データなし');
               }
-            } catch (enrichError) {
-              // エラー失敗: status/errorCode/errorName を構造化して記録。message は接続先が入りうるので出さない
-              // 分類ロジックは lib/enrichers/error-classifier.ts に集約
-              // （BaseContentEnricher.logEnrichmentError と共有）
-              const classified = classifyEnrichmentError(enrichError);
-              logger.warn(
-                {
-                  url: article.url,
-                  sourceId: source.id,
-                  sourceName,
-                  enricher: enricher.constructor.name,
-                  errorCode: classified.errorCode,
-                  status: classified.status,
-                  errorName: classified.errorName,
-                },
-                '[Enrichment] failed: exception thrown'
-              );
-              console.error('   [WARN] エンリッチメントエラー:', summarizeError(enrichError));
+            } catch (saveError) {
+              console.error('   [WARN] エンリッチメント結果の保存に失敗:', summarizeError(saveError));
+            }
+
+            // 取れなかった理由をログと summaryError に残す。フィードの本文で要約できる記事に、
+            // 短い本文しか返らなかっただけのとき（よくある）は失敗として扱わない
+            if (
+              !contentAccepted &&
+              (!enrichedData?.content || !validateArticleContent({ content: article.content ?? null }).valid)
+            ) {
+              await reportEnrichmentFailure({
+                article: { id: savedArticle.id, url: article.url, contentLength: savedArticle.contentLength },
+                remainingContent: article.content,
+                failure: describeEnrichmentFailure(attempt, enrichedData?.content?.length || undefined),
+                enricherName: enricher.constructor.name,
+                sourceId: source.id,
+                sourceName,
+                phase: 'post-save',
+              });
             }
 
             const enrichSleepMs = resolveEnrichSleepMs(source.id);

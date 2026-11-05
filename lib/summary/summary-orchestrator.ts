@@ -20,6 +20,7 @@ import {
   PENDING_SUMMARY_ORDER_BY,
   pendingSummaryWhere,
   recordContentSkipReasons,
+  recordNoContentSkipReasons,
 } from './pending-articles';
 import { env } from '@/lib/config/env';
 
@@ -508,11 +509,7 @@ export async function generateMissingSummaries(
 
     // Batch update skip reasons for validation failures
     try {
-      await recordContentSkipReasons(
-        prisma,
-        noContentArticles,
-        SkipReason.CONTENT_FETCH_FAILED
-      );
+      await recordNoContentSkipReasons(prisma, noContentArticles);
       await recordContentSkipReasons(
         prisma,
         thinContentArticles,

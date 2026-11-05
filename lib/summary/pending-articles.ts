@@ -5,7 +5,9 @@
  * missing（summary-orchestrator.ts）で同じ条件を使う。新着の確認と generate の条件がずれると、
  * 確認が「新着なし」を返して generate が黙って止まるため。
  */
-import type { Prisma, PrismaClient, SkipReason } from '@/lib/prisma-exports';
+import { SkipReason } from '@/lib/prisma-exports';
+import type { Prisma, PrismaClient } from '@/lib/prisma-exports';
+import { isYouTubeVideoUrl } from '@/lib/utils/url/youtube';
 
 /**
  * 要約が無く、skipReason も付いていない記事のうち、期間内に取り込んだか本文を更新した記事。
@@ -42,6 +44,9 @@ export const PENDING_SUMMARY_ORDER_BY: Prisma.ArticleOrderByWithRelationInput =
  * 古い判定で印を付けない。付けると、本文があるのに要約の対象から外れたままになる。
  * 本文の長さ（contentLength。DB のトリガーが CHAR_LENGTH(content) を保つ列）が読んだときと同じ
  * 記事だけを更新する。書き込む側の経路や時計に左右されないよう、時刻ではなく本文の状態で比べる。
+ *
+ * summaryError は消さない。本文が取れなかった理由（毎時の収集が enrichment-failure.ts で書く）を
+ * 残すため。本文が入れば要約まわりと一緒に消える（summary-reset.ts の SUMMARY_RESET）
  */
 export async function recordContentSkipReasons(
   prisma: Pick<PrismaClient, 'article'>,
@@ -56,8 +61,37 @@ export async function recordContentSkipReasons(
           OR: [{ summary: null }, { summary: '' }],
           contentLength: article.contentLength,
         },
-        data: { skipReason, summaryError: null },
+        data: { skipReason },
       })
     )
+  );
+}
+
+/**
+ * 本文の無い記事に付ける skipReason。YouTube の動画は本文を取る手段が無いので、
+ * 取得失敗（CONTENT_FETCH_FAILED）と分けて VIDEO にする
+ */
+export function noContentSkipReason(url: string): SkipReason {
+  return isYouTubeVideoUrl(url)
+    ? SkipReason.VIDEO
+    : SkipReason.CONTENT_FETCH_FAILED;
+}
+
+/** 本文の無い記事に skipReason を書き込む（理由は noContentSkipReason） */
+export async function recordNoContentSkipReasons(
+  prisma: Pick<PrismaClient, 'article'>,
+  articles: ReadonlyArray<{ id: string; url: string; contentLength: number | null }>
+): Promise<void> {
+  const videos = articles.filter(
+    (article) => noContentSkipReason(article.url) === SkipReason.VIDEO
+  );
+  const others = articles.filter(
+    (article) => noContentSkipReason(article.url) !== SkipReason.VIDEO
+  );
+  await recordContentSkipReasons(prisma, videos, SkipReason.VIDEO);
+  await recordContentSkipReasons(
+    prisma,
+    others,
+    SkipReason.CONTENT_FETCH_FAILED
   );
 }

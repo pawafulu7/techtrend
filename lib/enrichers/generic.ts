@@ -78,17 +78,21 @@ export class GenericContentEnricher extends BaseContentEnricher {
           // 接続プールの socket 保持を避けるため body を drain してから retry/return
           await this.safeReleaseBody(response);
 
+          // ブラウザを名乗る要求を 403・429 で断り、ボットを名乗れば記事を返すサイトがある
+          // （はてなブログは 429。user-agents.ts）。同じ UA で取り直しても変わらないので、
+          // ボットを名乗って取り直す。再試行の回数とは別に数え、最後の試行でも1回は試す（attempt を戻す）
+          if (
+            (response.status === 403 || response.status === 429) &&
+            userAgent === BROWSER_USER_AGENT
+          ) {
+            userAgent = BOT_USER_AGENT;
+            attempt--;
+            continue;
+          }
           if (response.status === 429) {
             // 429 時の sleep 短縮 (1.5秒)。呼び出し側の source 別 sleep で本質的な rate 制御
             await this.delay(1500, externalSignal);
             previousWas429 = true;
-            continue;
-          }
-          // 同じ UA で取り直しても 403 は変わらないので、ボットを名乗って取り直す。
-          // 再試行の回数とは別に数え、最後の試行が 403 でも1回は試す（attempt を戻す）
-          if (response.status === 403 && userAgent === BROWSER_USER_AGENT) {
-            userAgent = BOT_USER_AGENT;
-            attempt--;
             continue;
           }
           if (attempt === maxRetries) {

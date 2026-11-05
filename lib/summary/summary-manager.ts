@@ -34,6 +34,7 @@ import {
   PENDING_SUMMARY_ORDER_BY,
   pendingSummaryWhere,
   recordContentSkipReasons,
+  recordNoContentSkipReasons,
 } from './pending-articles';
 
 // Re-export types for backward compatibility
@@ -160,11 +161,7 @@ export class SummaryManager {
 
       // Batch update skip reasons for validation failures
       try {
-        await recordContentSkipReasons(
-          this.prisma,
-          noContentArticles,
-          SkipReason.CONTENT_FETCH_FAILED
-        );
+        await recordNoContentSkipReasons(this.prisma, noContentArticles);
         await recordContentSkipReasons(
           this.prisma,
           thinContentArticles,
