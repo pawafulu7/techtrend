@@ -203,6 +203,38 @@ describe('ZennService', () => {
       expect(lastFetch).toEqual({ kind: 'response', status: 404, challenge: false });
     });
 
+    it('should record a failure while reading the body for the fetch trace', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: jest.fn().mockReturnValue('application/json') },
+        json: jest
+          .fn()
+          .mockRejectedValue(new TypeError('terminated', { cause: { code: 'UND_ERR_SOCKET' } })),
+      });
+
+      const { lastFetch } = await traceFetches(async () => {
+        await ZennService.fetchArticleContent('test-slug').catch(() => null);
+      });
+
+      expect(lastFetch).toEqual({ kind: 'error', code: 'NETWORK', cause: 'UND_ERR_SOCKET' });
+    });
+
+    it('should keep the 200 response when the body is not valid JSON', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: jest.fn().mockReturnValue('application/json') },
+        json: jest.fn().mockRejectedValue(new SyntaxError('Unexpected token')),
+      });
+
+      const { lastFetch } = await traceFetches(async () => {
+        await ZennService.fetchArticleContent('test-slug').catch(() => null);
+      });
+
+      expect(lastFetch).toMatchObject({ kind: 'response', status: 200 });
+    });
+
     it('should record a failure before any response for the fetch trace', async () => {
       (global.fetch as jest.Mock).mockRejectedValue(
         new TypeError('fetch failed', { cause: { code: 'ENOTFOUND' } })

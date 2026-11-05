@@ -165,7 +165,17 @@ export class ZennService {
         throw err;
       }
 
-      const data: ZennArticleResponse = await response.json();
+      let data: ZennArticleResponse;
+      try {
+        data = await response.json();
+      } catch (error) {
+        // 本文の受信の失敗（接続の切断・中断）は取得の失敗として残す（残さないと 200 の応答が最後の
+        // 結果になり、本文を抜き出せなかったと記録される）。JSON の形の不正は応答を得たので 200 のまま
+        if (!(error instanceof SyntaxError)) {
+          recordFetchOutcome(fetchErrorOutcome(error));
+        }
+        throw error;
+      }
 
       // Validate response structure
       if (!data.article || !data.article.body_html) {
