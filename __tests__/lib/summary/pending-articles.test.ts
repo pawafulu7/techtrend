@@ -128,6 +128,7 @@ describe('noContentSkipReason', () => {
     'https://example.com/watch?v=dQw4w9WgXcQ',
     'https://www.youtube.com/playlist?list=PL0123456789',
     'https://www.youtube.com/watch?v=short',
+    'https://www.youtube.com/@channel?v=dQw4w9WgXcQ',
   ])('動画でない URL（%s）は CONTENT_FETCH_FAILED', (url) => {
     expect(noContentSkipReason(url)).toBe(SkipReason.CONTENT_FETCH_FAILED);
   });
@@ -353,6 +354,36 @@ describe('要約の一時的な失敗の数え方', () => {
         AND: [noSummaryFailureYetWhere()],
       },
       data: { summaryError: 'network error' },
+    });
+  });
+
+  it('要約の失敗が既に記録された記事の2回目の一時的な失敗は、QUALITY_FAILED にして再試行を止める', async () => {
+    const prisma = createPrismaMock();
+    // 1回目の失敗を記録する条件に合わない（要約の失敗が既に記録されている）
+    prisma.article.updateMany.mockResolvedValueOnce({ count: 0 });
+    const article = {
+      id: 'failed-once',
+      title: 'Failed once',
+      url: 'https://example.com/failed-once',
+      source: { id: 's1', name: 'Test' },
+    };
+
+    await processArticleWithTimeout(
+      article as never,
+      'body '.repeat(100),
+      jest.fn().mockRejectedValue(new Error('network error')),
+      prisma as never,
+      jest.fn()
+    );
+
+    expect(prisma.article.updateMany).toHaveBeenCalledTimes(2);
+    expect(prisma.article.updateMany).toHaveBeenLastCalledWith({
+      where: {
+        id: 'failed-once',
+        skipReason: null,
+        OR: [{ summary: null }, { summary: '' }],
+      },
+      data: { skipReason: SkipReason.QUALITY_FAILED, summaryError: 'network error' },
     });
   });
 });

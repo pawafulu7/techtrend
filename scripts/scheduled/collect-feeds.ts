@@ -197,7 +197,7 @@ async function processSource({
     const articleUrls = articles.map(a => a.url);
     const existingArticles = await prisma.article.findMany({
       where: { url: { in: articleUrls } },
-      select: { id: true, sourceId: true, contentLength: true, thumbnail: true, url: true, skipReason: true }
+      select: { id: true, sourceId: true, contentLength: true, contentUpdatedAt: true, thumbnail: true, url: true, skipReason: true }
     });
     const existingArticleMap = new Map(existingArticles.map(a => [a.url, a]));
 
@@ -299,7 +299,12 @@ async function processSource({
                   if (!recovered) {
                     // 取り直しても取れなかった理由で summaryError を書き直す（最新の理由を残す）
                     await reportEnrichmentFailure({
-                      article: { id: existing.id, url: article.url, contentLength: existing.contentLength },
+                      article: {
+                        id: existing.id,
+                        url: article.url,
+                        contentLength: existing.contentLength,
+                        contentUpdatedAt: existing.contentUpdatedAt,
+                      },
                       remainingContent: null,
                       failure: describeEnrichmentFailure(attempt, enrichedData?.content?.length || undefined),
                       enricherName: enricher.constructor.name,
@@ -482,7 +487,12 @@ async function processSource({
               })
             ) {
               await reportEnrichmentFailure({
-                article: { id: savedArticle.id, url: article.url, contentLength: savedArticle.contentLength },
+                article: {
+                  id: savedArticle.id,
+                  url: article.url,
+                  contentLength: savedArticle.contentLength,
+                  contentUpdatedAt: savedArticle.contentUpdatedAt,
+                },
                 remainingContent: article.content,
                 failure: describeEnrichmentFailure(attempt, enrichedData?.content?.length || undefined),
                 enricherName: enricher.constructor.name,

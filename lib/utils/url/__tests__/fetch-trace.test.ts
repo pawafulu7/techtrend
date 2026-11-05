@@ -194,6 +194,30 @@ describe('traceFetches', () => {
     expect(lastFetch).toEqual({ kind: 'error', code: 'TOO_LARGE' });
   });
 
+  it('本文の受信中に失敗したら、200 の応答の記録を上書きする', async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      pull() {
+        return Promise.reject(
+          new TypeError('terminated', { cause: { code: 'UND_ERR_BODY_TIMEOUT' } })
+        );
+      },
+    });
+    fetchMock.mockResolvedValueOnce(
+      Object.assign(fakeResponse(200), { body: stream })
+    );
+
+    const { lastFetch } = await traceFetches(async () => {
+      const { response } = await fetchWithValidatedRedirects('https://example.com/a');
+      await readTextWithLimit(response).catch(() => null);
+    });
+
+    expect(lastFetch).toEqual({
+      kind: 'error',
+      code: 'TIMEOUT',
+      cause: 'UND_ERR_BODY_TIMEOUT',
+    });
+  });
+
   it('並行に動く traceFetches の記録は混ざらない', async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {

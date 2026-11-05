@@ -222,8 +222,10 @@ describe('GenericContentEnricher Pipeline', () => {
       // 本当の回数の制限かもしれないので、以前と同じ 2 回（ブラウザ → 待ってボット）で終わる
       expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(userAgentOf(mockFetch.mock.calls[1][1])).toBe(BOT_USER_AGENT);
-      // 最後の 429 の後は待たない
+      // 最後の 429 の後は待たない。待ちは 1 回目と 2 回目の要求の間に 1 回だけ入る
       expect(delay).toHaveBeenCalledTimes(1);
+      expect(delay.mock.invocationCallOrder[0]).toBeGreaterThan(mockFetch.mock.invocationCallOrder[0]);
+      expect(delay.mock.invocationCallOrder[0]).toBeLessThan(mockFetch.mock.invocationCallOrder[1]);
     }, 10000);
 
     it('should give up when the bot User-Agent also gets 403', async () => {

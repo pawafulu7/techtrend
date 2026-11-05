@@ -277,6 +277,37 @@ describe('ZennService', () => {
       jest.useRealTimers();
     });
 
+    it('should not fetch when the signal is already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(
+        ZennService.fetchWithRetry('test-slug', controller.signal)
+      ).rejects.toThrow();
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should stop waiting for the retry when the signal is aborted', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: { get: jest.fn().mockReturnValue(null) },
+      });
+      const controller = new AbortController();
+
+      const promise = ZennService.fetchWithRetry('test-slug', controller.signal);
+      const assertion = expect(promise).rejects.toThrow('stop');
+      // 1回目の取得が終わり、再試行の待ち（1 秒以上）に入るまで進める
+      for (let i = 0; i < 40 && (global.fetch as jest.Mock).mock.calls.length === 0; i++) {
+        await jest.advanceTimersByTimeAsync(50);
+      }
+      controller.abort(new Error('stop'));
+
+      await assertion;
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
     it('should succeed on first attempt', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,

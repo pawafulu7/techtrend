@@ -6,7 +6,6 @@
  * 区別できない。取得の共通処理が覚えた最後の結果（lib/utils/url/fetch-trace.ts）から理由を決める。
  */
 import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@/lib/prisma-exports';
 import type { EnrichmentResult, IContentEnricher } from '@/lib/enrichers';
 import {
   classifyEnrichmentError,
@@ -22,6 +21,7 @@ import {
 } from '@/lib/utils/url/fetch-trace';
 import { isYouTubeVideoUrl } from '@/lib/utils/url/youtube';
 import { runWithTimeout } from './run-with-timeout';
+import { contentStateWhere } from './summary-reset';
 
 const logger = createLogger('collect-feeds');
 
@@ -156,7 +156,13 @@ export function shouldReportPostSaveFailure({
 }
 
 interface ReportEnrichmentFailureParams {
-  article: { id: string; url: string; contentLength: number | null };
+  /** 本文の状態（contentLength・contentUpdatedAt）は読んだときの値。書く前に変わっていたら書かない */
+  article: {
+    id: string;
+    url: string;
+    contentLength: number | null;
+    contentUpdatedAt: Date | null;
+  };
   /** 失敗した後に残る本文（フィードの本文など）。要約に足りるなら DB には書かない */
   remainingContent: string | null | undefined;
   failure: EnrichmentFailure;
@@ -167,19 +173,14 @@ interface ReportEnrichmentFailureParams {
   phase: 'post-save' | 'self-heal';
 }
 
-function contentLengthWhere(contentLength: number | null): Prisma.ArticleWhereInput {
-  return contentLength === null || contentLength === 0
-    ? { OR: [{ contentLength: null }, { contentLength: 0 }] }
-    : { contentLength };
-}
-
 /**
  * 本文を取れなかった理由をログに出し、要約を作れない記事なら summaryError に書く。
  *
  * 書くのは、残る本文が要約に足りない（取得失敗・本文不足の印が付く）記事だけ。要約の対象になる記事に
  * 書くと、要約の一時的な失敗の1回目が2回目と扱われ、再試行されずに QUALITY_FAILED になる
  * （summary-orchestrator.ts は summaryError が NULL かで1回目を見分ける）。
- * 読んだ後に別の処理が本文を書いていたら書かない（本文の長さで比べる。pending-articles.ts と同じ）。
+ * 読んだ後に別の処理が本文を書いていたら書かない（本文の長さと更新時刻で比べる。summary-reset.ts の
+ * contentStateWhere。同じ長さの本文への差し替えも拾う）。
  * DB の失敗は収集を止めないよう、ログに出して握りつぶす。
  */
 export async function reportEnrichmentFailure({
@@ -221,7 +222,7 @@ export async function reportEnrichmentFailure({
         id: article.id,
         AND: [
           { OR: [{ summary: null }, { summary: '' }] },
-          contentLengthWhere(article.contentLength),
+          contentStateWhere(article),
           // 自己修復は毎時同じ記事を取り直すので、同じ理由なら書き直さない（updatedAt を進めない）。
           // `not` だけでは NULL の行が外れるので、NULL も明示する
           { OR: [{ summaryError: null }, { summaryError: { not: summaryError } }] },

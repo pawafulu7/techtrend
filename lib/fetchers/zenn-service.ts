@@ -196,8 +196,8 @@ export class ZennService {
       const duration = Date.now() - startTime;
       if (!responded) recordFetchOutcome(fetchErrorOutcome(error));
 
-      // Handle timeout
-      if (error.name === 'AbortError') {
+      // Handle timeout（呼び出し側の中断の理由は Error でないことがあるので、null・文字列でも読めるようにする）
+      if (error?.name === 'AbortError') {
         const timeoutError = new Error('Request timeout');
         (timeoutError as any).isTimeout = true;
         (timeoutError as any).duration = duration;
@@ -205,7 +205,7 @@ export class ZennService {
       }
 
       // Attach duration to error
-      if (!error.duration) {
+      if (error instanceof Object && !error.duration) {
         (error as any).duration = duration;
       }
 
@@ -349,7 +349,18 @@ export class ZennService {
           delay_ms: totalDelay,
         }, 'Waiting before retry');
 
-        await new Promise(resolve => setTimeout(resolve, totalDelay));
+        // 呼び出し側が中断したら、待ちを切り上げて中断を伝える
+        await new Promise<void>((resolve, reject) => {
+          const onAbort = () => {
+            clearTimeout(timer);
+            reject(externalSignal?.reason);
+          };
+          const timer = setTimeout(() => {
+            externalSignal?.removeEventListener('abort', onAbort);
+            resolve();
+          }, totalDelay);
+          externalSignal?.addEventListener('abort', onAbort, { once: true });
+        });
       }
     }
 

@@ -158,6 +158,7 @@ describe('formatEnrichmentFailure', () => {
 });
 
 describe('reportEnrichmentFailure', () => {
+  const READ_AT = new Date('2026-11-06T00:00:00.000Z');
   const base = {
     failure: { errorCode: 'HTTP_403', status: 403, detail: 'challenge' },
     enricherName: 'GenericContentEnricher',
@@ -179,7 +180,7 @@ describe('reportEnrichmentFailure', () => {
   it('本文の無い記事の summaryError に理由を書く（要約が無く、本文が読んだときのままの記事だけ）', async () => {
     await reportEnrichmentFailure({
       ...base,
-      article: { id: 'a1', url: 'https://example.com/a', contentLength: null },
+      article: { id: 'a1', url: 'https://example.com/a', contentLength: null, contentUpdatedAt: READ_AT },
       remainingContent: null,
     });
 
@@ -189,7 +190,8 @@ describe('reportEnrichmentFailure', () => {
         id: 'a1',
         AND: [
           { OR: [{ summary: null }, { summary: '' }] },
-          { OR: [{ contentLength: null }, { contentLength: 0 }] },
+          // 読んだときの本文の状態のまま（同じ長さの差し替えも拾う。summary-reset.ts の contentStateWhere）
+          { contentLength: null, contentUpdatedAt: READ_AT },
           // 同じ理由なら書き直さない（自己修復は毎時同じ記事を取り直す）
           { OR: [{ summaryError: null }, { summaryError: { not: summaryError } }] },
         ],
@@ -201,17 +203,20 @@ describe('reportEnrichmentFailure', () => {
   it('要約に足りない短い本文の記事は、その長さのままのときだけ書く', async () => {
     await reportEnrichmentFailure({
       ...base,
-      article: { id: 'a2', url: 'https://example.com/b', contentLength: 5 },
+      article: { id: 'a2', url: 'https://example.com/b', contentLength: 5, contentUpdatedAt: READ_AT },
       remainingContent: 'short',
     });
 
-    expect(mockUpdateMany.mock.calls[0][0].where.AND[1]).toEqual({ contentLength: 5 });
+    expect(mockUpdateMany.mock.calls[0][0].where.AND[1]).toEqual({
+      contentLength: 5,
+      contentUpdatedAt: READ_AT,
+    });
   });
 
   it('残る本文で要約できる記事には書かない（要約の一時的な失敗の数え方が狂うため）', async () => {
     await reportEnrichmentFailure({
       ...base,
-      article: { id: 'a3', url: 'https://example.com/c', contentLength: 400 },
+      article: { id: 'a3', url: 'https://example.com/c', contentLength: 400, contentUpdatedAt: READ_AT },
       remainingContent: 'feed body '.repeat(40),
     });
 
@@ -221,7 +226,7 @@ describe('reportEnrichmentFailure', () => {
   it('YouTube の動画は取得の失敗として扱わない（ログも DB も）', async () => {
     await reportEnrichmentFailure({
       ...base,
-      article: { id: 'a4', url: 'https://youtu.be/dQw4w9WgXcQ', contentLength: null },
+      article: { id: 'a4', url: 'https://youtu.be/dQw4w9WgXcQ', contentLength: null, contentUpdatedAt: READ_AT },
       remainingContent: null,
     });
 
@@ -235,7 +240,7 @@ describe('reportEnrichmentFailure', () => {
     await expect(
       reportEnrichmentFailure({
         ...base,
-        article: { id: 'a5', url: 'https://example.com/e', contentLength: 0 },
+        article: { id: 'a5', url: 'https://example.com/e', contentLength: 0, contentUpdatedAt: READ_AT },
         remainingContent: '',
       })
     ).resolves.toBeUndefined();
