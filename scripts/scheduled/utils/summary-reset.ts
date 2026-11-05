@@ -2,7 +2,7 @@
  * 記事の本文を補った・差し替えたときに、要約まわりをどう戻すか（DB に触らない判定だけ）。
  *
  * 毎時の収集（collect-feeds.ts・content-recovery.ts）と保守スクリプト（enrich-single-article.ts・
- * enrich-corporate-blog-content.ts・re-enrich-content.ts）で同じ扱いにする。
+ * enrich-corporate-blog-content.ts・re-enrich-content.ts・enrich-aws-content.ts）で同じ扱いにする。
  */
 import { Prisma, SkipReason } from '@/lib/prisma-exports';
 import { isHighQuality } from '@/lib/enrichers/strategies/quality';

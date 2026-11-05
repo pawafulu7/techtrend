@@ -20,6 +20,7 @@ import { Article, Source, SkipReason } from '@/lib/prisma-exports';
 import { SummaryQualityChecker } from '@/lib/ai/service/quality-checker';
 import { contentAnalysisForLength } from '@/lib/ai/constants';
 import { validateArticleContent } from '@/lib/summary/summary-orchestrator';
+import { noContentSkipReason } from '@/lib/summary/pending-articles';
 import { getAppDependencies } from '@/lib/di/bootstrap';
 import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { calculateArticleQualityScore } from '../../lib/articles/quality-score';
@@ -266,7 +267,7 @@ async function regenerateSummaries(lowQualityArticles: LowQualityArticle[]): Pro
             data: {
               // 理由の対応は定期の要約生成（summary-manager.ts）と同じ
               skipReason: validation.reasonCode === 'NO_CONTENT'
-                ? SkipReason.CONTENT_FETCH_FAILED
+                ? noContentSkipReason(article.url)
                 : SkipReason.THIN_CONTENT,
               summaryError: `要約生成をスキップ: ${validation.reason}`,
               summaryComputedAt: new Date()

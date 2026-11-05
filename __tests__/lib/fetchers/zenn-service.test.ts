@@ -3,6 +3,7 @@
  */
 
 import { ZennService, ZennArticleResponse } from '@/lib/fetchers/zenn-service';
+import { traceFetches } from '@/lib/utils/url/fetch-trace';
 
 // Mock logger to suppress logs during tests
 jest.mock('@/lib/logger', () => ({
@@ -185,6 +186,66 @@ describe('ZennService', () => {
       await expect(ZennService.fetchArticleContent('test-slug'))
         .rejects.toThrow('Network error');
     });
+
+    // ZennApiEnricher は失敗すると null を返すので、毎時の収集は取得の記録から理由を読む
+    it('should record the response status for the fetch trace', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        headers: { get: jest.fn().mockReturnValue(null) },
+      });
+
+      const { lastFetch } = await traceFetches(async () => {
+        await ZennService.fetchArticleContent('invalid-slug').catch(() => null);
+      });
+
+      expect(lastFetch).toEqual({ kind: 'response', status: 404, challenge: false });
+    });
+
+    it('should record a failure while reading the body for the fetch trace', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: jest.fn().mockReturnValue('application/json') },
+        json: jest
+          .fn()
+          .mockRejectedValue(new TypeError('terminated', { cause: { code: 'UND_ERR_SOCKET' } })),
+      });
+
+      const { lastFetch } = await traceFetches(async () => {
+        await ZennService.fetchArticleContent('test-slug').catch(() => null);
+      });
+
+      expect(lastFetch).toEqual({ kind: 'error', code: 'NETWORK', cause: 'UND_ERR_SOCKET' });
+    });
+
+    it('should keep the 200 response when the body is not valid JSON', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: jest.fn().mockReturnValue('application/json') },
+        json: jest.fn().mockRejectedValue(new SyntaxError('Unexpected token')),
+      });
+
+      const { lastFetch } = await traceFetches(async () => {
+        await ZennService.fetchArticleContent('test-slug').catch(() => null);
+      });
+
+      expect(lastFetch).toMatchObject({ kind: 'response', status: 200 });
+    });
+
+    it('should record a failure before any response for the fetch trace', async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(
+        new TypeError('fetch failed', { cause: { code: 'ENOTFOUND' } })
+      );
+
+      const { lastFetch } = await traceFetches(async () => {
+        await ZennService.fetchArticleContent('test-slug').catch(() => null);
+      });
+
+      expect(lastFetch).toEqual({ kind: 'error', code: 'NETWORK', cause: 'ENOTFOUND' });
+    });
   });
 
   describe('fetchWithRetry', () => {
@@ -214,6 +275,38 @@ describe('ZennService', () => {
 
     afterEach(() => {
       jest.useRealTimers();
+    });
+
+    it('should not fetch when the signal is already aborted', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      // 中断の理由をそのまま伝える
+      await expect(
+        ZennService.fetchWithRetry('test-slug', controller.signal)
+      ).rejects.toBe(controller.signal.reason);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should stop waiting for the retry when the signal is aborted', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: { get: jest.fn().mockReturnValue(null) },
+      });
+      const controller = new AbortController();
+
+      const promise = ZennService.fetchWithRetry('test-slug', controller.signal);
+      const assertion = expect(promise).rejects.toThrow('stop');
+      // 1回目の取得が終わり、再試行の待ち（1 秒以上）に入るまで進める
+      for (let i = 0; i < 40 && (global.fetch as jest.Mock).mock.calls.length === 0; i++) {
+        await jest.advanceTimersByTimeAsync(50);
+      }
+      controller.abort(new Error('stop'));
+
+      await assertion;
+      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
     it('should succeed on first attempt', async () => {

@@ -17,9 +17,12 @@ export class ZennAIEnricher extends BaseContentEnricher {
   /**
    * Zennの記事ページから本文とサムネイルを取得
    */
-  async enrich(url: string): Promise<EnrichedContent | null> {
+  async enrich(
+    url: string,
+    externalSignal?: AbortSignal
+  ): Promise<EnrichedContent | null> {
     try {
-      const html = await this.fetchWithRetry(url);
+      const html = await this.fetchWithRetry(url, externalSignal);
 
       // サムネイルを取得
       const thumbnail = this.extractThumbnail(html);

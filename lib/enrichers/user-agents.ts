@@ -12,7 +12,8 @@ export const BROWSER_USER_AGENT =
 /**
  * ボットとして名乗る User-Agent。ブラウザを名乗る要求には JavaScript の確認ページ
  * （"Checking your browser..."）を 403 で返し、ボットを名乗れば記事を返すホスティングがある
- * （WordPress 系の個人ブログなど）。逆に medium.com はボットに Cloudflare の確認ページ（403）を返す
+ * （WordPress 系の個人ブログなど）。はてなブログ（独自ドメインを含む）はブラウザを名乗る要求に
+ * 429 を返すことがある。逆に medium.com はボットに Cloudflare の確認ページ（403）を返す
  */
 export const BOT_USER_AGENT =
   'Mozilla/5.0 (compatible; TechTrendBot/1.0; +https://techtrend.example.com/bot)';

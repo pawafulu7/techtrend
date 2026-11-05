@@ -26,8 +26,9 @@ interface StrategyResult {
 }
 
 /**
- * ボットの UA で取り直したページを本文として採る最小の文字数。ブラウザを拒んでボットに返すページには、
- * 記事のほかにログイン・購読・Cookie の案内だけのページがある（ACM・FT・Science・Wiley で 600〜1,350 文字）
+ * 403 の後にボットの UA で取り直したページを本文として採る最小の文字数。ブラウザを拒んでボットに返す
+ * ページには、記事のほかにログイン・購読・Cookie の案内だけのページがある（ACM・FT・Science・Wiley で
+ * 600〜1,350 文字）。429（回数の制限）の後の取り直しには当てない（はてなブログの短い記事を捨てるため）
  */
 const BOT_USER_AGENT_MIN_CONTENT_LENGTH = 1500;
 
@@ -46,6 +47,8 @@ export class GenericContentEnricher extends BaseContentEnricher {
     const maxRetries = 2;
     let previousWas429 = false;
     let userAgent = BROWSER_USER_AGENT;
+    // ボットの UA に切り替えた理由が 403 か（短いページを案内ページとみなすのは 403 のときだけ）
+    let switchedToBotOn403 = false;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -78,17 +81,26 @@ export class GenericContentEnricher extends BaseContentEnricher {
           // 接続プールの socket 保持を避けるため body を drain してから retry/return
           await this.safeReleaseBody(response);
 
-          if (response.status === 429) {
-            // 429 時の sleep 短縮 (1.5秒)。呼び出し側の source 別 sleep で本質的な rate 制御
-            await this.delay(1500, externalSignal);
-            previousWas429 = true;
-            continue;
-          }
+          // ブラウザを名乗る要求を 403 で断り、ボットを名乗れば記事を返すサイトがある（user-agents.ts）。
           // 同じ UA で取り直しても 403 は変わらないので、ボットを名乗って取り直す。
           // 再試行の回数とは別に数え、最後の試行が 403 でも1回は試す（attempt を戻す）
           if (response.status === 403 && userAgent === BROWSER_USER_AGENT) {
             userAgent = BOT_USER_AGENT;
+            switchedToBotOn403 = true;
             attempt--;
+            continue;
+          }
+          if (response.status === 429) {
+            // 最後の試行なら待たずに終える（呼び出し側の時間の上限を使わない）
+            if (attempt === maxRetries) {
+              return null;
+            }
+            // はてなブログはブラウザを名乗る要求に 429 を返し、ボットには記事を返す（user-agents.ts）。
+            // 本当の回数の制限かもしれないので、再試行の回数の中で、待ってからボットを名乗って取り直す
+            userAgent = BOT_USER_AGENT;
+            // 429 時の sleep 短縮 (1.5秒)。呼び出し側の source 別 sleep で本質的な rate 制御
+            await this.delay(1500, externalSignal);
+            previousWas429 = true;
             continue;
           }
           if (attempt === maxRetries) {
@@ -143,9 +155,9 @@ export class GenericContentEnricher extends BaseContentEnricher {
 
         content = this.cleanupContent(content);
 
-        // ボットの UA で取れた短いページは案内ページとみなし、og:image も使わない
+        // 403 の後にボットの UA で取れた短いページは案内ページとみなし、og:image も使わない
         if (
-          userAgent === BOT_USER_AGENT &&
+          switchedToBotOn403 &&
           content.length < BOT_USER_AGENT_MIN_CONTENT_LENGTH
         ) {
           logger.debug(

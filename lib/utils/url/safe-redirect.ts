@@ -13,6 +13,11 @@
  */
 
 import { assertPublicHttpUrl, SsrfGuardError } from './ssrf-guard';
+import {
+  fetchErrorOutcome,
+  recordFetchOutcome,
+  type FetchOutcome,
+} from './fetch-trace';
 
 export const DEFAULT_MAX_REDIRECTS = 5;
 export const DEFAULT_MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -93,6 +98,46 @@ export async function fetchWithValidatedRedirects(
   url: string,
   options: SafeFetchOptions = {}
 ): Promise<SafeFetchResult> {
+  // 最後の応答・失敗を traceFetches に残す（enricher が null を返したときの理由。fetch-trace.ts）
+  try {
+    const result = await followValidatedRedirects(url, options);
+    recordFetchOutcome({
+      kind: 'response',
+      status: result.response.status,
+      challenge: result.response.headers?.get('cf-mitigated') === 'challenge',
+    });
+    return result;
+  } catch (error) {
+    recordFetchOutcome(redirectErrorOutcome(error));
+    throw error;
+  }
+}
+
+function redirectErrorOutcome(error: unknown): FetchOutcome {
+  if (error instanceof SsrfGuardError) {
+    // 名前解決できないホスト（ドメインの失効など）は、内部への接続を拒んだのではなく接続の失敗
+    const dnsFailed =
+      error.reason === 'dns_resolution_failed' ||
+      error.reason === 'dns_no_addresses';
+    return {
+      kind: 'error',
+      code: dnsFailed ? 'NETWORK' : 'SSRF_REJECTED',
+      cause: error.reason,
+    };
+  }
+  if (
+    error instanceof InvalidRedirectError ||
+    error instanceof RedirectLimitError
+  ) {
+    return { kind: 'error', code: 'REDIRECT_REJECTED' };
+  }
+  return fetchErrorOutcome(error);
+}
+
+async function followValidatedRedirects(
+  url: string,
+  options: SafeFetchOptions
+): Promise<SafeFetchResult> {
   const {
     method = 'GET',
     signal,
@@ -151,6 +196,24 @@ export async function readTextWithLimit(
   response: Response,
   maxBytes: number = DEFAULT_MAX_BODY_BYTES,
   encoding = 'utf-8'
+): Promise<string> {
+  // 読み込みの失敗も traceFetches に残す（残さないと、直前の 200 の応答が最後の結果になる）
+  try {
+    return await readBodyWithLimit(response, maxBytes, encoding);
+  } catch (error) {
+    recordFetchOutcome(
+      error instanceof ResponseTooLargeError
+        ? { kind: 'error', code: 'TOO_LARGE' }
+        : fetchErrorOutcome(error)
+    );
+    throw error;
+  }
+}
+
+async function readBodyWithLimit(
+  response: Response,
+  maxBytes: number,
+  encoding: string
 ): Promise<string> {
   const declaredLength = Number(response.headers?.get('content-length'));
   if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {

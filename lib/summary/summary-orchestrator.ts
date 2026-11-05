@@ -18,8 +18,10 @@ import type {
 import { updateArticleTags } from './batch-processor';
 import {
   PENDING_SUMMARY_ORDER_BY,
+  noSummaryFailureYetWhere,
   pendingSummaryWhere,
   recordContentSkipReasons,
+  recordNoContentSkipReasons,
 } from './pending-articles';
 import { env } from '@/lib/config/env';
 
@@ -473,7 +475,7 @@ export async function generateMissingSummaries(
 
           if (isTransientError) {
             const { count } = await prisma.article.updateMany({
-              where: { ...pendingWhere, summaryError: null },
+              where: { ...pendingWhere, AND: [noSummaryFailureYetWhere()] },
               data: { summaryError: errorMsg },
             });
 
@@ -508,11 +510,7 @@ export async function generateMissingSummaries(
 
     // Batch update skip reasons for validation failures
     try {
-      await recordContentSkipReasons(
-        prisma,
-        noContentArticles,
-        SkipReason.CONTENT_FETCH_FAILED
-      );
+      await recordNoContentSkipReasons(prisma, noContentArticles);
       await recordContentSkipReasons(
         prisma,
         thinContentArticles,

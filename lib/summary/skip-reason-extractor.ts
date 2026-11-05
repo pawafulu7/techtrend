@@ -35,7 +35,8 @@ export function getSkipReasonLabel(reason: SkipReason): string {
     'SLIDE': 'スライド資料',
     'THIN_CONTENT': 'コンテンツ不足',
     'CONTENT_FETCH_FAILED': 'コンテンツ取得失敗',
-    'QUALITY_FAILED': '品質基準未達'
+    'QUALITY_FAILED': '品質基準未達',
+    'VIDEO': '動画'
   };
   return labels[reason] || reason;
 }
