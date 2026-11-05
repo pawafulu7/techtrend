@@ -10,6 +10,7 @@ import {
   enrichWithTrace,
   formatEnrichmentFailure,
   reportEnrichmentFailure,
+  shouldReportPostSaveFailure,
 } from '@/scripts/scheduled/utils/enrichment-failure';
 
 // @/lib/prisma は jest.config の moduleNameMapper で共有の prismaMock に置き換わる
@@ -56,7 +57,7 @@ describe('enrichWithTrace', () => {
       'Post-save enrichment timeout after 10ms'
     );
 
-    expect(describeEnrichmentFailure(attempt)).toEqual({ errorCode: 'TIMEOUT' });
+    expect(describeEnrichmentFailure(attempt)).toMatchObject({ errorCode: 'TIMEOUT' });
   });
 });
 
@@ -76,6 +77,11 @@ describe('describeEnrichmentFailure', () => {
       '200 だが本文を抜き出せない（JavaScript で描くページなど）',
       { data: { content: null, thumbnail: 'https://example.com/a.png' }, lastFetch: { kind: 'response', status: 200, challenge: false } },
       { errorCode: 'NO_CONTENT', status: 200 },
+    ],
+    [
+      '200 の確認ページ（ボット対策の印を残す）',
+      { data: null, lastFetch: { kind: 'response', status: 200, challenge: true } },
+      { errorCode: 'NO_CONTENT', status: 200, detail: 'challenge' },
     ],
     [
       '本文が大きすぎる',
@@ -101,10 +107,16 @@ describe('describeEnrichmentFailure', () => {
     ).toEqual({ errorCode: 'THIN', detail: '5文字' });
   });
 
-  it('例外の HTTP ステータスを読む', () => {
+  it('例外の HTTP ステータスを読み、例外の名前も残す', () => {
     expect(
       describeEnrichmentFailure({ data: null, error: new Error('HTTP 503: Service Unavailable') })
-    ).toEqual({ errorCode: 'HTTP_503', status: 503 });
+    ).toEqual({ errorCode: 'HTTP_503', status: 503, errorName: 'Error' });
+  });
+
+  it('undefined で reject されても例外として扱う', () => {
+    expect(describeEnrichmentFailure({ data: null, error: undefined })).toEqual({
+      errorCode: 'EXCEPTION',
+    });
   });
 
   it('分類できない例外は、取得の結果の方を使う', () => {
@@ -115,6 +127,19 @@ describe('describeEnrichmentFailure', () => {
         lastFetch: { kind: 'error', code: 'NETWORK', cause: 'UND_ERR_HEADERS_OVERFLOW' },
       })
     ).toEqual({ errorCode: 'NETWORK', detail: 'UND_ERR_HEADERS_OVERFLOW' });
+  });
+});
+
+describe('shouldReportPostSaveFailure', () => {
+  const VALID_FEED = 'feed body '.repeat(40);
+
+  it.each([
+    ['本文を採った', { contentAccepted: true, enrichedContent: 'x'.repeat(600), feedContent: null }, false],
+    ['本文が返らない（取得の失敗）', { contentAccepted: false, enrichedContent: null, feedContent: VALID_FEED }, true],
+    ['短い本文が返り、フィードの本文も要約に足りない', { contentAccepted: false, enrichedContent: 'short', feedContent: '' }, true],
+    ['短い本文が返ったが、フィードの本文で要約できる', { contentAccepted: false, enrichedContent: 'short', feedContent: VALID_FEED }, false],
+  ] as const)('%s', (_name, params, expected) => {
+    expect(shouldReportPostSaveFailure(params)).toBe(expected);
   });
 });
 
@@ -158,15 +183,18 @@ describe('reportEnrichmentFailure', () => {
       remainingContent: null,
     });
 
+    const summaryError = '本文の取得に失敗: HTTP_403 (challenge) [GenericContentEnricher]';
     expect(mockUpdateMany).toHaveBeenCalledWith({
       where: {
         id: 'a1',
         AND: [
           { OR: [{ summary: null }, { summary: '' }] },
           { OR: [{ contentLength: null }, { contentLength: 0 }] },
+          // 同じ理由なら書き直さない（自己修復は毎時同じ記事を取り直す）
+          { OR: [{ summaryError: null }, { summaryError: { not: summaryError } }] },
         ],
       },
-      data: { summaryError: '本文の取得に失敗: HTTP_403 (challenge) [GenericContentEnricher]' },
+      data: { summaryError },
     });
   });
 

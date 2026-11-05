@@ -213,13 +213,20 @@ describe('traceFetches', () => {
     expect((await slow).lastFetch).toMatchObject({ status: 404 });
   });
 
-  it('traceFetches の外の取得は何も記録しない', async () => {
+  it('traceFetches の外の取得は、動いている別の traceFetches に記録しない', async () => {
     fetchMock.mockResolvedValueOnce(fakeResponse(500));
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const traced = traceFetches(async () => {
+      await gate;
+    });
     await fetchWithValidatedRedirects('https://example.com/a');
+    release();
 
-    const { lastFetch } = await traceFetches(async () => undefined);
-
-    expect(lastFetch).toBeUndefined();
+    expect((await traced).lastFetch).toBeUndefined();
   });
 });
 
@@ -232,6 +239,14 @@ describe('fetchErrorOutcome', () => {
       kind: 'error',
       code: 'TIMEOUT',
     });
+  });
+
+  it('undici の時間切れ（cause.code）は TIMEOUT と原因のコード', () => {
+    expect(
+      fetchErrorOutcome(
+        new TypeError('fetch failed', { cause: { code: 'UND_ERR_HEADERS_TIMEOUT' } })
+      )
+    ).toEqual({ kind: 'error', code: 'TIMEOUT', cause: 'UND_ERR_HEADERS_TIMEOUT' });
   });
 
   it('Error でない中断の理由でも落ちずに NETWORK', () => {

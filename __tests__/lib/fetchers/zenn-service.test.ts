@@ -3,6 +3,7 @@
  */
 
 import { ZennService, ZennArticleResponse } from '@/lib/fetchers/zenn-service';
+import { traceFetches } from '@/lib/utils/url/fetch-trace';
 
 // Mock logger to suppress logs during tests
 jest.mock('@/lib/logger', () => ({
@@ -184,6 +185,34 @@ describe('ZennService', () => {
 
       await expect(ZennService.fetchArticleContent('test-slug'))
         .rejects.toThrow('Network error');
+    });
+
+    // ZennApiEnricher は失敗すると null を返すので、毎時の収集は取得の記録から理由を読む
+    it('should record the response status for the fetch trace', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        headers: { get: jest.fn().mockReturnValue(null) },
+      });
+
+      const { lastFetch } = await traceFetches(async () => {
+        await ZennService.fetchArticleContent('invalid-slug').catch(() => null);
+      });
+
+      expect(lastFetch).toEqual({ kind: 'response', status: 404, challenge: false });
+    });
+
+    it('should record a failure before any response for the fetch trace', async () => {
+      (global.fetch as jest.Mock).mockRejectedValue(
+        new TypeError('fetch failed', { cause: { code: 'ENOTFOUND' } })
+      );
+
+      const { lastFetch } = await traceFetches(async () => {
+        await ZennService.fetchArticleContent('test-slug').catch(() => null);
+      });
+
+      expect(lastFetch).toEqual({ kind: 'error', code: 'NETWORK', cause: 'ENOTFOUND' });
     });
   });
 

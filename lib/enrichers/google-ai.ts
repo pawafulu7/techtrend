@@ -32,9 +32,12 @@ export class GoogleAIEnricher extends BaseContentEnricher {
   /**
    * Extract content from Google Blog article pages
    */
-  async enrich(url: string): Promise<EnrichedContent | null> {
+  async enrich(
+    url: string,
+    externalSignal?: AbortSignal
+  ): Promise<EnrichedContent | null> {
     try {
-      const html = await this.fetchWithRetry(url);
+      const html = await this.fetchWithRetry(url, externalSignal);
       const thumbnail = this.extractThumbnail(html);
 
       // Strategy 1: New blog.google structure selectors (highest priority)

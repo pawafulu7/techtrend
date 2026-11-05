@@ -25,7 +25,10 @@ export class ZennApiEnricher extends BaseContentEnricher {
    * @param url 記事のURL
    * @returns エンリッチされたコンテンツ。取得失敗時はnull
    */
-  async enrich(url: string): Promise<EnrichmentResult | null> {
+  async enrich(
+    url: string,
+    externalSignal?: AbortSignal
+  ): Promise<EnrichmentResult | null> {
     try {
       // スラッグ抽出
       const slug = ZennService.extractSlugFromUrl(url);
@@ -35,7 +38,7 @@ export class ZennApiEnricher extends BaseContentEnricher {
       }
 
       // Zenn APIから記事データを取得
-      const data = await ZennService.fetchWithRetry(slug);
+      const data = await ZennService.fetchWithRetry(slug, externalSignal);
 
       // HTMLからプレーンテキストに変換
       const plainText = this.htmlToPlainText(data.article.body_html);

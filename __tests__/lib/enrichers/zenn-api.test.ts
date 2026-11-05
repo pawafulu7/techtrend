@@ -68,13 +68,15 @@ describe('ZennApiEnricher', () => {
       (ZennService.extractSlugFromUrl as jest.Mock).mockReturnValue('test-slug');
       (ZennService.fetchWithRetry as jest.Mock).mockResolvedValue(mockZennResponse);
 
-      const result = await enricher.enrich('https://zenn.dev/user/articles/test-slug');
+      const signal = new AbortController().signal;
+      const result = await enricher.enrich('https://zenn.dev/user/articles/test-slug', signal);
 
       expect(result).not.toBeNull();
       expect(result?.content).toContain('Test Title');
       expect(result?.content).toContain('This is test content');
       expect(ZennService.extractSlugFromUrl).toHaveBeenCalledWith('https://zenn.dev/user/articles/test-slug');
-      expect(ZennService.fetchWithRetry).toHaveBeenCalledWith('test-slug');
+      // 呼び出し側の時間の上限で取得をやめられるよう、signal を渡す
+      expect(ZennService.fetchWithRetry).toHaveBeenCalledWith('test-slug', signal);
     });
 
     it('should return null if slug extraction fails', async () => {

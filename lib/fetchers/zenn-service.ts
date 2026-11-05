@@ -6,6 +6,7 @@
  */
 
 import { logger } from '@/lib/logger';
+import { fetchErrorOutcome, recordFetchOutcome } from '@/lib/utils/url/fetch-trace';
 
 export interface ZennArticleResponse {
   article: {
@@ -110,23 +111,39 @@ export class ZennService {
   /**
    * Fetch article content from Zenn API
    * @param slug - Article slug
+   * @param externalSignal - 呼び出し側の中断（毎時の収集の時間の上限）。中断されたら取得をやめる
    * @returns Article data
    * @throws Error if fetch fails
    */
-  static async fetchArticleContent(slug: string): Promise<ZennArticleResponse> {
+  static async fetchArticleContent(
+    slug: string,
+    externalSignal?: AbortSignal
+  ): Promise<ZennArticleResponse> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT);
     const startTime = Date.now();
+    // 応答を得たか。得る前の失敗（時間切れ・接続の失敗）だけを取得の失敗として記録する
+    let responded = false;
 
     try {
       await RateLimiter.waitIfNeeded();
 
       const response = await fetch(`${this.BASE_URL}/${slug}`, {
-        signal: controller.signal,
+        signal: externalSignal
+          ? AbortSignal.any([controller.signal, externalSignal])
+          : controller.signal,
         headers: {
           'User-Agent': 'TechTrend/1.0',
           'Accept': 'application/json',
         },
+      });
+      responded = true;
+      // ZennApiEnricher は失敗すると null を返すので、本文を取れなかった理由を毎時の収集に残す
+      // （lib/utils/url/fetch-trace.ts。記事ページの取得は safe-redirect.ts が記録する）
+      recordFetchOutcome({
+        kind: 'response',
+        status: response.status,
+        challenge: response.headers?.get('cf-mitigated') === 'challenge',
       });
 
       const duration = Date.now() - startTime;
@@ -167,6 +184,7 @@ export class ZennService {
       return data;
     } catch (error: any) {
       const duration = Date.now() - startTime;
+      if (!responded) recordFetchOutcome(fetchErrorOutcome(error));
 
       // Handle timeout
       if (error.name === 'AbortError') {
@@ -197,11 +215,17 @@ export class ZennService {
    * @returns Article data
    * @throws Error if all retries fail
    */
-  static async fetchWithRetry(slug: string): Promise<ZennArticleResponse> {
+  static async fetchWithRetry(
+    slug: string,
+    externalSignal?: AbortSignal
+  ): Promise<ZennArticleResponse> {
     const overallStartTime = Date.now();
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+      // 呼び出し側が諦めたら（時間の上限）、再試行せずにやめる
+      externalSignal?.throwIfAborted();
+
       // Check overall timeout budget
       const elapsed = Date.now() - overallStartTime;
       if (elapsed >= this.MAX_TOTAL_DURATION) {
@@ -214,7 +238,7 @@ export class ZennService {
       }
 
       try {
-        const data = await this.fetchArticleContent(slug);
+        const data = await this.fetchArticleContent(slug, externalSignal);
 
         if (attempt > 1) {
           logger.info({
@@ -227,6 +251,7 @@ export class ZennService {
         return data;
       } catch (error: any) {
         lastError = error;
+        if (externalSignal?.aborted) throw error;
         const status = error.status;
         const isTimeout = error.isTimeout;
         const isNonRetryableValidationError = error.nonRetryable;

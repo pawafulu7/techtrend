@@ -62,6 +62,13 @@ export function recordFetchOutcome(outcome: FetchOutcome): void {
   if (trace) trace.last = outcome;
 }
 
+const TIMEOUT_CAUSE_CODES = new Set([
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_BODY_TIMEOUT',
+  'ETIMEDOUT',
+]);
+
 /**
  * fetch・本文の読み込みが投げた例外を分類する。中断の理由（signal.reason）は Error でないことも
  * あるので、name は instanceof を使わずに読む。cause.code は undici・Node が付ける ENOTFOUND など
@@ -77,7 +84,8 @@ export function fetchErrorOutcome(error: unknown): FetchOutcome {
   const causeCode = typeof cause?.code === 'string' ? cause.code : undefined;
   return {
     kind: 'error',
-    code: 'NETWORK',
+    // undici は接続・応答ヘッダ・本文の時間切れを TypeError の cause.code で知らせる
+    code: causeCode && TIMEOUT_CAUSE_CODES.has(causeCode) ? 'TIMEOUT' : 'NETWORK',
     ...(causeCode && { cause: causeCode }),
   };
 }

@@ -189,17 +189,41 @@ describe('GenericContentEnricher Pipeline', () => {
       expect(result?.content).toContain('how the incident happened');
     }, 10000);
 
-    it('should keep retrying 429 with the bot User-Agent and give up after the retries', async () => {
+    it('should keep a short article returned to the bot User-Agent after 429 (the 1,500-char floor is for 403)', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: false, status: 429 } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          url: 'https://example.com/short-after-429',
+          // 1,500 文字未満（48 文字 × 25 回）
+          text: async () => articleHtml('A short entry on a blog about our latest work. ', 25),
+        } as Response);
+
+      const result = await enricher.enrich('https://example.com/short-after-429');
+
+      expect(result?.content).toContain('latest work');
+      expect(result!.content!.length).toBeLessThan(1500);
+    }, 10000);
+
+    it('should give up after the retries when the bot User-Agent also gets 429 (no extra request)', async () => {
       const mockFetch = jest
         .spyOn(global, 'fetch')
         .mockResolvedValue({ ok: false, status: 429 } as Response);
+      const delay = jest.spyOn(
+        GenericContentEnricher.prototype as unknown as { delay: () => Promise<void> },
+        'delay'
+      );
 
       const result = await enricher.enrich('https://example.com/too-many');
 
       expect(result).toBeNull();
-      // ブラウザ → ボット → ボット（通常の再試行）の 3 回で終わる
-      expect(mockFetch).toHaveBeenCalledTimes(3);
-      expect(userAgentOf(mockFetch.mock.calls[2][1])).toBe(BOT_USER_AGENT);
+      // 本当の回数の制限かもしれないので、以前と同じ 2 回（ブラウザ → 待ってボット）で終わる
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(userAgentOf(mockFetch.mock.calls[1][1])).toBe(BOT_USER_AGENT);
+      // 最後の 429 の後は待たない
+      expect(delay).toHaveBeenCalledTimes(1);
     }, 10000);
 
     it('should give up when the bot User-Agent also gets 403', async () => {

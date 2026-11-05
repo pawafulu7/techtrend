@@ -4,13 +4,18 @@
 
 import { SkipReason } from '@/lib/prisma-exports';
 import {
+  CONTENT_FETCH_FAILURE_PREFIX,
   PENDING_SUMMARY_ORDER_BY,
   noContentSkipReason,
+  noSummaryFailureYetWhere,
   pendingSummaryWhere,
   recordContentSkipReasons,
   recordNoContentSkipReasons,
 } from '@/lib/summary/pending-articles';
-import { checkNewArticles } from '@/lib/summary/batch-processor';
+import {
+  checkNewArticles,
+  processArticleWithTimeout,
+} from '@/lib/summary/batch-processor';
 import { generateMissingSummaries } from '@/lib/summary/summary-orchestrator';
 import { SummaryManager } from '@/lib/summary/summary-manager';
 
@@ -143,9 +148,44 @@ describe('recordNoContentSkipReasons', () => {
         args.data.skipReason,
       ])
     ).toEqual([
-      ['video', SkipReason.VIDEO],
       ['page', SkipReason.CONTENT_FETCH_FAILED],
+      ['video', SkipReason.VIDEO],
     ]);
+  });
+
+  it('VIDEO を書けなくても（enum を足すマイグレーションの前）取得失敗は付け、例外を投げない', async () => {
+    const prisma = createPrismaMock();
+    prisma.article.updateMany.mockImplementation(async (args) => {
+      if (args.data.skipReason === SkipReason.VIDEO) {
+        throw new Error('invalid input value for enum "SkipReason": "VIDEO"');
+      }
+      return { count: 1 };
+    });
+
+    await expect(
+      recordNoContentSkipReasons(prisma as never, [
+        { id: 'video', url: 'https://youtu.be/dQw4w9WgXcQ', contentLength: null },
+        { id: 'page', url: 'https://example.com/post', contentLength: 0 },
+      ])
+    ).resolves.toBeUndefined();
+
+    expect(prisma.article.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: 'page' }),
+        data: { skipReason: SkipReason.CONTENT_FETCH_FAILED },
+      })
+    );
+  });
+});
+
+describe('noSummaryFailureYetWhere', () => {
+  it('要約の失敗がまだ無い記事として、summaryError が空か、本文を取れなかった理由だけの記事を選ぶ', () => {
+    expect(noSummaryFailureYetWhere()).toEqual({
+      OR: [
+        { summaryError: null },
+        { summaryError: { startsWith: CONTENT_FETCH_FAILURE_PREFIX } },
+      ],
+    });
   });
 });
 
@@ -284,4 +324,35 @@ describe('本文の判定の書き込み', () => {
       expect(updates).toHaveLength(3);
     }
   );
+});
+
+describe('要約の一時的な失敗の数え方', () => {
+  it('本文を取れなかった理由だけが入った記事は、要約の失敗の1回目として扱う（QUALITY_FAILED にしない）', async () => {
+    const prisma = createPrismaMock();
+    const article = {
+      id: 'recovered',
+      title: 'Recovered',
+      url: 'https://example.com/recovered',
+      source: { id: 's1', name: 'Test' },
+    };
+
+    await processArticleWithTimeout(
+      article as never,
+      'body '.repeat(100),
+      jest.fn().mockRejectedValue(new Error('network error')),
+      prisma as never,
+      jest.fn()
+    );
+
+    expect(prisma.article.updateMany).toHaveBeenCalledTimes(1);
+    expect(prisma.article.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'recovered',
+        skipReason: null,
+        OR: [{ summary: null }, { summary: '' }],
+        AND: [noSummaryFailureYetWhere()],
+      },
+      data: { summaryError: 'network error' },
+    });
+  });
 });

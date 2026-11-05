@@ -18,6 +18,7 @@ import type {
 import { updateArticleTags } from './batch-processor';
 import {
   PENDING_SUMMARY_ORDER_BY,
+  noSummaryFailureYetWhere,
   pendingSummaryWhere,
   recordContentSkipReasons,
   recordNoContentSkipReasons,
@@ -474,7 +475,7 @@ export async function generateMissingSummaries(
 
           if (isTransientError) {
             const { count } = await prisma.article.updateMany({
-              where: { ...pendingWhere, summaryError: null },
+              where: { ...pendingWhere, AND: [noSummaryFailureYetWhere()] },
               data: { summaryError: errorMsg },
             });
 

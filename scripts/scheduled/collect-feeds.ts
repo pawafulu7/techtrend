@@ -28,7 +28,6 @@ import type { BaseFetcher } from '@/lib/fetchers/base';
 import { ContentEnricherFactory } from '@/lib/enrichers';
 import { HATENA_BLOG_DEV_SOURCE_ID } from '@/lib/enrichers/hatena';
 import { isEnrichmentSkipped } from '@/lib/fetchers/config/foreign-rss-sources';
-import { validateArticleContent } from '@/lib/summary/summary-orchestrator';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 import { isYouTubeVideoUrl } from '@/lib/utils/url/youtube';
 import {
@@ -39,6 +38,7 @@ import {
   describeEnrichmentFailure,
   enrichWithTrace,
   reportEnrichmentFailure,
+  shouldReportPostSaveFailure,
 } from './utils/enrichment-failure';
 import {
   isAcceptableEnrichedContent,
@@ -431,6 +431,9 @@ async function processSource({
                         data: {
                           content: enrichedData.content,
                           contentUpdatedAt: new Date(),
+                          // 同じ URL を並行して扱う別ソースの自己修復が、取れなかった理由を先に
+                          // 書いていることがある。残すと要約の一時的な失敗の1回目が2回目と扱われる
+                          summaryError: null,
                           ...(needsThumbnailUpdate && { thumbnail: enrichedData.thumbnail })
                         }
                       });
@@ -470,11 +473,13 @@ async function processSource({
               console.error('   [WARN] エンリッチメント結果の保存に失敗:', summarizeError(saveError));
             }
 
-            // 取れなかった理由をログと summaryError に残す。フィードの本文で要約できる記事に、
-            // 短い本文しか返らなかっただけのとき（よくある）は失敗として扱わない
+            // 取れなかった理由をログと summaryError に残す（条件は shouldReportPostSaveFailure）
             if (
-              !contentAccepted &&
-              (!enrichedData?.content || !validateArticleContent({ content: article.content ?? null }).valid)
+              shouldReportPostSaveFailure({
+                contentAccepted,
+                enrichedContent: enrichedData?.content,
+                feedContent: article.content,
+              })
             ) {
               await reportEnrichmentFailure({
                 article: { id: savedArticle.id, url: article.url, contentLength: savedArticle.contentLength },

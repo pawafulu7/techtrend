@@ -14,7 +14,7 @@ import type { ArticleWithSource } from '@/types/models';
 import type { SummaryGenerationOptions, SummaryAndTags } from './types';
 import { env } from '@/lib/config/env';
 import { resolveTags } from '@/lib/tags/tag-service';
-import { pendingSummaryWhere } from './pending-articles';
+import { noSummaryFailureYetWhere, pendingSummaryWhere } from './pending-articles';
 
 /**
  * Concurrency limit for parallel summary generation.
@@ -109,7 +109,7 @@ export async function processArticleWithTimeout(
 
       if (isTransientError) {
         const { count } = await prisma.article.updateMany({
-          where: { ...pendingWhere, summaryError: null },
+          where: { ...pendingWhere, AND: [noSummaryFailureYetWhere()] },
           data: { summaryError: errorMsg },
         });
 

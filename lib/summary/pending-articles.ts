@@ -7,6 +7,7 @@
  */
 import { SkipReason } from '@/lib/prisma-exports';
 import type { Prisma, PrismaClient } from '@/lib/prisma-exports';
+import logger from '@/lib/logger';
 import { isYouTubeVideoUrl } from '@/lib/utils/url/youtube';
 
 /**
@@ -46,7 +47,7 @@ export const PENDING_SUMMARY_ORDER_BY: Prisma.ArticleOrderByWithRelationInput =
  * 記事だけを更新する。書き込む側の経路や時計に左右されないよう、時刻ではなく本文の状態で比べる。
  *
  * summaryError は消さない。本文が取れなかった理由（毎時の収集が enrichment-failure.ts で書く）を
- * 残すため。本文が入れば要約まわりと一緒に消える（summary-reset.ts の SUMMARY_RESET）
+ * 残すため。要約の失敗の数え方からは外す（noSummaryFailureYetWhere）
  */
 export async function recordContentSkipReasons(
   prisma: Pick<PrismaClient, 'article'>,
@@ -67,6 +68,24 @@ export async function recordContentSkipReasons(
   );
 }
 
+/** 本文を取れなかった理由（毎時の収集が summaryError に書く）の先頭。要約の失敗の文と見分ける */
+export const CONTENT_FETCH_FAILURE_PREFIX = '本文の取得に失敗: ';
+
+/**
+ * 要約の一時的な失敗がまだ記録されていない（次の失敗が1回目）記事の条件。
+ * 要約の処理は summaryError が空かで1回目の失敗を見分ける（2回目は QUALITY_FAILED にして諦める）。
+ * summaryError には本文を取れなかった理由も入るので、それは要約の失敗に数えない。数えると、
+ * 後から本文が入った記事が、要約の一時的な失敗の1回目で諦められる
+ */
+export function noSummaryFailureYetWhere(): Prisma.ArticleWhereInput {
+  return {
+    OR: [
+      { summaryError: null },
+      { summaryError: { startsWith: CONTENT_FETCH_FAILURE_PREFIX } },
+    ],
+  };
+}
+
 /**
  * 本文の無い記事に付ける skipReason。YouTube の動画は本文を取る手段が無いので、
  * 取得失敗（CONTENT_FETCH_FAILED）と分けて VIDEO にする
@@ -77,7 +96,13 @@ export function noContentSkipReason(url: string): SkipReason {
     : SkipReason.CONTENT_FETCH_FAILED;
 }
 
-/** 本文の無い記事に skipReason を書き込む（理由は noContentSkipReason） */
+/**
+ * 本文の無い記事に skipReason を書き込む（理由は noContentSkipReason）。
+ *
+ * VIDEO は後から足した値で、本番ではマイグレーション（Vercel のビルドで流れる）より先に定期ジョブの
+ * 新しいコードが動くことがある。VIDEO を書けなくても取得失敗は付け、動画は印を付けずに次の回に回す
+ * （skipReason が NULL のままなので、要約の対象として次の回にまた判定される）
+ */
 export async function recordNoContentSkipReasons(
   prisma: Pick<PrismaClient, 'article'>,
   articles: ReadonlyArray<{ id: string; url: string; contentLength: number | null }>
@@ -88,10 +113,17 @@ export async function recordNoContentSkipReasons(
   const others = articles.filter(
     (article) => noContentSkipReason(article.url) !== SkipReason.VIDEO
   );
-  await recordContentSkipReasons(prisma, videos, SkipReason.VIDEO);
   await recordContentSkipReasons(
     prisma,
     others,
     SkipReason.CONTENT_FETCH_FAILED
   );
+  try {
+    await recordContentSkipReasons(prisma, videos, SkipReason.VIDEO);
+  } catch (error) {
+    logger.warn(
+      { err: error, count: videos.length },
+      'Failed to record the VIDEO skip reason; will retry on the next run'
+    );
+  }
 }

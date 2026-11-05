@@ -8,34 +8,55 @@
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@/lib/prisma-exports';
 import type { EnrichmentResult, IContentEnricher } from '@/lib/enrichers';
-import { classifyEnrichmentError } from '@/lib/enrichers/error-classifier';
-import { logger } from '@/lib/logger';
+import {
+  classifyEnrichmentError,
+  type EnrichmentErrorCode,
+} from '@/lib/enrichers/error-classifier';
+import { createLogger } from '@/lib/logger';
 import { validateArticleContent } from '@/lib/summary/summary-orchestrator';
-import { traceFetches, type FetchOutcome } from '@/lib/utils/url/fetch-trace';
+import { CONTENT_FETCH_FAILURE_PREFIX } from '@/lib/summary/pending-articles';
+import {
+  traceFetches,
+  type FetchErrorCode,
+  type FetchOutcome,
+} from '@/lib/utils/url/fetch-trace';
 import { isYouTubeVideoUrl } from '@/lib/utils/url/youtube';
 import { runWithTimeout } from './run-with-timeout';
+
+const logger = createLogger('collect-feeds');
 
 /** enricher を1回呼んだ結果。enricher の例外はここで受け止める */
 export interface EnrichmentAttempt {
   /** enricher の戻り値。例外のときは null */
   data: EnrichmentResult | null;
-  /** enricher が投げた例外（時間切れを含む） */
+  /** enricher が投げた例外（時間切れを含む）。キーがあれば例外（undefined で reject されたときも） */
   error?: unknown;
   /** enricher の中で行った最後の取得の結果 */
   lastFetch?: FetchOutcome;
 }
 
+/**
+ * 本文を取れなかった理由の分類。
+ * - HTTP_<status>・TIMEOUT・ABORTED・EXCEPTION・NO_DATA: enricher の例外の分類（error-classifier.ts）。
+ *   NO_DATA は enricher が取得の記録を残さずに何も返さないとき
+ * - TOO_LARGE・SSRF_REJECTED・REDIRECT_REJECTED・NETWORK: 取得の失敗（fetch-trace.ts）
+ * - NO_CONTENT: 応答は得たが、本文を抜き出せない、または enricher が短い・案内ページとして捨てた
+ * - THIN: enricher は本文を返したが、短い・品質が足りず保存しない
+ */
+export type EnrichmentFailureCode =
+  | EnrichmentErrorCode
+  | FetchErrorCode
+  | 'NO_CONTENT'
+  | 'THIN';
+
 /** 本文を取れなかった理由 */
 export interface EnrichmentFailure {
-  /**
-   * HTTP_<status>（エラーの応答）・NO_CONTENT（応答は得たが本文を抜き出せない）・THIN（本文が短い）・
-   * TOO_LARGE・SSRF_REJECTED・REDIRECT_REJECTED・TIMEOUT・NETWORK・ABORTED・EXCEPTION・
-   * NO_DATA（enricher が取得をせずに何も返さない）
-   */
-  errorCode: string;
+  errorCode: EnrichmentFailureCode;
   status?: number;
   /** 補足。challenge（ボット対策の確認ページ）・ENOTFOUND などの原因のコード・本文の文字数 */
   detail?: string;
+  /** enricher が投げた例外の名前（ログだけに出す） */
+  errorName?: string;
 }
 
 /** 時間の上限を付けて enricher を呼び、取得の結果と一緒に返す（例外は投げない） */
@@ -71,11 +92,8 @@ function failureFromFetch(lastFetch: FetchOutcome | undefined): EnrichmentFailur
     };
   }
   const { status, challenge } = lastFetch;
-  if (status >= 200 && status < 300) {
-    return { errorCode: 'NO_CONTENT', status };
-  }
   return {
-    errorCode: `HTTP_${status}`,
+    errorCode: status >= 200 && status < 300 ? 'NO_CONTENT' : `HTTP_${status}`,
     status,
     ...(challenge && { detail: 'challenge' }),
   };
@@ -89,7 +107,7 @@ export function describeEnrichmentFailure(
   attempt: EnrichmentAttempt,
   rejectedContentLength?: number
 ): EnrichmentFailure {
-  if (attempt.error !== undefined) {
+  if ('error' in attempt) {
     const classified = classifyEnrichmentError(attempt.error);
     // 取得の失敗が enricher の例外になったとき（HTTP のステータスも時間切れも読めない）は、
     // 取得の結果の方が詳しい
@@ -99,6 +117,7 @@ export function describeEnrichmentFailure(
     return {
       errorCode: classified.errorCode,
       ...(classified.status !== undefined && { status: classified.status }),
+      ...(classified.errorName && { errorName: classified.errorName }),
     };
   }
   if (rejectedContentLength !== undefined) {
@@ -113,7 +132,27 @@ export function formatEnrichmentFailure(
   enricherName: string
 ): string {
   const detail = failure.detail ? ` (${failure.detail})` : '';
-  return `本文の取得に失敗: ${failure.errorCode}${detail} [${enricherName}]`;
+  return `${CONTENT_FETCH_FAILURE_PREFIX}${failure.errorCode}${detail} [${enricherName}]`;
+}
+
+/**
+ * 新しい記事の保存の後の取得で、取れなかったことを失敗として報告するか。
+ * 本文を採らなかったときのうち、enricher が本文を返さなかったとき（取得の失敗）と、フィードの本文が
+ * 要約に足りないとき。フィードの本文で要約できる記事に、それより短い本文が返っただけのとき
+ * （よくある）は失敗として扱わない
+ */
+export function shouldReportPostSaveFailure({
+  contentAccepted,
+  enrichedContent,
+  feedContent,
+}: {
+  contentAccepted: boolean;
+  enrichedContent: string | null | undefined;
+  feedContent: string | null | undefined;
+}): boolean {
+  if (contentAccepted) return false;
+  if (!enrichedContent) return true;
+  return !validateArticleContent({ content: feedContent ?? null }).valid;
 }
 
 interface ReportEnrichmentFailureParams {
@@ -165,6 +204,7 @@ export async function reportEnrichmentFailure({
       errorCode: failure.errorCode,
       status: failure.status,
       detail: failure.detail,
+      errorName: failure.errorName,
     },
     '[Enrichment] failed'
   );
@@ -174,6 +214,7 @@ export async function reportEnrichmentFailure({
 
   if (validateArticleContent({ content: remainingContent ?? null }).valid) return;
 
+  const summaryError = formatEnrichmentFailure(failure, enricherName);
   try {
     await prisma.article.updateMany({
       where: {
@@ -181,9 +222,12 @@ export async function reportEnrichmentFailure({
         AND: [
           { OR: [{ summary: null }, { summary: '' }] },
           contentLengthWhere(article.contentLength),
+          // 自己修復は毎時同じ記事を取り直すので、同じ理由なら書き直さない（updatedAt を進めない）。
+          // `not` だけでは NULL の行が外れるので、NULL も明示する
+          { OR: [{ summaryError: null }, { summaryError: { not: summaryError } }] },
         ],
       },
-      data: { summaryError: formatEnrichmentFailure(failure, enricherName) },
+      data: { summaryError },
     });
   } catch (dbError) {
     logger.warn(
