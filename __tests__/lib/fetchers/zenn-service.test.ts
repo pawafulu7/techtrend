@@ -281,9 +281,10 @@ describe('ZennService', () => {
       const controller = new AbortController();
       controller.abort();
 
+      // 中断の理由をそのまま伝える
       await expect(
         ZennService.fetchWithRetry('test-slug', controller.signal)
-      ).rejects.toThrow();
+      ).rejects.toBe(controller.signal.reason);
       expect(global.fetch).not.toHaveBeenCalled();
     });
 

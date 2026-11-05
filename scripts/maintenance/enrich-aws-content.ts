@@ -6,6 +6,10 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { AWSEnricher } from '../../lib/enrichers/aws';
 import { isUrlFromDomain } from '../../lib/utils/url/url-validator';
+import {
+  contentStateWhere,
+  summaryUpdatesForReplacedContent,
+} from '../scheduled/utils/summary-reset';
 
 const prisma = createPrismaClient();
 const enricher = new AWSEnricher();
@@ -84,20 +88,29 @@ async function enrichAWSContent() {
           
           // 内容が20%以上改善されている場合のみ更新
           if (newLength > currentLength * 1.2 || currentLength < 500) {
-            await prisma.article.update({
-              where: { id: article.id },
+            // 旧本文から作った要約を戻し（summaryUpdatesForReplacedContent）、本文の更新日時を進める
+            // （要約の再試行・CAS の基準。ほかの保守スクリプトと同じ）。enrich() を待つ間に他の処理が
+            // 本文を書いていたら上書きしない（取得時と本文の状態が同じときだけ。contentStateWhere）
+            const { count } = await prisma.article.updateMany({
+              where: { id: article.id, ...contentStateWhere(article) },
               data: {
                 content: enrichedData.content,
-                ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail })
+                ...(enrichedData.thumbnail && { thumbnail: enrichedData.thumbnail }),
+                contentUpdatedAt: new Date(),
+                ...summaryUpdatesForReplacedContent(article.skipReason, enrichedData.content),
               }
             });
-            
-            // ゼロ除算防止
-            const percentImprovement = currentLength > 0 
-              ? Math.round((newLength - currentLength) / currentLength * 100)
-              : 100;
-            console.error(`✅ Enriched: ${currentLength} -> ${newLength} chars (+${percentImprovement}%)`);
-            enrichedCount++;
+            if (count === 0) {
+              console.error(`[SKIP] Content changed by another process: ${article.title?.substring(0, 50)}...`);
+              skippedCount++;
+            } else {
+              // ゼロ除算防止
+              const percentImprovement = currentLength > 0
+                ? Math.round((newLength - currentLength) / currentLength * 100)
+                : 100;
+              console.error(`✅ Enriched: ${currentLength} -> ${newLength} chars (+${percentImprovement}%)`);
+              enrichedCount++;
+            }
           } else {
             console.error(`[SKIP] Minimal improvement (${currentLength} -> ${newLength} chars)`);
             skippedCount++;

@@ -386,4 +386,51 @@ describe('要約の一時的な失敗の数え方', () => {
       data: { skipReason: SkipReason.QUALITY_FAILED, summaryError: 'network error' },
     });
   });
+
+  // missing（generateMissingSummaries）は同じ数え方を別に持つので、そちらも確かめる
+  describe('missing の経路', () => {
+    const recovered = {
+      id: 'missing-recovered',
+      title: 'Recovered',
+      url: 'https://example.com/missing-recovered',
+      content: 'body '.repeat(100),
+      contentLength: 500,
+      publishedAt: NOW,
+      source: { id: 's1', name: 'Test' },
+    };
+    const failingGenerate = () =>
+      jest.fn().mockRejectedValue(new Error('network error'));
+
+    it('1回目の一時的な失敗は、本文を取れなかった理由を要約の失敗に数えない条件で記録する', async () => {
+      const prisma = createPrismaMock([recovered]);
+
+      await generateMissingSummaries(prisma as never, {}, failingGenerate(), jest.fn());
+
+      expect(prisma.article.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'missing-recovered',
+          skipReason: null,
+          OR: [{ summary: null }, { summary: '' }],
+          AND: [noSummaryFailureYetWhere()],
+        },
+        data: { summaryError: 'network error' },
+      });
+    });
+
+    it('2回目の一時的な失敗は QUALITY_FAILED にする', async () => {
+      const prisma = createPrismaMock([recovered]);
+      prisma.article.updateMany.mockResolvedValueOnce({ count: 0 });
+
+      await generateMissingSummaries(prisma as never, {}, failingGenerate(), jest.fn());
+
+      expect(prisma.article.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'missing-recovered',
+          skipReason: null,
+          OR: [{ summary: null }, { summary: '' }],
+        },
+        data: { skipReason: SkipReason.QUALITY_FAILED, summaryError: 'network error' },
+      });
+    });
+  });
 });

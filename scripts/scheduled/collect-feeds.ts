@@ -299,12 +299,8 @@ async function processSource({
                   if (!recovered) {
                     // 取り直しても取れなかった理由で summaryError を書き直す（最新の理由を残す）
                     await reportEnrichmentFailure({
-                      article: {
-                        id: existing.id,
-                        url: article.url,
-                        contentLength: existing.contentLength,
-                        contentUpdatedAt: existing.contentUpdatedAt,
-                      },
+                      // 読んだ行をそのまま渡す（本文の状態は読んだときの値で比べる）
+                      article: existing,
                       remainingContent: null,
                       failure: describeEnrichmentFailure(attempt, enrichedData?.content?.length || undefined),
                       enricherName: enricher.constructor.name,
@@ -487,12 +483,8 @@ async function processSource({
               })
             ) {
               await reportEnrichmentFailure({
-                article: {
-                  id: savedArticle.id,
-                  url: article.url,
-                  contentLength: savedArticle.contentLength,
-                  contentUpdatedAt: savedArticle.contentUpdatedAt,
-                },
+                // 保存した行をそのまま渡す（本文の状態は保存したときの値で比べる）
+                article: savedArticle,
                 remainingContent: article.content,
                 failure: describeEnrichmentFailure(attempt, enrichedData?.content?.length || undefined),
                 enricherName: enricher.constructor.name,

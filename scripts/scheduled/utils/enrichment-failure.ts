@@ -217,7 +217,7 @@ export async function reportEnrichmentFailure({
 
   const summaryError = formatEnrichmentFailure(failure, enricherName);
   try {
-    await prisma.article.updateMany({
+    const { count } = await prisma.article.updateMany({
       where: {
         id: article.id,
         AND: [
@@ -230,6 +230,12 @@ export async function reportEnrichmentFailure({
       },
       data: { summaryError },
     });
+    if (count === 0) {
+      logger.debug(
+        { articleId: article.id },
+        '[Enrichment] failure reason not written (content changed, summary exists, or same reason)'
+      );
+    }
   } catch (dbError) {
     logger.warn(
       { articleId: article.id, err: dbError },

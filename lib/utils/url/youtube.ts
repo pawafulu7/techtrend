@@ -46,7 +46,7 @@ export function extractYouTubeVideoId(url: string): string | null {
 
   // v を読むのは /watch だけ（/@channel?v=... のような動画でない URL を動画とみなさない）
   const vParam = parsed.searchParams.get('v');
-  if (vParam && /^\/watch\/?$/.test(parsed.pathname)) {
+  if (vParam && parsed.pathname === '/watch') {
     return validVideoId(vParam);
   }
 

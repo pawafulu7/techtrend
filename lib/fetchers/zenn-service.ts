@@ -205,7 +205,7 @@ export class ZennService {
       }
 
       // Attach duration to error
-      if (error instanceof Object && !error.duration) {
+      if (typeof error === 'object' && error !== null && !error.duration) {
         (error as any).duration = duration;
       }
 
@@ -351,6 +351,11 @@ export class ZennService {
 
         // 呼び出し側が中断したら、待ちを切り上げて中断を伝える
         await new Promise<void>((resolve, reject) => {
+          // 既に中断されていたら 'abort' はもう来ないので、待たずに伝える
+          if (externalSignal?.aborted) {
+            reject(externalSignal.reason);
+            return;
+          }
           const onAbort = () => {
             clearTimeout(timer);
             reject(externalSignal?.reason);
