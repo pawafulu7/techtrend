@@ -14,6 +14,7 @@ import {
   GATE_START_PATH,
 } from './constants';
 import { normalizeGateEmail } from './email';
+import { buildGateErrorNoticeCookie } from './error-notice';
 import type { GateAccess } from './gate-auth-options';
 
 export interface GateSessionInfo {
@@ -123,14 +124,16 @@ function requireSignIn(request: NextRequest, baseOrigin: string): NextResponse {
 /** 入口のログイン状態はあるが、許可リストから外された。入口の Cookie を消す */
 function rejectRevoked(
   request: NextRequest,
-  baseOrigin: string,
+  settings: SiteGateSettings,
   clearCookies: string[]
 ): NextResponse {
   let response: NextResponse;
   if (isBrowserNavigation(request)) {
-    const error = new URL(GATE_ERROR_PATH, baseOrigin);
+    const error = new URL(GATE_ERROR_PATH, settings.baseOrigin);
     error.searchParams.set('error', 'not_allowed');
     response = noStore(NextResponse.redirect(error, 302));
+    // 拒否のページは、この目印があるときだけ出す（lib/auth/site-gate/error-notice.ts）
+    response.headers.append('Set-Cookie', buildGateErrorNoticeCookie(settings.isProduction));
   } else {
     response = gateJson(
       403,
@@ -193,7 +196,10 @@ export async function evaluateSiteGate(
     } catch {
       // 消せなくても拒否は続ける（次の要求でもう一度ここに来る）
     }
-    return { kind: 'deny', response: rejectRevoked(request, baseOrigin, clearCookies) };
+    return {
+      kind: 'deny',
+      response: rejectRevoked(request, config.settings, clearCookies),
+    };
   } catch (error) {
     return { kind: 'unavailable', error };
   }

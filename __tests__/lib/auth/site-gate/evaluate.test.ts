@@ -307,7 +307,10 @@ describe('evaluateSiteGate', () => {
       const location = new URL(response.headers.get('location')!);
       expect(location.pathname).toBe('/api/gate/error');
       expect(location.searchParams.get('error')).toBe('not_allowed');
-      expect(setCookiesOf(response)).toEqual(DELETE_COOKIES);
+      expect(setCookiesOf(response)).toEqual(expect.arrayContaining(DELETE_COOKIES));
+      expect(setCookiesOf(response)).toHaveLength(DELETE_COOKIES.length + 1);
+      // 拒否のページを出してよい目印（ログインが拒否・失敗した直後だけ出す）
+      expect(setCookiesOf(response).join('\n')).toContain('tt-gate.error_notice=1');
       expect(setCookiesOf(response)).not.toContain(REFRESH_COOKIE);
     });
 

@@ -42,11 +42,22 @@ const GOOGLE_URL = 'https://accounts.google.com/o/oauth2/v2/auth?state=s';
 const STATE_COOKIE = 'tt-gate.oauth_state=enc; Max-Age=600; Path=/; HttpOnly; SameSite=Lax';
 
 let ipCounter = 0;
-function request(path: string, init: { method?: string; ip?: string } = {}) {
+const NOTICE = 'tt-gate.error_notice=1';
+
+function request(
+  path: string,
+  init: { method?: string; ip?: string; cookie?: string } = {}
+) {
   ipCounter += 1;
+  const headers: Record<string, string> = {
+    'x-forwarded-for': init.ip ?? `203.0.113.${ipCounter % 250}`,
+  };
+  // 拒否のページは、ログインが拒否・失敗した直後の目印があるときだけ出す。既定ではあるものとして呼ぶ
+  const cookie = init.cookie ?? (path.startsWith('/api/gate/error') ? NOTICE : undefined);
+  if (cookie) headers.cookie = cookie;
   return new NextRequest(new URL(`http://localhost:3000${path}`), {
     method: init.method ?? 'GET',
-    headers: { 'x-forwarded-for': init.ip ?? `203.0.113.${ipCounter % 250}` },
+    headers,
   });
 }
 
@@ -238,6 +249,38 @@ describe('GET /api/gate/[...all]', () => {
     expect(statuses.slice(0, 30).every((s) => s === 302)).toBe(true);
     expect(statuses[30]).toBe(429);
     expect(mockHandler).toHaveBeenCalledTimes(30);
+  });
+
+  it('does not show the error page when opened directly (no notice cookie) and starts sign-in instead', async () => {
+    const response = await catchAll.GET(
+      request('/api/gate/error?error=not_allowed', { cookie: 'other=1' })
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(
+      'http://localhost:3000/api/gate/start?callbackURL=%2F'
+    );
+    expect(response.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('adds the notice cookie only when Better Auth redirects to the error page', async () => {
+    mockHandler.mockResolvedValueOnce(
+      new Response(null, {
+        status: 302,
+        headers: { location: 'http://localhost:3000/api/gate/error?error=not_allowed' },
+      })
+    );
+    const denied = await catchAll.GET(request('/api/gate/callback/google?code=c&state=s'));
+    const notice = setCookiesOf(denied).join('\n');
+    expect(notice).toContain('tt-gate.error_notice=1');
+    expect(notice).toContain('Path=/api/gate/error');
+    expect(notice).toContain('Max-Age=60');
+    expect(notice).toContain('HttpOnly');
+
+    mockHandler.mockResolvedValueOnce(
+      new Response(null, { status: 302, headers: { location: '/digest' } })
+    );
+    const allowed = await catchAll.GET(request('/api/gate/callback/google?code=c&state=s'));
+    expect(setCookiesOf(allowed).join('\n')).not.toContain('error_notice');
   });
 
   it('ignores error_description (does not show text from the URL)', async () => {

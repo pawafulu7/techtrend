@@ -8,6 +8,12 @@ import {
 } from '@/lib/auth/site-gate/constants';
 import type { SiteGateSettings } from '@/lib/auth/site-gate/config';
 import { renderGateErrorPage } from '@/lib/auth/site-gate/error-page';
+import {
+  GATE_ERROR_NOTICE_COOKIE,
+  buildGateErrorNoticeCookie,
+  redirectsToGateErrorPage,
+} from '@/lib/auth/site-gate/error-notice';
+import { GATE_START_PATH } from '@/lib/auth/site-gate/constants';
 
 /**
  * 入口の Google からの戻り（Better Auth に渡す）と、拒否・失敗のページ（自前の HTML）の GET。
@@ -34,6 +40,10 @@ async function forward(request: Request, settings: SiteGateSettings): Promise<Re
   const response = await getGateAuth(settings).handler(request);
   const headers = new Headers(response.headers);
   headers.set('Cache-Control', 'no-store');
+  // 拒否・失敗で拒否のページへ移すときだけ、ページを出してよい目印を付ける（URL を直接開いたときは出さない）
+  if (redirectsToGateErrorPage(response.headers.get('location'), settings.baseOrigin)) {
+    headers.append('Set-Cookie', buildGateErrorNoticeCookie(settings.isProduction));
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -62,8 +72,18 @@ export async function GET(request: NextRequest): Promise<Response> {
     return rateLimitedCallback(request, { settings: config.settings });
   }
 
-  // 拒否・失敗のページ。Better Auth の組み込みのページ（英語・外部へのリンク付き）は使わない
-  // （lib/auth/site-gate/error-page.ts）。コードは知っているものだけを出し、error_description は読まない
+  // 拒否・失敗のページ。ログインが拒否・失敗した直後（目印の Cookie があるとき）だけ出し、URL を直接
+  // 開いたときは入口のログインの開始へ移す（ユーザーの決定）
+  if (!request.cookies.get(GATE_ERROR_NOTICE_COOKIE)?.value) {
+    const start = new URL(GATE_START_PATH, config.settings.baseOrigin);
+    start.searchParams.set('callbackURL', '/');
+    const redirect = NextResponse.redirect(start, 302);
+    redirect.headers.set('Cache-Control', 'no-store');
+    return redirect;
+  }
+
+  // Better Auth の組み込みのページ（英語・外部へのリンク付き）は使わない（lib/auth/site-gate/error-page.ts）。
+  // コードは知っているものだけを出し、error_description は読まない
   const { status, html } = renderGateErrorPage(url.searchParams.get('error'));
   return new Response(html, {
     status,
