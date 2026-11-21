@@ -15,6 +15,7 @@ import { ShareButton } from '@/app/components/article/share-button';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { getReadingTime } from '@/app/components/article/hooks/get-reading-time';
+import { openExternalUrl } from '@/lib/utils/url/open-external-url';
 
 export interface HistoryArticleCardProps {
   article: {
@@ -224,7 +225,7 @@ export function HistoryArticleCard({
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              window.open(article.url, '_blank', 'noopener,noreferrer');
+              openExternalUrl(article.url);
             }}
             className="h-11 min-h-[44px] min-w-[44px] px-4 text-xs"
             aria-label="元記事を新しいタブで開く"

@@ -3,7 +3,7 @@ import {
   stripHtmlTags,
   sanitizeHtml,
   cleanHtml,
-  escapeHtml
+  escapeHtml,
 } from '@/lib/utils/html-sanitizer';
 
 describe('HTML Sanitizer', () => {
@@ -16,7 +16,9 @@ describe('HTML Sanitizer', () => {
 
     it('should prevent double-unescaping', () => {
       // The key test: &amp;lt; should become &lt; not <
-      expect(decodeHtmlEntities('&amp;lt;script&amp;gt;')).toBe('&lt;script&gt;');
+      expect(decodeHtmlEntities('&amp;lt;script&amp;gt;')).toBe(
+        '&lt;script&gt;'
+      );
       expect(decodeHtmlEntities('&amp;amp;')).toBe('&amp;');
     });
 
@@ -54,7 +56,9 @@ describe('HTML Sanitizer', () => {
 
     it('should handle malformed HTML', () => {
       expect(stripHtmlTags('<p>Unclosed paragraph')).toBe('Unclosed paragraph');
-      expect(stripHtmlTags('Text with <b>unclosed bold')).toBe('Text with unclosed bold');
+      expect(stripHtmlTags('Text with <b>unclosed bold')).toBe(
+        'Text with unclosed bold'
+      );
     });
 
     it('should handle script tags with spaces in closing tag', () => {
@@ -90,6 +94,38 @@ describe('HTML Sanitizer', () => {
       // The library processes this as: <scr...> tag and text "ipt&gt;alert(1)" and </scr...> tag and text "ipt&gt;"
       // The &gt; entities are kept as-is by stripHtmlTags (which doesn't decode entities)
       expect(stripHtmlTags(html2)).toBe('ipt&gt;alert(1) ipt&gt;');
+    });
+
+    it('keeps words on both sides of a tag apart', () => {
+      expect(stripHtmlTags('Java<b>Script</b>and<br>more')).toBe(
+        'Java Script and more'
+      );
+    });
+
+    // 前処理でタグの前に空白を入れると `<Option <T>` になり、sanitize-html が option 要素と読んで
+    // 以降の本文をすべて捨てる（開発 DB の記事の比較で見つかった）
+    it('does not drop the rest of the text after generics like Mutex<Option<T>>', () => {
+      expect(
+        stripHtmlTags(
+          'You need OnceLock or Mutex<Option<T>> or other bureaucracy.'
+        )
+      ).toContain('or other bureaucracy.');
+    });
+
+    it('keeps comparison operators such as >= intact', () => {
+      expect(stripHtmlTags('<p>要件: >= 16.2.3</p>')).toBe(
+        '要件: &gt;= 16.2.3'
+      );
+    });
+
+    // 配信元が細工した本文で、計算量が入力長の 2 乗に増えないこと（旧実装は 100KB で約 5 秒）
+    it.each([
+      ['x<<<<…（> が無い）', 'x' + '<'.repeat(200_000)],
+      ['>>>>…（< が無い）', '>'.repeat(200_000)],
+    ])('finishes quickly on crafted input: %s', (_label, html) => {
+      const start = performance.now();
+      stripHtmlTags(html);
+      expect(performance.now() - start).toBeLessThan(1000);
     });
   });
 
@@ -151,6 +187,13 @@ describe('HTML Sanitizer', () => {
       // It preserves the "&amp;" as is when followed by more text
       expect(cleanHtml(bomb)).toBe('&amp;amp;amp;');
     });
+
+    // `<(p|div|…)([^>]*)>` は `<p<p<p…` で計算量が入力長の 2 乗に増えた
+    it('finishes quickly on crafted input without closing brackets', () => {
+      const start = performance.now();
+      cleanHtml('<p'.repeat(100_000));
+      expect(performance.now() - start).toBeLessThan(1000);
+    });
   });
 
   describe('escapeHtml', () => {
@@ -161,7 +204,9 @@ describe('HTML Sanitizer', () => {
     });
 
     it('should escape all dangerous characters', () => {
-      expect(escapeHtml('& < > " \' /')).toBe('&amp; &lt; &gt; &quot; &#39; &#x2F;');
+      expect(escapeHtml('& < > " \' /')).toBe(
+        '&amp; &lt; &gt; &quot; &#39; &#x2F;'
+      );
     });
 
     it('should handle normal text', () => {
@@ -201,10 +246,10 @@ describe('HTML Sanitizer', () => {
         "'><script>alert(1)</script>",
         '<scr<script>ipt>alert(1)</scr</script>ipt>',
         '<a href="javascript:alert(1)">click</a>',
-        '<a href="data:text/html,<script>alert(1)</script>">click</a>'
+        '<a href="data:text/html,<script>alert(1)</script>">click</a>',
       ];
 
-      xssVectors.forEach(vector => {
+      xssVectors.forEach((vector) => {
         const result = sanitizeHtml(vector);
         expect(result).not.toContain('<script>');
         // Some malformed script tags may leave partial text content, but the dangerous parts are removed
@@ -224,15 +269,17 @@ describe('HTML Sanitizer', () => {
       const attacks = [
         '&lt;script&gt;alert(1)&lt;/script&gt;',
         '&#60;script&#62;alert(1)&#60;/script&#62;',
-        '&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;'
+        '&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;',
       ];
 
-      attacks.forEach(attack => {
+      attacks.forEach((attack) => {
         const result = sanitizeHtml(attack);
         // After sanitization, the entities are decoded but script content is stripped
         // The first two cases decode to actual script tags which are then stripped
         // The third case only gets partially decoded due to &amp; being last
-        if (attack === '&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;') {
+        if (
+          attack === '&amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;'
+        ) {
           expect(result).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
         } else if (attack === '&lt;script&gt;alert(1)&lt;/script&gt;') {
           // This is already encoded as entities, so after decoding it becomes a script tag

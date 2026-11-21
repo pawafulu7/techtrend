@@ -80,6 +80,30 @@ describe('auth config invariants (#666)', () => {
       expect.arrayContaining(['/change-password', '/admin/set-user-password'])
     );
   });
+
+  it('disables the admin plugin endpoints that bypass the app admin API', () => {
+    // 独自の管理 API（最後の管理者の確認・監査ログ・認証キャッシュの破棄）を通らない経路
+    expect(options.disabledPaths).toEqual(
+      expect.arrayContaining([
+        '/admin/set-role',
+        '/admin/create-user',
+        '/admin/update-user',
+        '/admin/remove-user',
+        '/admin/ban-user',
+        '/admin/impersonate-user',
+      ])
+    );
+  });
+});
+
+describe('rate limit storage', () => {
+  it('counts Better Auth rate limits outside the process memory', () => {
+    // 既定のメモリは Vercel のインスタンスごとに数え直す
+    mockBetterAuth.mockClear();
+    const options = loadOptions();
+    expect(options.rateLimit?.customStorage).toBeDefined();
+    expect(typeof options.rateLimit?.customStorage?.consume).toBe('function');
+  });
 });
 
 describe('email verification on sign-up (#832)', () => {

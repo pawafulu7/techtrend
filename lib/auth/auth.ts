@@ -5,6 +5,8 @@ import { after } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/config/env';
 import logger from '@/lib/logger';
+import { betterAuthRateLimitStorage } from './rate-limit-storage';
+import { PASSWORD_CHANGE_PATHS, UNUSED_ADMIN_PLUGIN_PATHS } from './disabled-paths';
 
 let resend: any = null;
 if (env.RESEND_API_KEY) {
@@ -180,7 +182,8 @@ export const auth = betterAuth({
   // パスワードを変えても他のセッションを失効させない組み込みのエンドポイントを閉じる。
   // パスワード変更は独自 API（/api/user/password）で行い、そちらが他のセッションを
   // 失効させる（#666）。disabledPaths は HTTP の要求にだけ効き、auth.api.* には効かない
-  disabledPaths: ['/change-password', '/admin/set-user-password'],
+  // admin プラグインの未使用のエンドポイントも閉じる（lib/auth/disabled-paths.ts）
+  disabledPaths: [...PASSWORD_CHANGE_PATHS, ...UNUSED_ADMIN_PLUGIN_PATHS],
 
   plugins: [
     admin({
@@ -215,6 +218,9 @@ export const auth = betterAuth({
 
   rateLimit: {
     enabled: isProduction && !env.CI,
+    // 回数はインスタンスをまたいで Redis で数える。既定のメモリだと Vercel のインスタンスごとに
+    // 0 から数え直し、ログインの総当たりを止められない（lib/auth/rate-limit-storage.ts）
+    customStorage: betterAuthRateLimitStorage,
   },
 });
 

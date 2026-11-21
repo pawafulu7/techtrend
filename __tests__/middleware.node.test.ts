@@ -11,8 +11,6 @@ describe('middleware - security headers', () => {
     delete process.env.BASIC_AUTH_PASS;
     delete process.env.BASIC_PASSWORD;
     delete process.env.BASIC_AUTH_GATE_SECRET;
-    delete process.env.CRON_TOKEN;
-    delete process.env.CRON_SECRET;
     delete process.env.MAINTENANCE_MODE;
   });
 
@@ -158,60 +156,21 @@ describe('middleware - security headers', () => {
       expect(response.headers.get('WWW-Authenticate')).toBeTruthy();
     });
 
-    it('should allow cron requests with valid CRON_SECRET without Basic Auth', async () => {
+    // 以前は CRON_TOKEN を Bearer で送ればゲートを通れた。使う API が無くなったので消した
+    it('does not let a Bearer token through the Basic Auth gate', async () => {
       process.env.BASIC_AUTH_ENABLED = 'true';
       process.env.BASIC_AUTH_PASS = 'secret';
       process.env.BASIC_AUTH_GATE_SECRET = 'f'.repeat(64);
-      process.env.CRON_TOKEN = 'test-cron-secret';
 
-      const request = new NextRequest(new URL('http://localhost:3000/'));
-      request.headers.set('authorization', 'Bearer test-cron-secret');
-      const response = await proxy(request);
+      for (const authorization of ['Bearer test-cron-secret', 'bearer test-cron-secret']) {
+        const request = new NextRequest(new URL('http://localhost:3000/'));
+        request.headers.set('authorization', authorization);
+        request.headers.set('x-forwarded-for', '198.51.100.40');
+        const response = await proxy(request);
 
-      expect(response.status).not.toBe(401);
-      expect(response.headers.get('Content-Security-Policy')).toBeDefined();
-      // not.toBe(401) だけでは設定不備の 503 も成功として通ってしまうため、
-      // ゲートを通過したときだけ finalize が付与するヘッダで確認する。
-      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
-      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
-      expect(response.headers.get('Vary')).toContain('Authorization');
-    });
-
-    // ゲートと API 側でシークレットの選択規則が一致していることを固定する。
-    // proxy.ts が生の process.env を使っていた頃は、空白のみの CRON_TOKEN を
-    // truthy として選び、API 側（sanitizeEnv 済み）が CRON_SECRET を選ぶという
-    // 不一致があった。ゲートだけが 401 を返す原因になる。
-    it('should fall back to CRON_SECRET when CRON_TOKEN is whitespace-only', async () => {
-      process.env.BASIC_AUTH_ENABLED = 'true';
-      process.env.BASIC_AUTH_PASS = 'secret';
-      process.env.BASIC_AUTH_GATE_SECRET = 'f'.repeat(64);
-      process.env.CRON_TOKEN = '   ';
-      process.env.CRON_SECRET = 'valid-cron-secret';
-
-      const request = new NextRequest(new URL('http://localhost:3000/'));
-      request.headers.set('authorization', 'Bearer valid-cron-secret');
-      const response = await proxy(request);
-
-      expect(response.status).not.toBe(401);
-      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
-      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
-      expect(response.headers.get('Vary')).toContain('Authorization');
-    });
-
-    it('should accept a lowercase bearer scheme for cron requests', async () => {
-      process.env.BASIC_AUTH_ENABLED = 'true';
-      process.env.BASIC_AUTH_PASS = 'secret';
-      process.env.BASIC_AUTH_GATE_SECRET = 'f'.repeat(64);
-      process.env.CRON_TOKEN = 'test-cron-secret';
-
-      const request = new NextRequest(new URL('http://localhost:3000/'));
-      request.headers.set('authorization', 'bearer test-cron-secret');
-      const response = await proxy(request);
-
-      expect(response.status).not.toBe(401);
-      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
-      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
-      expect(response.headers.get('Vary')).toContain('Authorization');
+        expect(response.status).toBe(401);
+        expect(response.headers.get('WWW-Authenticate')).toBeTruthy();
+      }
     });
 
     it('should redirect to login for protected paths without session', async () => {
@@ -383,22 +342,6 @@ describe('middleware - security headers', () => {
       expect(response.headers.get('set-cookie')).toContain('tt_gate=');
     });
 
-    it('M6: cron Bearer ではゲート Cookie を発行しない', async () => {
-      enableBasicAuth();
-      process.env.CRON_TOKEN = 'test-cron-secret';
-
-      const response = await proxy(
-        requestWith('/', { authorization: 'Bearer test-cron-secret' })
-      );
-
-      expect(response.status).not.toBe(401);
-      expect(response.headers.get('set-cookie')).toBeNull();
-      // cron でも任意パスを通過できるため、キャッシュ抑止の対象に含める
-      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
-      expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
-      expect(response.headers.get('Vercel-CDN-Cache-Control')).toBe('no-store');
-    });
-
     it('M7: メンテナンス 503 の経路でもゲート Cookie を発行する', async () => {
       enableBasicAuth();
       process.env.MAINTENANCE_MODE = 'true';
@@ -522,6 +465,112 @@ describe('middleware - security headers', () => {
       expect(setCookie).toContain('tt_gate=');
       expect(setCookie).not.toContain('__Host-');
       expect(setCookie).not.toContain('Secure');
+    });
+
+    // 総当たり対策（lib/auth/gate-attempt-limit.ts、ポリシー auth:gate は 15 分に 10 回まで）。
+    // テストの間でリミッターの状態が残るので、テストごとに別の IP（x-forwarded-for）を使う
+    describe('失敗の回数制限', () => {
+      const LIMIT = 10;
+      const from = (ip: string, headers: Record<string, string> = {}) => ({
+        'x-forwarded-for': ip,
+        ...headers,
+      });
+      const failTimes = async (ip: string, times: number): Promise<number[]> => {
+        const statuses: number[] = [];
+        for (let i = 0; i < times; i++) {
+          const res = await proxy(
+            requestWith('/', from(ip, { authorization: basicHeader(USER, `wrong-${i}`) }))
+          );
+          statuses.push(res.status);
+        }
+        return statuses;
+      };
+
+      it('M16: 失敗が上限までは 401、超えたら 429 を返す（Retry-After 付き、入力は求め直さない）', async () => {
+        enableBasicAuth();
+
+        const statuses = await failTimes('198.51.100.16', LIMIT);
+        expect(statuses).toEqual(Array(LIMIT).fill(401));
+
+        const locked = await proxy(
+          requestWith('/', from('198.51.100.16', { authorization: basicHeader(USER, 'wrong-x') }))
+        );
+        expect(locked.status).toBe(429);
+        expect(Number(locked.headers.get('Retry-After'))).toBeGreaterThan(0);
+        expect(locked.headers.get('WWW-Authenticate')).toBeNull();
+        expect(locked.headers.get('Cache-Control')).toBe('no-store');
+        expect(locked.headers.get('set-cookie')).toBeNull();
+        expect(locked.headers.get('Content-Security-Policy')).toBeTruthy();
+      });
+
+      it('M17: 締め出し中は正しい資格情報でも 429。別の IP は影響を受けない', async () => {
+        enableBasicAuth();
+        await failTimes('198.51.100.17', LIMIT + 1);
+
+        const lockedWithValid = await proxy(
+          requestWith('/', from('198.51.100.17', { authorization: basicHeader() }))
+        );
+        expect(lockedWithValid.status).toBe(429);
+        expect(lockedWithValid.headers.get('set-cookie')).toBeNull();
+
+        const otherIp = await proxy(
+          requestWith('/', from('198.51.100.117', { authorization: basicHeader() }))
+        );
+        expect(otherIp.status).not.toBe(401);
+        expect(otherIp.status).not.toBe(429);
+        expect(gateCookiePair(otherIp)).toBeTruthy();
+      });
+
+      it('M18: 資格情報を送っていないアクセスは数えない', async () => {
+        enableBasicAuth();
+
+        for (let i = 0; i < LIMIT + 5; i++) {
+          const res = await proxy(requestWith('/', from('198.51.100.18')));
+          expect(res.status).toBe(401);
+        }
+        const valid = await proxy(
+          requestWith('/', from('198.51.100.18', { authorization: basicHeader() }))
+        );
+        expect(valid.status).not.toBe(401);
+        expect(valid.status).not.toBe(429);
+      });
+
+      it('M19: 有効なゲート Cookie で通るリクエストは、締め出し中の IP でも通す', async () => {
+        enableBasicAuth();
+        const issued = await proxy(
+          requestWith('/', from('198.51.100.119', { authorization: basicHeader() }))
+        );
+        const cookie = gateCookiePair(issued);
+        expect(cookie).toBeTruthy();
+
+        await failTimes('198.51.100.19', LIMIT + 1);
+        const response = await proxy(
+          requestWith('/', from('198.51.100.19', { cookie: cookie! }))
+        );
+        expect(response.status).not.toBe(401);
+        expect(response.status).not.toBe(429);
+      });
+
+      it('M20: Bearer など Basic 以外の資格情報の失敗も数える', async () => {
+        enableBasicAuth();
+
+        for (let i = 0; i < LIMIT; i++) {
+          const res = await proxy(
+            requestWith('/api/health', from('198.51.100.20', { authorization: `Bearer wrong-${i}` }))
+          );
+          expect(res.status).toBe(401);
+        }
+        const overLimit = await proxy(
+          requestWith('/api/health', from('198.51.100.20', { authorization: 'Bearer wrong-x' }))
+        );
+        expect(overLimit.status).toBe(429);
+
+        // 締め出し中は正しい Basic 認証でも通さない
+        const locked = await proxy(
+          requestWith('/api/health', from('198.51.100.20', { authorization: basicHeader() }))
+        );
+        expect(locked.status).toBe(429);
+      });
     });
   });
 

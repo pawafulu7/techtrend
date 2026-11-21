@@ -2,11 +2,35 @@ import {
   isUrlFromDomain,
   getDomainFromUrl,
   isHttpsUrl,
+  isHttpUrl,
   isValidUrl,
   getUrlWithoutParams
 } from '@/lib/utils/url/url-validator';
 
 describe('URL Validator', () => {
+  describe('isHttpUrl', () => {
+    it.each(['https://example.com/a', 'http://example.com', 'HTTPS://EXAMPLE.COM'])(
+      '%s は通す',
+      (url) => {
+        expect(isHttpUrl(url)).toBe(true);
+      }
+    );
+
+    it.each([
+      'javascript:alert(1)',
+      'JavaScript:alert(1)//https://example.com',
+      'data:text/html,<script>alert(1)</script>',
+      'vbscript:msgbox(1)',
+      'ftp://example.com',
+      'not a url',
+      '',
+      null,
+      undefined,
+    ])('%s は通さない', (url) => {
+      expect(isHttpUrl(url)).toBe(false);
+    });
+  });
+
   describe('isUrlFromDomain', () => {
     it('should correctly identify domain matches', () => {
       // Exact match

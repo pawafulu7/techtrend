@@ -2,6 +2,7 @@ import {
   RateLimiterRedis,
   RateLimiterMemory,
   RateLimiterAbstract,
+  RateLimiterRes,
 } from 'rate-limiter-flexible';
 import { getRedisClient } from '@/lib/redis/client';
 import { logger } from '@/lib/logger';
@@ -43,7 +44,7 @@ const limiterCache = new Map<string, RateLimiterAbstract>();
  * @param blockDuration - Duration in seconds to block after limit exceeded (default: 0)
  * @returns RateLimiterRedis or RateLimiterMemory based on environment
  */
-function createRateLimiter(
+export function createRateLimiter(
   points: number,
   duration: number,
   keyPrefix: string,
@@ -163,6 +164,14 @@ export const articleQaRateLimit = createRateLimiter(
   60,
   'ratelimit:rag:article-qa'
 );
+
+/**
+ * consume() の reject が「上限を超えた」ものか。上限を超えたときは RateLimiterRes の実体が来て、
+ * Redis の障害などでは Error が来る（メモリと Redis のどちらのリミッターも同じ）
+ */
+export function isRateLimitRejection(value: unknown): value is RateLimiterRes {
+  return value instanceof RateLimiterRes;
+}
 
 /**
  * Custom error for rate limit exceeded

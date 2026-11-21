@@ -13,6 +13,7 @@ import { parseRSSDate } from '@/lib/utils/date';
 import logger from '@/lib/logger';
 import { aiLLMFilter } from '@/lib/fetchers/ai-llm-filter';
 import { fetchFeedXml } from './fetch-feed';
+import { findImageUrlByPrefix } from './html-image';
 
 export class DeepMindBlogFetcher extends BaseFetcher {
   private parser: Parser;
@@ -298,22 +299,21 @@ export class DeepMindBlogFetcher extends BaseFetcher {
   private extractThumbnailFromContent(content: string): string | undefined {
     if (!content) return undefined;
 
-    // og:image
-    const ogMatch = content.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
-    if (ogMatch && ogMatch[1]) {
-      return this.normalizeImageUrl(ogMatch[1]);
-    }
-
-    // 最初のimg要素
-    const imgMatch = content.match(/<img[^>]*src="([^"]+)"[^>]*>/i);
-    if (imgMatch && imgMatch[1]) {
-      return this.normalizeImageUrl(imgMatch[1]);
+    // og:image、無ければ最初のimg要素
+    const found = this.extractThumbnail(content);
+    if (found) {
+      return this.normalizeImageUrl(found);
     }
 
     // DeepMind画像URL
-    const deepmindImageMatch = content.match(/https:\/\/deepmind\.google[^"'\s]+(\.jpg|\.png|\.webp|\.svg)/i);
-    if (deepmindImageMatch) {
-      return deepmindImageMatch[0];
+    const deepmindImage = findImageUrlByPrefix(content, 'https://deepmind.google', [
+      '.jpg',
+      '.png',
+      '.webp',
+      '.svg',
+    ]);
+    if (deepmindImage) {
+      return deepmindImage;
     }
 
     return undefined;

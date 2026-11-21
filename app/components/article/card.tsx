@@ -26,6 +26,7 @@ import {
 import { QualityMeter } from '@/app/components/article/quality-meter';
 import { formatDateWithTime } from '@/lib/utils/date';
 import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
+import { openExternalUrl } from '@/lib/utils/url/open-external-url';
 
 // サムネイルの表示幅（srcset の候補を選ぶのに使う。Issue #718）。
 // グリッドは list.tsx の GRID_CLASS と同じ列数（1 → sm 2 → lg 3 → xl 4 → 2xl 5）
@@ -298,14 +299,7 @@ export function ArticleCard({
           iconOnly
           onClick={(e) => {
             e.stopPropagation();
-            try {
-              const url = new URL(article.url);
-              if (url.protocol === 'http:' || url.protocol === 'https:') {
-                window.open(article.url, '_blank', 'noopener,noreferrer');
-              }
-            } catch {
-              // Invalid URL, ignore
-            }
+            openExternalUrl(article.url);
           }}
           className="bg-background/30 h-9 min-h-[44px] w-9 min-w-[44px] rounded-full"
           aria-label="元記事を開く"

@@ -2,6 +2,8 @@
  * URLからソースを自動判定するユーティリティ
  */
 
+import { isHttpUrl } from '@/lib/utils/url/url-validator';
+
 export interface SourceDetectionResult {
   source: string;
   confidence: 'high' | 'medium' | 'low';
@@ -129,10 +131,5 @@ export function isSupportedUrl(url: string): boolean {
  * @returns 有効なURLの場合はtrue
  */
 export function isValidUrl(url: string): boolean {
-  try {
-    const urlObj = new URL(url);
-    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
-  } catch {
-    return false;
-  }
+  return isHttpUrl(url);
 }

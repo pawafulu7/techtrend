@@ -1,8 +1,8 @@
 /**
  * Authorization ヘッダのスキーム別パーサー。
  *
- * Basic 認証ゲート（lib/auth/basic-auth-gate.ts）と cron 認証ラッパー各所で
- * パース規則が食い違っていたため、判定を 1 箇所に集約する。
+ * Basic 認証ゲート（lib/auth/basic-auth-gate.ts）と CSRF の判定（lib/middleware/csrf-protection.ts）で
+ * パース規則を揃えるため、判定を 1 箇所に集約する。
  *
  * 受理規則:
  * - スキーム名は大文字小文字を区別しない（RFC 7235 が case-insensitive と定めている）
@@ -46,14 +46,6 @@ function extractAuthToken(
 }
 
 /**
- * `Authorization: Bearer <token>` から token を取り出す。
- * スキーム不一致・形式不正・制御文字混入はいずれも null。
- */
-export function extractBearerToken(header: string | null): string | null {
-  return extractAuthToken(header, BEARER_SCHEME_PATTERN);
-}
-
-/**
  * `Authorization: Basic <base64>` から base64 部分を取り出す。
  *
  * base64 としての妥当性検証・デコード・`:` 分割・NFC 正規化は行わない。
@@ -66,7 +58,7 @@ export function extractBasicToken(header: string | null): string | null {
 /**
  * Bearer スキームであることだけを判定する。token は取り出さない。
  *
- * extractBearerToken(header) !== null の糖衣ではない点に注意。
+ * token は取り出さないので、token 側の妥当性は見ない。
  * 「スキームが Bearer か」だけを知りたい呼び出し元（CSRF 判定）にとって、
  * token 側の妥当性（制御文字の有無）は判定条件に含めるべきではないため、
  * 制御文字チェックを経由しない独立した述語としている。

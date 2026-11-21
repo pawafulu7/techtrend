@@ -30,6 +30,7 @@ import { HATENA_BLOG_DEV_SOURCE_ID } from '@/lib/enrichers/hatena';
 import { isEnrichmentSkipped } from '@/lib/fetchers/config/foreign-rss-sources';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 import { isYouTubeVideoUrl } from '@/lib/utils/url/youtube';
+import { isHttpUrl } from '@/lib/utils/url/url-validator';
 import {
   fillExistingContentFromFeed,
   isValidThumbnailUrl,
@@ -193,15 +194,22 @@ async function processSource({
       return result;
     }
 
+    // 記事の URL は http(s) だけを保存する。配信元がフィードの link に `javascript:` や `data:` を入れても、
+    // 画面のリンクや window.open に渡さないため（サムネイルは保存時に isValidThumbnailUrl で同じく絞っている）
+    const savableArticles = articles.filter(a => isHttpUrl(a.url));
+    if (savableArticles.length < articles.length) {
+      console.error(`   [WARN] http(s) 以外の URL の記事を ${articles.length - savableArticles.length} 件除外しました`);
+    }
+
     // Pre-fetch to avoid per-article findFirst N+1
-    const articleUrls = articles.map(a => a.url);
+    const articleUrls = savableArticles.map(a => a.url);
     const existingArticles = await prisma.article.findMany({
       where: { url: { in: articleUrls } },
       select: { id: true, sourceId: true, contentLength: true, contentUpdatedAt: true, thumbnail: true, url: true, skipReason: true }
     });
     const existingArticleMap = new Map(existingArticles.map(a => [a.url, a]));
 
-    for (const article of articles) {
+    for (const article of savableArticles) {
       try {
         const existing = existingArticleMap.get(article.url);
 

@@ -19,7 +19,6 @@ function gateEnv(overrides: Partial<GateEnv> = {}): GateEnv {
     pass: PASS,
     legacyPass: undefined,
     gateSecret: SECRET,
-    cronSecret: undefined,
     isProduction: false,
     ...overrides,
   };
@@ -356,31 +355,18 @@ describe('basic-auth-gate', () => {
     });
   });
 
-  describe('cron Bearer', () => {
-    it('U19: 資格情報が欠落していても cron は通る', () => {
+  // 以前は CRON_TOKEN を Bearer で送ればゲートを通れた。使う API が無くなったので消した
+  describe('Bearer', () => {
+    it('U19: Bearer ではゲートを通らない（設定が不完全なら misconfigured のまま）', () => {
       const headers = { authorization: 'Bearer cron-token-value' };
-      const env = gateEnv({
-        pass: undefined,
-        legacyPass: undefined,
-        gateSecret: undefined,
-        cronSecret: 'cron-token-value',
-      });
 
-      expect(evaluateGate(makeRequest({ headers }), env).kind).toBe('cron');
-    });
-
-    it('スキーム名は大文字小文字を区別しない', () => {
-      const headers = { authorization: 'bearer legacy-cron-secret' };
-      const env = gateEnv({ cronSecret: 'legacy-cron-secret' });
-
-      expect(evaluateGate(makeRequest({ headers }), env).kind).toBe('cron');
-    });
-
-    it('トークンが違えば cron として扱わない', () => {
-      const headers = { authorization: 'Bearer wrong-token' };
-      const env = gateEnv({ cronSecret: 'cron-token-value' });
-
-      expect(evaluateGate(makeRequest({ headers }), env).kind).toBe('fail');
+      expect(evaluateGate(makeRequest({ headers }), gateEnv()).kind).toBe('fail');
+      expect(
+        evaluateGate(
+          makeRequest({ headers }),
+          gateEnv({ pass: undefined, legacyPass: undefined, gateSecret: undefined })
+        ).kind
+      ).toBe('misconfigured');
     });
   });
 

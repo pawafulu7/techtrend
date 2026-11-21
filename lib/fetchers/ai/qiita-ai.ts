@@ -2,6 +2,7 @@ import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { fetchFeedXml } from '../fetch-feed';
 import { BaseFetcher } from '../base';
+import { findFirstImageSrc } from '../html-image';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
@@ -233,9 +234,9 @@ export class QiitaAIFetcher extends BaseFetcher {
 
     // content内からimgタグを探す
     if (itemAny.content) {
-      const imgMatch = itemAny.content.match(/<img[^>]+src="([^"]+)"/);
-      if (imgMatch && imgMatch[1]) {
-        return imgMatch[1];
+      const src = findFirstImageSrc(itemAny.content);
+      if (src) {
+        return src;
       }
     }
 

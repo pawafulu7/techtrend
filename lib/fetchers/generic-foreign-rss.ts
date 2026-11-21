@@ -7,6 +7,7 @@ import Parser from 'rss-parser';
 import { fetchFeedXml } from './fetch-feed';
 import { Source } from '@/lib/prisma-exports';
 import { BaseFetcher } from './base';
+import { findFirstImageSrc } from './html-image';
 import { FetchResult, CreateArticleInput } from '@/types/fetchers';
 import { logger } from '@/lib/logger';
 import { normalizeUrl } from '@/lib/utils/url/url-normalizer';
@@ -457,9 +458,9 @@ export class GenericForeignRssFetcher extends BaseFetcher {
     // コンテンツから最初の画像を抽出
     const content =
       item['content:encoded'] || item.content || item.description || '';
-    const imgMatch = content.match(/<img[^>]+src=["']([^"']+)["']/);
-    if (imgMatch) {
-      return imgMatch[1];
+    const src = findFirstImageSrc(content);
+    if (src) {
+      return src;
     }
 
     return null;

@@ -7,6 +7,7 @@ import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { fetchFeedXml } from './fetch-feed';
 import { BaseFetcher } from './base';
+import { findImageUrlByPrefix } from './html-image';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
@@ -236,22 +237,20 @@ export class NVIDIADeveloperBlogFetcher extends BaseFetcher {
   private extractThumbnailFromContent(content: string): string | undefined {
     if (!content) return undefined;
 
-    // og:image
-    const ogMatch = content.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
-    if (ogMatch && ogMatch[1]) {
-      return this.normalizeImageUrl(ogMatch[1]);
-    }
-
-    // 最初のimg要素
-    const imgMatch = content.match(/<img[^>]*src="([^"]+)"[^>]*>/i);
-    if (imgMatch && imgMatch[1]) {
-      return this.normalizeImageUrl(imgMatch[1]);
+    // og:image、無ければ最初のimg要素
+    const found = this.extractThumbnail(content);
+    if (found) {
+      return this.normalizeImageUrl(found);
     }
 
     // NVIDIAのデフォルト画像URL（存在する場合）
-    const nvidiaImageMatch = content.match(/https:\/\/developer\.nvidia\.com[^"'\s]+(\.jpg|\.png|\.webp)/i);
-    if (nvidiaImageMatch) {
-      return nvidiaImageMatch[0];
+    const nvidiaImage = findImageUrlByPrefix(content, 'https://developer.nvidia.com', [
+      '.jpg',
+      '.png',
+      '.webp',
+    ]);
+    if (nvidiaImage) {
+      return nvidiaImage;
     }
 
     return undefined;

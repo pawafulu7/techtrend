@@ -4,7 +4,6 @@
  */
 
 import { z } from 'zod';
-import { CRON_SECRET_PATTERN } from '@/lib/auth/cron-secret';
 import logger from '@/lib/logger';
 
 // Preprocess all env vars: empty/whitespace-only strings → undefined
@@ -41,39 +40,6 @@ const booleanEnum = z.preprocess(
   (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v),
   z.enum(['true', 'false'])
 );
-
-/**
- * Authorization: Bearer のトークンとして送出されるシークレット用のスキーマ。
- *
- * 「設定はできるが認証には使えない」値を起動時に弾くのが目的なので、
- * 実際に Authorization ヘッダへ載せて往復できる文字だけを許可する。
- * 可視 ASCII（U+0021-U+007E）に限定しており、以下をすべて拒否する。
- *
- * - 空白・タブ: lib/auth/authorization-header.ts が token を `[^ \t]+` で
- *   切り出すため、含まれていると設定値どおりに復元できない
- * - 制御文字・DEL: 同モジュールが明示的に拒否する。CR/LF はヘッダ分割の温床でもある
- * - U+00FF を超える文字: HTTP ヘッダ値は ByteString であり、そもそも送出できない
- *   （`new Headers({ authorization: 'Bearer トークン' })` は TypeError になる）
- *
- * U+0080-U+00FF は Headers には載るが RFC 9110 で obs-text として非推奨であり、
- * 途中の proxy / CDN での取り扱いが保証されないため許可しない。
- * `openssl rand -hex 32` 等の一般的な生成手段はいずれもこの範囲に収まる。
- *
- * 注: 空白のみ・空文字列の値は sanitizeEnv() が先に undefined へ変換するため
- * ここには到達しない（＝未設定として扱われ、エラーにはならない）。
- *
- * 判定パターンは lib/auth/cron-secret.ts の CRON_SECRET_PATTERN を共有する。
- * 認証時にシークレットを選択する resolveCronSecret と規則がずれると、
- * 「env は通すが認証は通らない」状態が再発するため。
- */
-const bearerSecret = (name: string) =>
-  z
-    .string()
-    .regex(
-      CRON_SECRET_PATTERN,
-      `${name} には可視 ASCII 文字（U+0021-U+007E）のみ使用できます。空白・制御文字・非 ASCII 文字は Authorization ヘッダとして送出できないか、トークンとして復元できません`
-    )
-    .optional();
 
 // Environment variable schema
 const envSchema = z
@@ -283,8 +249,6 @@ const envSchema = z
     // Security / Middleware
     CURSOR_SECRET: z.string().optional(),
     ALLOW_INSECURE_CURSOR_SECRET: booleanEnum.optional().default('false'),
-    CRON_SECRET: bearerSecret('CRON_SECRET'),
-    CRON_TOKEN: bearerSecret('CRON_TOKEN'),
     CSRF_TRUSTED_ORIGINS: z.string().optional(),
     RATE_LIMIT_OVERRIDES: z.string().optional(),
     // Basic 認証ゲートの有効/無効。ゲート本体（proxy.ts）は生の process.env を読む。
@@ -370,34 +334,6 @@ function isAuthSecretOnlyError(error: z.ZodError): boolean {
 }
 
 /**
- * CRON_TOKEN が定義されているのに空白のみなら警告する（issue #650）
- *
- * sanitizeEnv() は空白のみを未設定に変換し、cron 認証（lib/auth/cron-secret.ts）は
- * 同じ規則で CRON_SECRET へ黙ってフォールバックする。シークレット注入の失敗
- * （テンプレート展開ミス等）で CRON_TOKEN が空白になったローテーション失敗を
- * 検知できるよう、ここで結果を知らせる。sanitize 後の値では「未定義」と区別
- * できないため、生の値で判定する。値や長さはログに出さない。
- *
- * - 検証に成功した後に、検証済みの CRON_SECRET で結果を決める（形式不正なら検証が
- *   先に失敗するので「フォールバックする」と誤って伝えない）。_env を確定する時だけ
- *   呼ぶので、プロセスにつき 1 回（コールドスタートごと）出る
- * - production だけで出す。.env.example は CRON_TOKEN= を空で配っており、開発環境では
- *   意図した未設定で毎回警告が出てしまう。検知したいのは本番のローテーション失敗
- */
-function warnIfCronTokenBlank(
-  rawCronToken: string | undefined,
-  validated: Env
-): void {
-  if (validated.NODE_ENV !== 'production') return;
-  if (rawCronToken === undefined || rawCronToken.trim() !== '') return;
-  logger.warn(
-    validated.CRON_SECRET === undefined
-      ? 'CRON_TOKEN is set but blank, and CRON_SECRET is not set: cron authentication is disabled'
-      : 'CRON_TOKEN is set but blank: falling back to CRON_SECRET for cron authentication'
-  );
-}
-
-/**
  * Get validated environment variables
  * Throws on first access if validation fails
  */
@@ -408,7 +344,6 @@ export function getEnv(): Env {
 
     if (parsed.success) {
       _env = parsed.data;
-      warnIfCronTokenBlank(process.env.CRON_TOKEN, _env);
       return _env;
     }
 
@@ -451,7 +386,6 @@ Please check your .env file and ensure all required variables are set correctly.
 
       if (retryParsed.success) {
         _env = retryParsed.data;
-        warnIfCronTokenBlank(process.env.CRON_TOKEN, _env);
         return _env;
       }
 

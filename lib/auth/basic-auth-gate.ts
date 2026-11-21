@@ -3,7 +3,6 @@ import type { NextRequest } from 'next/server';
 import {
   CONTROL_CHAR_PATTERN,
   extractBasicToken,
-  extractBearerToken,
 } from '@/lib/auth/authorization-header';
 import { compareSecrets } from '@/lib/auth/compare-secrets';
 
@@ -54,8 +53,6 @@ export interface GateEnv {
   legacyPass: string | undefined;
   /** BASIC_AUTH_GATE_SECRET */
   gateSecret: string | undefined;
-  /** CRON_TOKEN または CRON_SECRET */
-  cronSecret: string | undefined;
   /** NODE_ENV === 'production'。Cookie の prefix と Secure 属性の判定に使う */
   isProduction: boolean;
 }
@@ -63,8 +60,6 @@ export interface GateEnv {
 export type GateOutcome =
   /** Basic 認証 OFF。ゲートは何もしない */
   | { kind: 'disabled' }
-  /** cron Bearer 一致。通すが Cookie は発行しない */
-  | { kind: 'cron' }
   /** 有効化されているのに設定が不完全。fail-closed で 503 */
   | { kind: 'misconfigured'; reason: string }
   /** 有効なゲート Cookie。通すが Cookie は再発行しない */
@@ -280,29 +275,19 @@ function matchesBasicCredentials(
   return userMatches && passMatches;
 }
 
-function matchesCronBearer(
-  header: string | null,
-  cronSecret: string | undefined
-): boolean {
-  if (!cronSecret) return false;
-
-  const token = extractBearerToken(header);
-  if (token === null) return false;
-
-  return compareSecrets(token, cronSecret);
-}
-
 /**
  * ゲートの判定。評価順序は以下の通り。
  *
  * 1. Basic 認証 OFF → disabled
- * 2. cron Bearer → cron（設定不備チェックより前。ゲートの設定ミスでバッチを止めないため）
- * 3. 設定が不完全 → misconfigured（fail-closed）
- * 4. 有効なゲート Cookie → cookie
- * 5. 正しい Basic ヘッダ → basic
- * 6. → fail
+ * 2. 設定が不完全 → misconfigured（fail-closed）
+ * 3. 有効なゲート Cookie → cookie
+ * 4. 正しい Basic ヘッダ → basic
+ * 5. → fail
  *
- * 4 が失敗しても打ち切らずに 5 へ進むのが重要。ここで終端すると、不正・失効した Cookie を
+ * ゲートを通る方法は Cookie と Basic 認証だけ。以前は cron の Bearer（CRON_TOKEN）でも通れたが、
+ * それを使う定期実行の API が #834 で無くなり、秘密 1 つで全ページに届く抜け道だけが残っていたので消した。
+ *
+ * 3 が失敗しても打ち切らずに 4 へ進むのが重要。ここで終端すると、不正・失効した Cookie を
  * 持つ利用者が正しい資格情報を入力しても Cookie を上書きできず 401 ループに陥る。
  */
 export function evaluateGate(
@@ -311,10 +296,6 @@ export function evaluateGate(
 ): GateOutcome {
   const enabled = readEnabledState(gateEnv.enabled);
   if (enabled === 'off') return { kind: 'disabled' };
-
-  const authHeader = request.headers.get('authorization');
-  if (matchesCronBearer(authHeader, gateEnv.cronSecret))
-    return { kind: 'cron' };
 
   if (enabled === 'invalid') {
     return {
@@ -339,7 +320,9 @@ export function evaluateGate(
     return { kind: 'cookie' };
   }
 
-  if (matchesBasicCredentials(authHeader, config)) return { kind: 'basic' };
+  if (matchesBasicCredentials(request.headers.get('authorization'), config)) {
+    return { kind: 'basic' };
+  }
 
   return { kind: 'fail' };
 }

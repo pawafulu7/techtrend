@@ -2,6 +2,7 @@ import { Source } from '@/lib/prisma-exports';
 import Parser from 'rss-parser';
 import { fetchFeedXml } from '../fetch-feed';
 import { BaseFetcher } from '../base';
+import { findFirstImageSrc } from '../html-image';
 import { FetchResult } from '@/types/fetchers';
 import { CreateArticleInput } from '@/types';
 import { parseRSSDate } from '@/lib/utils/date';
@@ -209,9 +210,9 @@ export class ZennAIFetcher extends BaseFetcher {
 
     // content内からimgタグを探す（シングル/ダブルクオート対応）
     if (itemAny.content) {
-      const imgMatch = itemAny.content.match(/<img[^>]+src=(["'])(.*?)\1/i);
-      if (imgMatch && imgMatch[2]) {
-        return imgMatch[2];
+      const src = findFirstImageSrc(itemAny.content);
+      if (src) {
+        return src;
       }
     }
 

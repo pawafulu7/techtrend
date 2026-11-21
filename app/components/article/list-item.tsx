@@ -19,6 +19,7 @@ import {
 import { useIsNewArticle } from '@/app/components/common/relative-time';
 import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
 import { TranslationBadge } from '@/components/ui/translation-badge';
+import { openExternalUrl } from '@/lib/utils/url/open-external-url';
 
 export function ArticleListItem({
   article,
@@ -188,7 +189,7 @@ export function ArticleListItem({
           size="sm"
           onClick={(e) => {
             e.stopPropagation();
-            window.open(article.url, '_blank', 'noopener,noreferrer');
+            openExternalUrl(article.url);
           }}
           className="h-11 min-h-[44px] w-11 min-w-[44px] p-0"
           title="元記事を開く"
