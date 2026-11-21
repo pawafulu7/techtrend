@@ -28,6 +28,12 @@ export const GATE_PUBLIC_PATHS: readonly string[] = [
   GATE_ERROR_PATH,
 ];
 
+/**
+ * 戻り先の上限。戻り先は state の Cookie に暗号化して入り（hex で 2 倍になる）、128 文字の codeVerifier なども
+ * 入るので、概算で 1,750 文字前後を超えると 4KB を超えて捨てられ、その人が入口を通れなくなる。余裕を持って 1,024 にする
+ */
+export const GATE_CALLBACK_MAX_LENGTH = 1024;
+
 /** 入口のログインの期限（7 日）。最初のログインから数え、アクセスしても延ばさない */
 export const GATE_SESSION_TTL_SEC = 7 * 24 * 60 * 60;
 

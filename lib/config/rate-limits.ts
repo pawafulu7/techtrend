@@ -58,6 +58,17 @@ export const RATE_LIMIT_POLICIES = {
     telemetryEvent: 'ratelimit.auth.gate',
   },
 
+  // サイトの入口のログインの開始（app/api/gate/start/route.ts）。開始は Cookie を 1 つ作るだけで外部へ
+  // 通信しないので緩めにする（プリフェッチや複数のタブの復元で本人が締め出されないように）。
+  // 守りの本体は Google のログインと許可リストの照合
+  'auth:gate-start': {
+    points: 30,
+    duration: 60,
+    keyStrategy: 'ip',
+    notes: 'Throttle sign-in starts of the site-wide Google gate',
+    telemetryEvent: 'ratelimit.auth.gate_start',
+  },
+
   // RAG (Existing Policies) - No block, soft throttle only
   'rag:agent': {
     points: 5,
