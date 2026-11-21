@@ -98,6 +98,39 @@ describe('GET /api/gate/start', () => {
     expect(mockSignInSocial).not.toHaveBeenCalled();
   });
 
+  it('restarts on the canonical host when the Host header differs from the URL', async () => {
+    // 開発サーバーは 127.0.0.1 で開いても request.url を localhost にするので、見出しで見分ける
+    const response = await startGET(
+      new NextRequest(new URL('http://localhost:3000/api/gate/start?callbackURL=%2Fx'), {
+        headers: { host: '127.0.0.1:3000' },
+      })
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(
+      'http://localhost:3000/api/gate/start?callbackURL=%2Fx'
+    );
+    expect(mockSignInSocial).not.toHaveBeenCalled();
+  });
+
+  it('uses the first x-forwarded-host (set by Vercel) over the Host header', async () => {
+    const response = await startGET(
+      new NextRequest(new URL('http://localhost:3000/api/gate/start'), {
+        headers: { host: 'localhost:3000', 'x-forwarded-host': 'alias.example.com, localhost:3000' },
+      })
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('http://localhost:3000/api/gate/start');
+  });
+
+  it('starts sign-in when the Host header is the canonical host', async () => {
+    const response = await startGET(
+      new NextRequest(new URL('http://localhost:3000/api/gate/start'), {
+        headers: { host: 'localhost:3000' },
+      })
+    );
+    expect(response.headers.get('location')).toBe(GOOGLE_URL);
+  });
+
   it('restarts on the canonical host when opened on another host', async () => {
     const response = await startGET(
       new NextRequest(new URL('http://127.0.0.1:3000/api/gate/start?callbackURL=%2Fx'))

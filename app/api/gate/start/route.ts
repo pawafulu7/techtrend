@@ -79,6 +79,20 @@ const rateLimitedStart = withRateLimit(
   { resolveSession: false, allowOnLimiterError: true }
 );
 
+/**
+ * 利用者が開いたホスト。request.nextUrl のホストは使わない（開発サーバーでは 127.0.0.1 で開いても
+ * localhost に置き換わり、違うホストで開いたことを見分けられなかった）。CSRF の判定
+ * （lib/middleware/csrf-protection.ts の getEffectiveRequestOrigin）と同じく、Vercel が上書きする
+ * x-forwarded-host の先頭、無ければ Host の見出しを使う
+ */
+function requestHost(request: NextRequest): string {
+  return (
+    request.headers.get('x-forwarded-host')?.split(',')[0]?.trim() ||
+    request.headers.get('host')?.split(',')[0]?.trim() ||
+    request.nextUrl.host
+  );
+}
+
 export async function GET(request: NextRequest): Promise<Response> {
   const config = getSiteGateConfig();
   if (config.kind !== 'enabled') return notFound();
@@ -86,7 +100,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   // state の Cookie はアクセスしたホストに付き、Google の戻り先は baseURL から作る。違うホスト
   // （*.vercel.app の別名や www の有無）で始めると毎回 state_mismatch になるので、正規のホストで始め直す
   const base = new URL(config.settings.baseOrigin);
-  if (request.nextUrl.host !== base.host) {
+  if (requestHost(request) !== base.host) {
     const canonical = new URL(GATE_START_PATH, base);
     canonical.search = request.nextUrl.search;
     const redirect = NextResponse.redirect(canonical, 302);
