@@ -46,6 +46,8 @@ jest.mock('@/lib/auth/site-gate/current-account', () => ({
 // eslint-disable-next-line import/first
 import { prisma } from '@/lib/prisma';
 // eslint-disable-next-line import/first
+import { Prisma } from '@/lib/prisma-exports';
+// eslint-disable-next-line import/first
 import logger from '@/lib/logger';
 // eslint-disable-next-line import/first
 import { GET, POST } from '@/app/api/admin/gate-allowlist/route';
@@ -154,7 +156,7 @@ describe('GET /api/admin/gate-allowlist', () => {
     expect(prismaMock.gateAllowedEmail.findMany).toHaveBeenCalledWith({
       select: { id: true, email: true, createdAt: true },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: 100,
+      take: 1000,
     });
   });
 
@@ -265,6 +267,16 @@ describe('POST /api/admin/gate-allowlist', () => {
     expect(await response.json()).toMatchObject({ code: 'ALREADY_FIXED' });
   });
 
+  it('does not count rows that overlap a fixed address', async () => {
+    prismaMock.gateAllowedEmail.create.mockResolvedValue(
+      row(ID_1, 'friend@gmail.com', '2026-11-21T03:00:00Z')
+    );
+    await post({ email: 'friend@gmail.com' });
+    expect(prismaMock.gateAllowedEmail.count).toHaveBeenCalledWith({
+      where: { email: { notIn: ['owner@gmail.com'] } },
+    });
+  });
+
   it('rejects when the list is full', async () => {
     prismaMock.gateAllowedEmail.count.mockResolvedValue(100);
     const response = await post({ email: 'friend@gmail.com' });
@@ -327,11 +339,19 @@ describe('DELETE /api/admin/gate-allowlist/[id]', () => {
     expect((await remove(ID_1)).status).toBe(200);
   });
 
-  it.each(['not-a-cuid', '../x', 'a'.repeat(300)])('is 404 for an id that is not a cuid (%s)', async (id) => {
+  it.each(['', 'a'.repeat(129)])('is 404 for an empty or too long id without reading the DB (%#)', async (id) => {
     const response = await remove(id);
     expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({ code: 'ENTRY_NOT_FOUND' });
     expect(prismaMock.gateAllowedEmail.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('removes a row whose id is not a cuid (inserted by hand)', async () => {
+    prismaMock.gateAllowedEmail.findUnique.mockResolvedValue({ id: 'manual-1', email: 'friend@gmail.com' });
+    prismaMock.gateAllowedEmail.delete.mockResolvedValue({});
+
+    expect((await remove('manual-1')).status).toBe(200);
+    expect(prismaMock.gateAllowedEmail.delete).toHaveBeenCalledWith({ where: { id: 'manual-1' } });
   });
 
   it('is 404 when the row does not exist', async () => {
@@ -344,7 +364,10 @@ describe('DELETE /api/admin/gate-allowlist/[id]', () => {
   it('is 404 when the row was removed after it was read (P2025)', async () => {
     prismaMock.gateAllowedEmail.findUnique.mockResolvedValue({ id: ID_2, email: 'friend@gmail.com' });
     prismaMock.gateAllowedEmail.delete.mockRejectedValue(
-      Object.assign(new Error('Record not found'), { code: 'P2025' })
+      new Prisma.PrismaClientKnownRequestError('Record not found', {
+        code: 'P2025',
+        clientVersion: '7.0.0',
+      })
     );
     const response = await remove(ID_2);
     expect(response.status).toBe(404);

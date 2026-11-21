@@ -47,6 +47,12 @@ export const GATE_ALLOW_CACHE_TTL_SEC = 30;
 export const GATE_ALLOWLIST_MAX_ENTRIES = 100;
 
 /**
+ * 管理画面の一覧に返す件数の上限。追加の上限より大きくする（同時の追加や手で流す SQL で上限を超えた行も、
+ * 一覧に出して画面から消せるように。超えた行も入口の照合では許可される）
+ */
+export const GATE_ALLOWLIST_LIST_LIMIT = 1000;
+
+/**
  * 入口が API の要求を拒んだときの JSON の code。画面がアプリ内のログイン切れや権限の不足と見分けるために使う
  */
 export const GATE_ERROR_CODES = {

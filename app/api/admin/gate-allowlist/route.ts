@@ -24,7 +24,10 @@ import {
   maskGateEmail,
   normalizeGateEmail,
 } from '@/lib/auth/site-gate/email';
-import { GATE_ALLOWLIST_MAX_ENTRIES } from '@/lib/auth/site-gate/constants';
+import {
+  GATE_ALLOWLIST_LIST_LIMIT,
+  GATE_ALLOWLIST_MAX_ENTRIES,
+} from '@/lib/auth/site-gate/constants';
 import type {
   GateAllowlistAddResponse,
   GateAllowlistEntry,
@@ -64,7 +67,7 @@ async function getHandler(request: NextRequest) {
       prisma.gateAllowedEmail.findMany({
         select: ENTRY_SELECT,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: GATE_ALLOWLIST_MAX_ENTRIES,
+        take: GATE_ALLOWLIST_LIST_LIMIT,
       }),
       currentGateEmailOrNull(request, config),
     ]);
@@ -140,7 +143,13 @@ async function postHandler(request: NextRequest, context: WithAdminAuthContext) 
   }
 
   try {
-    const count = await prisma.gateAllowedEmail.count();
+    // 固定のアドレスと重なる行（環境変数を変えたときに残りうる）は、一覧でも固定の扱いなので数えない
+    const count = await prisma.gateAllowedEmail.count({
+      where:
+        config.kind === 'enabled'
+          ? { email: { notIn: [...config.settings.fixedEmails] } }
+          : undefined,
+    });
     if (count >= GATE_ALLOWLIST_MAX_ENTRIES) {
       return gateAllowlistError(
         400,

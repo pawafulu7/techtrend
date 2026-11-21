@@ -27,7 +27,10 @@ export class GateAllowlistUnavailableError extends Error {
 
 /** 照合の失敗を覚える時間。障害中にリクエストごとに DB を待たないため */
 const FAILURE_MEMORY_MS = 5_000;
-/** 行の追加時刻（DB の now()）とログイン状態の作成時刻（アプリの時計）のずれの許容幅 */
+/**
+ * 行の追加時刻（管理 API を処理したインスタンスの時計。Prisma の @default(now()) が付ける）と、
+ * ログイン状態の作成時刻（ログインを処理したインスタンスの時計）のずれの許容幅
+ */
 const CLOCK_SKEW_MS = 60_000;
 /** キャッシュの件数がこれを超えたら、切れたものを捨てる（許可リストの上限は 100 件） */
 const CACHE_PRUNE_THRESHOLD = 500;

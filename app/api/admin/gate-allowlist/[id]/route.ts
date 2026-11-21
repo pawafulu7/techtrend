@@ -19,25 +19,20 @@ import { getCurrentGateEmail } from '@/lib/auth/site-gate/current-account';
 import { maskGateEmail } from '@/lib/auth/site-gate/email';
 import { GATE_ALLOWLIST_ERROR_CODES } from '@/lib/constants/gate-allowlist-error-codes';
 import { summarizeError } from '@/lib/utils/sanitize-error';
+import { isPrismaNotFoundError } from '@/lib/utils/prisma-error-handler';
 import { gateAllowlistError, jsonNoStore } from '../_shared';
 
 export const dynamic = 'force-dynamic';
 
-const entryIdSchema = z.cuid();
+// 画面から足した行の ID は cuid だが、手で流す SQL で入れた行も消せるよう、形は縛らず長さだけ見る
+// （findUnique の引数に渡すだけ）
+const entryIdSchema = z.string().min(1).max(128);
 
 function entryNotFound() {
   return gateAllowlistError(
     404,
     GATE_ALLOWLIST_ERROR_CODES.ENTRY_NOT_FOUND,
     'The address is not in the allowlist'
-  );
-}
-
-function isRecordNotFound(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as { code?: unknown }).code === 'P2025'
   );
 }
 
@@ -88,7 +83,7 @@ async function deleteHandler(
     return jsonNoStore({ success: true });
   } catch (error) {
     // 読んだあとに別の要求で消えていた
-    if (isRecordNotFound(error)) return entryNotFound();
+    if (isPrismaNotFoundError(error)) return entryNotFound();
     logger.error(
       { errorSummary: summarizeError(error), entryId: id },
       '[GateAllowlistAPI] アドレスを削除できませんでした'
