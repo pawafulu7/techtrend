@@ -152,6 +152,7 @@ model User {
   comments                    Comment[]
   sourcePresets               UserSourcePreset[]
   inquiries                   Inquiry[]
+  gateAllowedEmailsCreated    GateAllowedEmail[]
 
   @@index([deletedAt], map: "idx_user_deleted_at")
 }
@@ -751,4 +752,20 @@ model Inquiry {
   @@index([status, createdAt(sort: Desc)], map: "idx_inquiry_status_created")
   @@index([createdAt(sort: Desc)], map: "idx_inquiry_created")
   @@index([userId], map: "idx_inquiry_user")
+}
+
+// サイトの入口（Google ログイン）を通ってよい Gmail アドレス。管理画面で追加・削除する。
+// 行は作るか消すかだけで更新しないので updatedAt を持たない
+model GateAllowedEmail {
+  id          String   @id @default(cuid())
+  // 正規化した形（小文字・ローカル部のドットを除く・@gmail.com）。CHECK 制約で強制する
+  // （SQL で管理。chk_gate_allowed_email_normalized）
+  email       String   @unique @db.VarChar(254)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  // 追加した管理者。User 行が消えても許可は残す
+  createdById String?
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdById], map: "idx_gate_allowed_email_created_by")
 }
