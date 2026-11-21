@@ -269,8 +269,8 @@ export default async function ArticlePage({ params, searchParams }: PageProps) {
                           src={article.thumbnail}
                           alt={article.title}
                           fill
-                          priority={true}
-                          className="object-contain transition-opacity duration-200"
+                          preload
+                          className="object-contain"
                           sizes="(max-width: 768px) 100vw, 672px"
                         />
                       </div>

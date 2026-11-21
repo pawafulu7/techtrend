@@ -49,11 +49,13 @@ export function SourceArticleSections({
               </CardContent>
             </Card>
           ) : (
-            recentArticles.map((article) => (
+            recentArticles.map((article, index) => (
               <ArticleCard
                 key={article.id}
                 article={article}
                 {...favoriteProps(article.id)}
+                // 1列の先頭のカードは最初の画面に入るので、サムネイルを優先して取る
+                thumbnailPriority={index === 0 ? 'high' : undefined}
               />
             ))
           )}

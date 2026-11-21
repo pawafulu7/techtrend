@@ -106,6 +106,66 @@ html.no-transitions *::after {
     outline-offset: 2px;
   }
 
+  /*
+   * 画像の読み込み中の枠（OptimizedImage が画像の後ろに置く）。「観測記録」と同じ方眼を一段濃い下地に敷き、
+   * 主色の走査線を流す。枠の下地（surface-muted）は白いカードとほぼ同じ色なので、そのままだと白い四角に見える。
+   * 100ms 遅らせてから出すのは、キャッシュからすぐ出る画像で枠が一瞬見えないようにするため。
+   * 読めたら（data-done）画像のフェードがほぼ済んでから消す。先に消すと、フェードの途中で白く抜ける。
+   * 走査線はすぐ止める（無限スクロールで枠が増えても、止まったアニメーションを残さない）
+   */
+  .thumb-loading {
+    overflow: hidden;
+    background-color: color-mix(
+      in oklab,
+      var(--tt-color-border) 45%,
+      var(--tt-color-surface-muted)
+    );
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--tt-color-border) 55%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--tt-color-border) 55%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 24px 24px;
+    background-position: -1px -1px;
+    opacity: 1;
+    transition: opacity 240ms ease-out 100ms;
+  }
+  @starting-style {
+    .thumb-loading {
+      opacity: 0;
+    }
+  }
+  .thumb-loading[data-done] {
+    opacity: 0;
+    transition: opacity 120ms linear 160ms;
+  }
+  /* 走査線。左から右へ帯が流れ、先端の 1px だけ濃くする。動きを減らす設定では下の reduce の規則で1回で終わり、枠の外で止まる */
+  .thumb-loading::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 40%;
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklab, var(--tt-color-primary) 7%, transparent)
+        calc(100% - 1px),
+      color-mix(in oklab, var(--tt-color-primary) 35%, transparent)
+        calc(100% - 1px)
+    );
+    transform: translateX(-100%);
+    animation: thumb-scan 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+  .thumb-loading[data-done]::after {
+    animation: none;
+  }
+
   /* Badge Pill */
   .badge-pill {
     display: inline-flex;
@@ -212,6 +272,16 @@ html.no-transitions *::after {
 
 .animate-shimmer {
   animation: shimmer 2s infinite;
+}
+
+/* 画像の読み込み中の枠の走査線（.thumb-loading::after。帯の幅は枠の 40% なので 250% で右端の外に出る） */
+@keyframes thumb-scan {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
 }
 
 /*

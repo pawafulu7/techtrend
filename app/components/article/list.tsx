@@ -1,6 +1,6 @@
 'use client';
 
-import { ArticleCard } from './card';
+import { ArticleCard, type ThumbnailPriority } from './card';
 import { ARTICLE_GRID_CLASS } from './article-grid';
 import { ArticleListItem } from './list-item';
 import { CompactCard } from './compact-card';
@@ -22,6 +22,18 @@ import { EmptyState } from '@/components/ui-v2/empty-state';
 import { Newspaper } from 'lucide-react';
 // useToast は全トーストの状態を購読して一覧全体を再描画させるため、関数だけを使う
 import { toast } from '@/app/hooks/use-toast';
+
+// 遅延読み込みをやめるカードの数（遅延読み込みの画像は、レイアウトが決まるまで取り始めない）。
+// 列数は画面幅で 1〜5 列（article-grid.ts）なので、最も広い画面の1行目に合わせる。1列のスマホでは
+// 5枚目までが遅延読み込みでも取られる範囲（ブラウザは画面の少し下まで先に取る）なので、通信は増えない。
+// 優先して取るのは、どの幅でも最初に見える先頭の1枚だけ（画面外の画像と帯域を取り合わせない）
+const EAGER_THUMBNAILS = 5;
+
+function thumbnailPriorityAt(index: number): ThumbnailPriority | undefined {
+  if (index === 0) return 'high';
+  if (index < EAGER_THUMBNAILS) return 'eager';
+  return undefined;
+}
 
 // 既読状態変更イベントの型定義
 interface ArticleReadStatusChangedDetail {
@@ -270,7 +282,7 @@ export function ArticleList({
       className={cn(ARTICLE_GRID_CLASS, className)}
       data-testid="article-list"
     >
-      {groups.map((group) =>
+      {groups.map((group, index) =>
         withStory(
           group,
           <ArticleCard
@@ -282,6 +294,7 @@ export function ArticleList({
             onToggleFavorite={() => handleToggleFavorite(group.article.id)}
             layout="grid"
             thumbnailPlaceholder={thumbnailPlaceholder}
+            thumbnailPriority={thumbnailPriorityAt(index)}
           />
         )
       )}

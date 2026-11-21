@@ -35,6 +35,9 @@ const THUMBNAIL_SIZES_GRID =
 // 1 列（リスト表示・お気に入りフィード）は高さ 12rem に収めるので、16:9 でも幅は 342px まで
 const THUMBNAIL_SIZES_STACK = '342px';
 
+/** 最初の画面に入るカードのサムネイルの取り方。'high' は優先して取り、'eager' は遅延読み込みだけやめる */
+export type ThumbnailPriority = 'high' | 'eager';
+
 export function ArticleCard({
   article,
   onArticleClick,
@@ -46,6 +49,7 @@ export function ArticleCard({
   showSource = true,
   layout = 'stack',
   thumbnailPlaceholder = false,
+  thumbnailPriority,
 }: ArticleCardProps & {
   isRead?: boolean;
   /**
@@ -60,6 +64,11 @@ export function ArticleCard({
    * メタ情報の行に出す（画像の有無で出す情報を変えない）。画像がほぼ無い一覧（/papers）では出さない
    */
   thumbnailPlaceholder?: boolean;
+  /**
+   * 一覧の先頭で最初の画面に入るカード（list.tsx などが並び順で決める）。サムネイルを遅延読み込みにせず、
+   * HTML を受け取った時点で取り始める
+   */
+  thumbnailPriority?: ThumbnailPriority;
 }) {
   const isRead = useReadStatus(article.id, initialIsRead);
   const pathname = usePathname();
@@ -132,7 +141,8 @@ export function ArticleCard({
             src={thumbnailSrc}
             alt={article.title}
             fill
-            priority={false}
+            loading={thumbnailPriority ? 'eager' : 'lazy'}
+            fetchPriority={thumbnailPriority === 'high' ? 'high' : undefined}
             className={
               isGrid &&
               !isSlideArticle({
