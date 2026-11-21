@@ -62,7 +62,9 @@ export function useInfiniteArticles(
   const prevFilterKeyRef = useRef<string>('');
   // 前回の debounce の発火の後に離れた条件（発火時にまとめて消す。今の条件は含まない）
   const leftFilterKeysRef = useRef<Set<string>>(new Set());
-  const totalCountRef = useRef<number | undefined>(undefined);
+  // 条件ごとに、最後に受け取った総件数（page > 1 の要求に送り、COUNT を省く）。条件ごとに分けるのは、
+  // 一覧の部品は条件を変えても作り直さないので、前の条件の遅れた応答が今の条件の値を上書きしないようにするため
+  const totalCountsRef = useRef<Map<string, number>>(new Map());
   // Track last favorite update per article to handle race conditions
   // （時刻は古いイベントの無視に、値は取り直しの応答より新しい変更の反映に使う）
   const lastFavoriteUpdateRef = useRef<
@@ -112,6 +114,7 @@ export function useInfiniteArticles(
       queryClient.removeQueries({
         queryKey: ['infinite-articles', leftFilterKey],
       });
+      totalCountsRef.current.delete(leftFilterKey);
     }
     leftFilterKeysRef.current.clear();
   }, [queryClient]);
@@ -142,7 +145,7 @@ export function useInfiniteArticles(
     handleFilterChange();
 
     // フィルター変更時に総件数をリセット（新しいフィルターでは再計算が必要）
-    totalCountRef.current = undefined;
+    totalCountsRef.current.delete(filterKey);
 
     // 条件の変更では、次の effect が debounce を予約し直す
     return () => {
@@ -353,8 +356,10 @@ export function useInfiniteArticles(
   // 関数を固定する（描画のたびに新しい関数を渡すと、前の一覧の結果を使い回せず、毎回組み立て直す）
   const keepPreviousForSameUser = useCallback(
     (previousData: InfiniteData<ArticlesResponse> | undefined) =>
-      dataPrincipalRef.current === undefined ||
-      principal === undefined ||
+      // 両方のユーザーが確定していて同じときだけ残す。判定中（undefined）も残さない（セッションを
+      // 取り直す間は判定中に戻るので、その間に条件を変えると前のユーザーの一覧が出てしまう）
+      dataPrincipalRef.current !== undefined &&
+      principal !== undefined &&
       dataPrincipalRef.current === principal
         ? keepPreviousData(previousData)
         : undefined,
@@ -367,12 +372,15 @@ export function useInfiniteArticles(
     queryFn: async ({ pageParam, signal }) => {
       const currentPage = (pageParam as number) || 1;
 
-      // page > 1 では総件数を送って COUNT を省く。この条件の読み込み済みの1ページ目の総件数を先に使う。
-      // ref は条件をまたいで残るので、前の条件の取得が遅れて返ると、前の条件の総件数で上書きされうる
-      // （一覧の部品は条件を変えても作り直さない）。ref は1ページ目がまだキャッシュに無いときだけ使う
+      // page > 1 では総件数を送って COUNT を省く。この条件で最後に受け取った総件数を先に使う。
+      // キャッシュの1ページ目は後に回す。手動更新は全ページを順に取り直し、全部そろってからキャッシュを
+      // 書き換えるので、その間のキャッシュは更新前の総件数のまま（増えた分を読めなくなる）。
+      // サーバーで先読みしたページやキャッシュから戻ったページは queryFn を通らないので、そのときは
+      // キャッシュの1ページ目の総件数を使う
       const total =
+        totalCountsRef.current.get(filterKey) ??
         queryClient.getQueryData<InfiniteArticlesData>(queryKey)?.pages[0]?.data
-          .total ?? totalCountRef.current;
+          .total;
 
       // パフォーマンス最適化: デフォルトで軽量モード
       // モバイルまたは低速接続では lightweight=true を使用
@@ -417,9 +425,9 @@ export function useInfiniteArticles(
 
       // Debug log removed
 
-      // 総件数を保存（次ページ取得時のCOUNTクエリスキップ用）
-      if (data?.data?.total) {
-        totalCountRef.current = data.data.total;
+      // 総件数をこの条件の値として保存（次ページ取得時のCOUNTクエリスキップ用）
+      if (typeof data?.data?.total === 'number') {
+        totalCountsRef.current.set(filterKey, data.data.total);
       }
 
       // dataUpdatedAt はお気に入りの反映（setQueryData）でも進むため、取得時刻は

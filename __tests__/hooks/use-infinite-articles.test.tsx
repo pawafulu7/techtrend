@@ -214,6 +214,43 @@ describe('useInfiniteArticles', () => {
       expect(url.searchParams.get('page')).toBe('2');
       expect(url.searchParams.get('total')).toBe('45');
     });
+
+    it('手動更新で総件数が増えたら、2ページ目に新しい総件数を送る（増えた分を読めるように）', async () => {
+      // 手動更新は全ページを順に取り直し、全部そろってからキャッシュを書き換える。その間のキャッシュの
+      // 総件数は更新前のままなので、それを送るとサーバーが更新前のページ数で返し、続きを読めなくなる
+      const queryClient = createTestQueryClient();
+      seedServerPage(queryClient);
+      let total = 45;
+      mockFetch.mockImplementation((url: string) => {
+        const page = Number(new URL(url, 'http://localhost').searchParams.get('page'));
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              data: { items: [], total, page, totalPages: Math.ceil(total / 20), limit: 20 },
+            }),
+        });
+      });
+      const { result } = renderHook(() => useInfiniteArticles(FILTERS), {
+        wrapper: createWrapper(queryClient),
+      });
+      await act(async () => {
+        await result.current.fetchNextPage();
+      });
+
+      total = 65;
+      mockFetch.mockClear();
+      await act(async () => {
+        await result.current.refetch();
+      });
+
+      const page2 = articleListUrls()
+        .map((url) => new URL(url, 'http://localhost'))
+        .find((url) => url.searchParams.get('page') === '2');
+      expect(page2?.searchParams.get('total')).toBe('65');
+      expect(result.current.hasNextPage).toBe(true);
+    });
   });
 
   /**
@@ -512,6 +549,15 @@ describe('useInfiniteArticles', () => {
 
       expect(result.current.isPlaceholderData).toBe(true);
       expect(result.current.data).toBeDefined();
+    });
+
+    it('ユーザーの判定中（セッションの取り直しなど）は、前の一覧を返さない', async () => {
+      const { result, rerender } = await renderWithFirstList('user-1');
+      mockSession = { data: null, isPending: true };
+      rerender({ filters: SECOND });
+
+      expect(result.current.isPlaceholderData).toBe(false);
+      expect(result.current.data).toBeUndefined();
     });
 
     it('前の一覧を取った後にユーザーが替わったら（サインアウトなど）、前の一覧を返さない', async () => {

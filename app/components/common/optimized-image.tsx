@@ -86,10 +86,12 @@ export function OptimizedImage({
   const imgRef = useRef<HTMLImageElement>(null);
   const startedAtRef = useRef(0);
 
-  // src が変わったら最初の段階に戻す（useEffect ではなくレンダリング中に導出）
+  // src が変わったら最初の段階に戻す（useEffect ではなくレンダリング中に導出）。表示済みの記録も消す。
+  // 残すと、A → B → A と戻したときに、新しく作った A の画像を読み込み前から表示済みとして扱う
   if (src !== prevSrc) {
     setPrevSrc(src);
     setStage('optimized');
+    setShown(null);
   }
 
   const displayKey = `${stage}:${src}`;

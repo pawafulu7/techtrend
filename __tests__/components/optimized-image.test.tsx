@@ -166,6 +166,21 @@ describe('OptimizedImage', () => {
     expect(screen.getByRole('img')).toHaveClass('opacity-0');
   });
 
+  it('waits for the new image when the src goes A -> B -> A (does not reuse the first load of A)', () => {
+    const OTHER = 'https://example.com/other.jpg';
+    const { container, rerender } = render(
+      <OptimizedImage src={HTTPS} alt="a" fill />
+    );
+    fireEvent.load(screen.getByRole('img'));
+    rerender(<OptimizedImage src={OTHER} alt="a" fill />);
+    rerender(<OptimizedImage src={HTTPS} alt="a" fill />);
+
+    expect(screen.getByRole('img')).toHaveClass('opacity-0');
+    expect(container.querySelector('.thumb-loading')).not.toHaveAttribute(
+      'data-done'
+    );
+  });
+
   it('fades in the original URL after an optimizer error instead of showing it half-loaded', () => {
     render(<OptimizedImage src={HTTPS} alt="a" fill />);
     fireEvent.error(screen.getByRole('img'));
