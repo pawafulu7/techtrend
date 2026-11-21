@@ -9,6 +9,8 @@
  * export of a route module is the whole composition tree. Asserting the tree
  * catches wrong nesting order (e.g. CSRF inside auth), a single method that
  * lost a wrapper, and wrong rate limit keys.
+ *
+ * 認証を移した route のほか、新しく足した管理者だけの route（サイトに入れるアカウントの管理）も並べる。
  */
 
 type MarkerNode = {
@@ -38,6 +40,12 @@ jest.mock('@/lib/middleware/with-admin-auth', () => ({
 jest.mock('@/lib/middleware/with-user-validation', () => ({
   withUserValidation: (inner: unknown) => ({ kind: 'userValidation', inner }),
   createUserDeletedResponse: jest.fn(),
+}));
+
+// better-auth は ESM だけで Jest では読み込めないので、入口のログイン状態を引く処理はモックする
+// （/api/admin/gate-allowlist が import する）
+jest.mock('@/lib/auth/site-gate/current-account', () => ({
+  getCurrentGateEmail: jest.fn(),
 }));
 
 const HANDLER = expect.any(Function);
@@ -170,6 +178,20 @@ const ROUTES: Array<{
       }),
     },
   },
+  // サイトに入れるアカウント（入口の許可リスト）の管理
+  {
+    modulePath: '@/app/api/admin/gate-allowlist/route',
+    methods: {
+      GET: adminAuth(rateLimit('admin:read', HANDLER)),
+      POST: csrf(rateLimit('admin:write', adminAuth(HANDLER))),
+    },
+  },
+  {
+    modulePath: '@/app/api/admin/gate-allowlist/[id]/route',
+    methods: {
+      DELETE: csrf(rateLimit('admin:write', adminAuth(HANDLER))),
+    },
+  },
 ];
 
 const ROWS = ROUTES.flatMap((route) =>
@@ -185,9 +207,9 @@ const ROWS = ROUTES.flatMap((route) =>
 );
 
 describe('Auth middleware composition (issues #659, #662)', () => {
-  it('covers all 21 HTTP methods of the 16 routes', () => {
-    expect(ROUTES).toHaveLength(16);
-    expect(ROWS).toHaveLength(21);
+  it('covers all 24 HTTP methods of the 18 routes', () => {
+    expect(ROUTES).toHaveLength(18);
+    expect(ROWS).toHaveLength(24);
   });
 
   it.each(ROUTES.map((route) => [route.modulePath, route] as const))(
