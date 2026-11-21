@@ -84,7 +84,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 
 書き込みのメソッドには、`proxy.ts` が CSRF の検査をかける（`/api/auth` と `/api/health` は対象外）。
 
-サイトの入口が有効なときは、どの API も `proxy.ts` が先に入口のログイン状態を確かめる（無ければ 401、許可リストから外されていれば 403。JSON の `code` は `GATE_SESSION_REQUIRED`・`GATE_NOT_ALLOWED`）。
+サイトの入口が有効なときは、どの API も `proxy.ts` が先に入口のログイン状態を確かめる（無ければ 401、許可リストから外されていれば 403。JSON の `code` は `GATE_SESSION_REQUIRED`・`GATE_NOT_ALLOWED`）。例外は入口の開始・戻り・拒否のページの GET と、アプリ内のログアウト（`POST /api/auth/sign-out`。入口が切れていてもログアウトできるように）。
 
 以下の表の route は、先頭の `app/api/` を省いている。
 
@@ -111,7 +111,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 | | `changelog` | GET RL |
 | | `auth/[...all]` | Better Auth |
 | サイトの入口 | `gate/start` | GET 公開（IP ごとに 30 回/分。Google のログインへ移す） |
-| | `gate/[...all]` | GET 公開。Google からの戻り（`gate/callback/google`）だけを入口用の Better Auth に渡し（IP ごとに 30 回/分）、拒否・失敗のページ（`gate/error`）は自前の日本語の HTML を返す（`lib/auth/site-gate/error-page.ts`）。ほかは 404 |
+| | `gate/[...all]` | GET 公開。Google からの戻り（`gate/callback/google`）だけを入口用の Better Auth に渡し（IP ごとに 30 回/分）、拒否・失敗のページ（`gate/error`）は自前の日本語の HTML を、拒否・失敗の直後（1 分の目印の Cookie）だけ返し、URL を直接開いたら開始へ移す（`lib/auth/site-gate/error-page.ts`・`error-notice.ts`）。ほかは 404 |
 | 管理 | `admin/*`（20本。`admin/gate-allowlist`・`admin/gate-allowlist/[id]` を含む） | 管理者 |
 | | `sources` | GET 管理者 |
 | | `stats` | GET RL（公開） |
