@@ -42,6 +42,7 @@ type MockInfiniteArticles = {
   isFetching?: boolean;
   errorUpdateCount?: number;
   isFetchNextPageError?: boolean;
+  isPlaceholderData?: boolean;
   refetch: jest.Mock;
 };
 type MockPreferences = {
@@ -52,7 +53,9 @@ type MockPreferences = {
   isLoadingPreferences: boolean;
 };
 
-type InfiniteArticlesOptions = { enabled?: boolean } | undefined;
+type InfiniteArticlesOptions =
+  | { enabled?: boolean; keepPreviousData?: boolean }
+  | undefined;
 
 const mockUseInfiniteArticles = jest.fn<
   MockInfiniteArticles,
@@ -98,14 +101,19 @@ jest.mock('@/app/hooks/use-filter-reset', () => ({
   useFilterReset: () => ({ reset: mockResetFilters, isResetting: false }),
 }));
 
+// 一覧の末尾が見えたときの読み込みを、押して起こせるようにする
 jest.mock('@/app/components/common/infinite-scroll-trigger', () => ({
-  InfiniteScrollTrigger: () => <div data-testid="infinite-scroll-trigger" />,
+  InfiniteScrollTrigger: ({ onIntersect }: { onIntersect: () => void }) => (
+    <button data-testid="infinite-scroll-trigger" onClick={onIntersect} />
+  ),
 }));
 
+// URL の条件を変えるテストのために差し替えられるようにする（既定は条件なし）
+let mockSearchParams = new URLSearchParams();
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
   usePathname: () => '/',
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams,
 }));
 
 const ARTICLES: MockArticle[] = [
@@ -233,14 +241,20 @@ describe('HomeClientInfinite の記事クエリ enabled 配線', () => {
     mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
     const { rerender } = renderHome();
 
-    expect(lastInfiniteArticlesOptions()).toEqual({ enabled: true });
+    expect(lastInfiniteArticlesOptions()).toEqual({
+      enabled: true,
+      keepPreviousData: true,
+    });
 
     mockUsePersonalizationPreferences.mockReturnValue(preferences(true));
     rerender(
       <HomeClientInfinite viewMode="card" sources={SOURCES} tags={TAGS} />
     );
 
-    expect(lastInfiniteArticlesOptions()).toEqual({ enabled: false });
+    expect(lastInfiniteArticlesOptions()).toEqual({
+      enabled: false,
+      keepPreviousData: true,
+    });
   });
 });
 
@@ -533,5 +547,144 @@ describe('HomeClientInfinite の続きのページの失敗（issue #701）', ()
 
     expect(screen.getByTestId('infinite-scroll-trigger')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * 並び順・絞り込みを変えたときは、新しい一覧が届くまで前の一覧を薄くして残す
+ * （useInfiniteArticles の keepPreviousData。isPlaceholderData が true の間）。
+ * スケルトンに置き換えると、一覧全体がほぼ白い画面に一瞬切り替わっていた
+ */
+describe('HomeClientInfinite の条件を変えたときの前の一覧', () => {
+  beforeEach(() => {
+    mockUsePersonalizationPreferences.mockReturnValue(preferences(false));
+  });
+
+  it('前の一覧を残し、読み込み中であることを示す（スケルトンに替えない）', async () => {
+    mockUseInfiniteArticles.mockReturnValue({
+      ...loadedArticles(),
+      isPlaceholderData: true,
+    });
+    renderHome();
+
+    const list = screen.getByTestId('article-list');
+    expect(list).toHaveTextContent('2 articles');
+    expect(list.parentElement).toHaveAttribute('aria-busy', 'true');
+    // 前の条件の記事を開いたりお気に入りにしたりできないようにする（マウスもキーボードも）
+    expect(list.parentElement).toHaveAttribute('inert');
+    expect(screen.getByTestId('home-list-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen
+          .getAllByRole('status')
+          .some((el) => el.textContent === '記事を読み込んでいます')
+      ).toBe(true);
+    });
+  });
+
+  it('新しい一覧が届いたら、読み込み中の印を外す', () => {
+    mockUseInfiniteArticles.mockReturnValue({
+      ...loadedArticles(),
+      isPlaceholderData: true,
+    });
+    const { rerender } = renderHome();
+
+    mockUseInfiniteArticles.mockReturnValue(loadedArticles());
+    rerender(
+      <HomeClientInfinite viewMode="card" sources={SOURCES} tags={TAGS} />
+    );
+    expect(screen.queryByTestId('home-list-loading')).not.toBeInTheDocument();
+    expect(screen.getByTestId('article-list').parentElement).not.toHaveAttribute(
+      'aria-busy'
+    );
+  });
+
+  it('前の一覧が空だったときは、空の表示ではなくスケルトンを出す', () => {
+    mockUseInfiniteArticles.mockReturnValue({
+      ...loadedArticles(),
+      data: { pages: [{ data: { items: [], total: 0 } }], pageParams: [1] },
+      isPlaceholderData: true,
+    });
+    renderHome();
+
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+    expect(
+      screen.queryByText('条件に合う記事はありません')
+    ).not.toBeInTheDocument();
+  });
+
+  it('条件を変えたら先頭に戻す（取り直しを待たずに出せる条件でも）', () => {
+    mockUseInfiniteArticles.mockReturnValue(loadedArticles());
+    const { rerender } = renderHome();
+    const container = document.getElementById('main-scroll-container')!;
+    let scrollTop = 500;
+    Object.defineProperty(container, 'scrollTop', {
+      configurable: true,
+      get: () => scrollTop,
+      set: (value: number) => {
+        scrollTop = value;
+      },
+    });
+
+    // 同じ条件の再描画では動かさない
+    rerender(
+      <HomeClientInfinite viewMode="card" sources={SOURCES} tags={TAGS} />
+    );
+    expect(scrollTop).toBe(500);
+
+    try {
+      mockSearchParams = new URLSearchParams('sortBy=createdAt');
+      rerender(
+        <HomeClientInfinite viewMode="card" sources={SOURCES} tags={TAGS} />
+      );
+      expect(scrollTop).toBe(0);
+    } finally {
+      mockSearchParams = new URLSearchParams();
+    }
+  });
+
+  it('前の一覧を残している間は末尾の欄を出さず、届いた後に続きを読む', () => {
+    // 前の一覧を残している間、hasNextPage は新しい条件の側で決まり、まだ false になる
+    // （出すと「すべての記事を読み込みました」が出る）
+    const fetchNextPage = jest.fn();
+    mockUseInfiniteArticles.mockReturnValue({
+      ...loadedArticles(),
+      hasNextPage: false,
+      isPlaceholderData: true,
+      fetchNextPage,
+    });
+    const { rerender } = renderHome();
+    expect(
+      screen.queryByTestId('infinite-scroll-trigger')
+    ).not.toBeInTheDocument();
+
+    // 届いた後は末尾の欄を出し、続きを読む
+    mockUseInfiniteArticles.mockReturnValue({
+      ...loadedArticles(),
+      hasNextPage: true,
+      fetchNextPage,
+    });
+    rerender(
+      <HomeClientInfinite viewMode="card" sources={SOURCES} tags={TAGS} />
+    );
+    fireEvent.click(screen.getByTestId('infinite-scroll-trigger'));
+    expect(fetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('新しい条件の取得に失敗した後の再試行中も、前の一覧に戻さず失敗の表示を残す（issue #701）', () => {
+    // データの無いクエリを取り直すと pending に戻り、前の一覧が data に入る（isPlaceholderData）
+    mockUseInfiniteArticles.mockReturnValue({
+      ...loadedArticles(),
+      isPlaceholderData: true,
+      isError: false,
+      errorUpdateCount: 1,
+      isFetching: true,
+    });
+    renderHome();
+
+    expect(screen.getByText('記事を読み込めませんでした')).toBeInTheDocument();
+    expect(screen.queryByTestId('article-list')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('home-list-loading')).not.toBeInTheDocument();
   });
 });

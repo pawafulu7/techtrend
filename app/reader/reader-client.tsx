@@ -8,13 +8,15 @@ import {
   useQuery,
   keepPreviousData,
 } from '@tanstack/react-query';
-import { PAPER_SOURCE_IDS_PARAM } from '@/lib/sources/paper-source';
 import {
-  buildArticlesRequest,
-  buildHomeArticleFilters,
-  normalizeArticleFilters,
-} from '@/lib/articles/home-articles-query';
-import { usePersonalizationPreferences } from '@/app/hooks/use-personalization-preferences';
+  buildReaderFilterParams,
+  buildReaderListRequest,
+  readerDetailQueryKey,
+  readerListQueryKey,
+  toReaderDetailArticle,
+} from '@/lib/articles/reader-articles-query';
+import type { HomePersonalization } from '@/lib/personalization/preferences-state';
+import { useInitialPersonalization } from '@/app/hooks/use-initial-personalization';
 import { ReadTracker } from '@/app/components/article/read-tracker';
 import { FilterSidebarToggle } from '@/app/components/home/filter-sidebar';
 import { MobileSearchToggle } from '@/app/components/common/mobile-search-toggle';
@@ -37,10 +39,6 @@ import type {
 /** md: Tailwindブレークポイント (768px) と揃える */
 const DESKTOP_MEDIA_QUERY = '(min-width: 768px)';
 
-// リーダーには既読・未読の絞り込みの操作が無い。ホームの URL から引き継いでも条件にしない
-// （付けると一覧がユーザーごとの結果になり、ユーザーを区別しないキャッシュに載る）
-const READER_IGNORED_FILTERS = ['readFilter', 'includeUserData'];
-
 interface ReaderClientProps {
   tags: Array<{ id: string; name: string; count: number }>;
   /** URL に sortBy が無いときの並び順（ホームと同じ Cookie から） */
@@ -49,6 +47,12 @@ interface ReaderClientProps {
   initialSourceIds?: string[];
   /** lg 未満のフィルターの入口（サーバーのデータを使うので、ページから渡す） */
   mobileFilters?: ReactNode;
+  /**
+   * サーバーが一覧の1ページ目を先読みしたときのパーソナライズ設定（_components/reader-articles.tsx）。
+   * クライアントで設定を判定し終えるまで、この値で条件を組み立てる。同じ条件の queryKey に
+   * サーバーのページが入っているので、判定を待たずに一覧を出せる
+   */
+  initialPersonalization?: HomePersonalization;
 }
 
 async function parseApiJson(res: Response): Promise<Record<string, unknown>> {
@@ -74,16 +78,8 @@ async function fetchArticleList(
   page: number,
   filterParams: Record<string, string>
 ): Promise<Extract<ArticleListResponse, { success: true }>> {
-  // 要求先と検索条件もホームと同じ関数で作る。パーソナライズしているときは /api/articles（関連つき）、
-  // それ以外は軽量版の /api/articles/list。どちらも { success, data: { items, page, totalPages } } を返す
-  const { endpoint, searchParams } = buildArticlesRequest(
-    normalizeArticleFilters({
-      sortBy: 'publishedAt',
-      sortOrder: 'desc',
-      ...filterParams,
-    }),
-    { page }
-  );
+  // 要求先と検索条件は、サーバーの先読みと同じ関数で作る（lib/articles/reader-articles-query.ts）
+  const { endpoint, searchParams } = buildReaderListRequest(filterParams, page);
   const res = await fetch(`${endpoint}?${searchParams}`);
   const json = await parseApiJson(res);
   if (!res.ok || !json.success)
@@ -98,7 +94,12 @@ async function fetchArticleDetail(
   const json = await parseApiJson(res);
   if (!res.ok || !json.success)
     throw new Error(getApiErrorMessage(json, '記事の取得に失敗しました'));
-  return json as unknown as Extract<ArticleDetailResponse, { success: true }>;
+  const detail = json as unknown as Extract<
+    ArticleDetailResponse,
+    { success: true }
+  >;
+  // サーバーの先読みと同じ項目だけを持つ（lib/articles/reader-articles-query.ts）
+  return { success: true, data: toReaderDetailArticle(detail.data) };
 }
 
 export function ReaderClient({
@@ -106,38 +107,27 @@ export function ReaderClient({
   initialSortBy,
   initialSourceIds,
   mobileFilters,
+  initialPersonalization,
 }: ReaderClientProps) {
   const searchParams = useSearchParams();
   // パーソナライズはホームと同じ設定（分野・期間・ホームの絞り込みのオン/オフ）を使う。
-  // 設定が分かるまでは一覧を取らない（取ってから条件が変わると、一覧を取り直すことになる）
-  const {
-    selectedCategories,
-    filterEnabled,
-    periodMonths,
-    isLoadingPreferences,
-  } = usePersonalizationPreferences();
+  // 設定が分かるまでは一覧を取らない（取ってから条件が変わると、一覧を取り直すことになる）。
+  // サーバーが先読みしたときは、判定が済むまでサーバーの設定で条件を作る（キャッシュの1ページ目に当てる）
+  const { personalization, isLoadingPreferences } = useInitialPersonalization(
+    initialPersonalization
+  );
 
-  // 一覧の条件はホームと同じ関数で組み立てる（Issue #709）。URL に無いソース・並び順は Cookie の値、
-  // 論文のソースと要約の無い記事は除く。選んでいる記事（article）は条件に入れない
-  const filterParams = useMemo(() => {
-    const params = buildHomeArticleFilters({
-      searchParams,
-      initialSortBy,
-      initialSourceIds,
-      personalization: { filterEnabled, selectedCategories, periodMonths },
-      // 論文のソースを除外（ホームと同じ。専用の/papersページで表示するため）
-      excludeSources: PAPER_SOURCE_IDS_PARAM,
-    });
-    READER_IGNORED_FILTERS.forEach((key) => delete params[key]);
-    return params;
-  }, [
-    searchParams,
-    initialSortBy,
-    initialSourceIds,
-    filterEnabled,
-    selectedCategories,
-    periodMonths,
-  ]);
+  // 一覧の条件はサーバーの先読みと同じ関数で組み立てる（lib/articles/reader-articles-query.ts）
+  const filterParams = useMemo(
+    () =>
+      buildReaderFilterParams({
+        searchParams,
+        initialSortBy,
+        initialSourceIds,
+        personalization,
+      }),
+    [searchParams, initialSortBy, initialSourceIds, personalization]
+  );
 
   // key forces remount (and selectedId reset) when filters change.
   // `article` は含めない（記事選択のたびに Inner が再マウントされ、選択状態や
@@ -214,7 +204,7 @@ function ReaderClientInner({
     isFetchingNextPage,
     refetch: refetchList,
   } = useInfiniteQuery({
-    queryKey: ['reader-articles', filterParams],
+    queryKey: readerListQueryKey(filterParams),
     queryFn: ({ pageParam }) => fetchArticleList(pageParam, filterParams),
     enabled: listEnabled,
     initialPageParam: 1,
@@ -241,7 +231,7 @@ function ReaderClientInner({
     isFetching: isFetchingDetail,
     error: detailError,
   } = useQuery({
-    queryKey: ['reader-article-detail', effectiveSelectedId],
+    queryKey: readerDetailQueryKey(effectiveSelectedId),
     queryFn: () => fetchArticleDetail(effectiveSelectedId!),
     enabled: !!effectiveSelectedId,
     staleTime: 5 * 60 * 1000,
@@ -357,7 +347,8 @@ function ReaderClientInner({
           <ReaderArticleList
             articles={articles}
             selectedId={listActiveId}
-            isLoading={isLoadingList || !listEnabled}
+            // 設定の判定中でも、サーバーが先読みした一覧があればそれを出す
+            isLoading={isLoadingList || (!listEnabled && !listData)}
             error={listError instanceof Error ? listError.message : null}
             onSelectArticle={handleSelectArticle}
             onKeyDown={handleKeyDown}

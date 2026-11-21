@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
+import { useMemo, useCallback, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ArticleList } from '@/app/components/article/list';
 import { groupArticlesByStory } from '@/app/components/article/story-grouping';
@@ -9,16 +9,17 @@ import { InfiniteScrollTrigger } from '@/app/components/common/infinite-scroll-t
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
 import { useScrollRestoration } from '@/app/hooks/use-scroll-restoration';
 import { useRefreshKeepingPosition } from '@/app/hooks/use-refresh-keeping-position';
-import { usePersonalizationPreferences } from '@/app/hooks/use-personalization-preferences';
-import { useIsHydrated } from '@/app/hooks/use-is-hydrated';
+import { useInitialPersonalization } from '@/app/hooks/use-initial-personalization';
 import type { HomePersonalization } from '@/lib/personalization/preferences-state';
-import { buildHomeArticleFilters } from '@/lib/articles/home-articles-query';
+import {
+  buildHomeArticleFilters,
+  normalizeArticleFilters,
+} from '@/lib/articles/home-articles-query';
 import { buildScrollStorageKey } from '@/lib/utils/scroll';
 import { PAGINATION, SCROLL } from '@/lib/constants/index';
 import type { Source, Tag } from '@/lib/prisma-exports';
 import { Button } from '@/components/ui-v2/button-v2';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
-import { Loader2 } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { LiveStatus } from '@/components/ui-v2/live-status';
@@ -53,9 +54,8 @@ export function HomeClientInfinite({
   initialPersonalization,
 }: HomeClientInfiniteProps) {
   const searchParams = useSearchParams();
-  const scrollContainerRef = useRef<HTMLDivElement>(null); // 参照は保持するが使用しない
-  const [previousCategory, setPreviousCategory] = useState<string | null>(null);
-  const [isCategoryChanging, setIsCategoryChanging] = useState(false);
+  // 一覧のスクロール領域（条件を変えたときに先頭へ戻す・手動更新で位置を保つ・位置の復元に使う）
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const currentScrollPositionRef = useRef<number>(0); // 現在のスクロール位置を常に追跡
 
   // 記事詳細から戻ってきたかどうかをチェック
@@ -134,64 +134,12 @@ export function HomeClientInfinite({
     };
   }, []);
 
-  // パーソナライズフィルター設定を取得
+  // 一覧の取得条件に使うパーソナライズ設定。サーバーが1ページ目を先読みしたときは、設定の判定が
+  // 一度済むまでサーバーが使った設定で組み立てる（issue #714。use-initial-personalization.ts）
   const {
-    selectedCategories: personalizedCategories,
-    filterEnabled: isPersonalized,
-    periodMonths: personalizedPeriod,
+    personalization: personalizationForFilters,
     isLoadingPreferences,
-  } = usePersonalizationPreferences();
-
-  // カテゴリの変更を検出
-  const currentCategory = searchParams.get('category') || 'all';
-
-  useEffect(() => {
-    if (previousCategory !== null && previousCategory !== currentCategory) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional: track category changes for loading state
-      setIsCategoryChanging(true);
-      // Update previous category to detect next change (fixes one-time detection issue)
-      setPreviousCategory(currentCategory);
-      // 短い遅延後にローディング状態を解除
-      const timer = setTimeout(() => {
-        setIsCategoryChanging(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-    setPreviousCategory(currentCategory);
-  }, [currentCategory, previousCategory]);
-
-  // URLパラメータからフィルターを構築。
-  // サーバーが1ページ目を先読みしたときは、hydration が終わり、クライアントで設定の判定が
-  // 一度済むまで、サーバーが使った設定で組み立てる（issue #714）。
-  // - hydration 中はサーバー描画と同じ条件にする（設定の判定が hydration より先に済んでも、
-  //   条件が変わると一覧が食い違うため）
-  // - 判定が済んで同じ設定なら queryKey は変わらず、1ページ目を取り直さない
-  // - 一度判定が済んだ後（ユーザーが変わった等）は、サーバーの設定に戻らない
-  const isHydrated = useIsHydrated();
-  const [hasResolvedPreferences, setHasResolvedPreferences] = useState(false);
-  if (isHydrated && !isLoadingPreferences && !hasResolvedPreferences) {
-    // 同一コンポーネントに対するレンダー中の setState（React が許可する形）
-    setHasResolvedPreferences(true);
-  }
-  const shouldUseServerPersonalization =
-    initialPersonalization !== undefined && !hasResolvedPreferences;
-  const personalizationForFilters = useMemo<HomePersonalization>(
-    () =>
-      shouldUseServerPersonalization && initialPersonalization
-        ? initialPersonalization
-        : {
-            filterEnabled: isPersonalized,
-            selectedCategories: personalizedCategories,
-            periodMonths: personalizedPeriod,
-          },
-    [
-      shouldUseServerPersonalization,
-      initialPersonalization,
-      isPersonalized,
-      personalizedCategories,
-      personalizedPeriod,
-    ]
-  );
+  } = useInitialPersonalization(initialPersonalization);
 
   const filters = useMemo(
     () =>
@@ -210,6 +158,11 @@ export function HomeClientInfinite({
       excludeSources,
     ]
   );
+  // 取得条件の識別（条件が変わったか・手動更新の対象の一覧か）。URL の引数の並びが違うだけなら同じにする
+  const filterKey = useMemo(
+    () => JSON.stringify(normalizeArticleFilters(filters)),
+    [filters]
+  );
 
   const {
     data,
@@ -222,13 +175,16 @@ export function HomeClientInfinite({
     isFetching,
     errorUpdateCount,
     isFetchNextPageError,
+    isPlaceholderData,
     refetch,
   } = useInfiniteArticles(
     {
       ...filters,
       includeUserData: true, // Include favorites and read status in API response
     },
-    { enabled: !isLoadingPreferences }
+    // 並び順・絞り込みを変えたら、新しい一覧が届くまで前の一覧を薄くして残す（isPlaceholderData）。
+    // スケルトンに置き換えると、一覧全体がほぼ白い画面に一瞬切り替わるため
+    { enabled: !isLoadingPreferences, keepPreviousData: true }
   );
 
   // ページごとの記事を1つの配列にフラット化（重複除去付き）
@@ -264,13 +220,16 @@ export function HomeClientInfinite({
     refetch,
     fetchedAt,
     articleIds,
-    listKey: JSON.stringify(filters),
+    listKey: filterKey,
   });
   // 手動更新の間は次ページを読まない（fetchNextPage は進行中の取り直しを取り消すため）。
   // hasNextPage は変えない（変えると「すべての記事を読み込みました」と出てしまう）
+  // 前の一覧を残している間も読まない。その間に読むと、新しい条件の1ページ目を取り直してしまう
+  // （前の一覧の末尾の欄はその間は描かないので、ふつうはここまで来ない）
   const loadNextPage = useCallback(() => {
-    if (!isRefreshing) void fetchNextPage();
-  }, [isRefreshing, fetchNextPage]);
+    if (!isRefreshing && !isPlaceholderData) void fetchNextPage();
+  }, [isRefreshing, isPlaceholderData, fetchNextPage]);
+
 
   // スクロール位置復元フックを使用（記事詳細から戻った時のみ有効）
   const { isRestoring, currentPage, targetPages, cancelRestoration } =
@@ -284,6 +243,19 @@ export function HomeClientInfinite({
       scrollContainerRef, // スクロールコンテナの参照を追加
       isReturningFromArticle // 記事詳細から戻ってきたかのフラグ
     );
+
+  // 条件を変えたら先頭に戻す（新しい一覧は先頭から読む）。一覧の部品は条件を変えても作り直さないので、
+  // 何もしないと前の一覧のスクロール位置が残る。取り直しを待たずに出せる（キャッシュにある）条件でも戻す。
+  // 記事詳細から戻ったとき（部品を新しく作るとき）は、スクロール位置の復元に任せる。
+  // 復元の途中で条件を変えたら復元を止める（続けると、前の条件の位置を目指して新しい条件のページを読み進める）
+  const prevFilterKeyRef = useRef(filterKey);
+  useEffect(() => {
+    if (prevFilterKeyRef.current === filterKey) return;
+    prevFilterKeyRef.current = filterKey;
+    if (isRestoring) cancelRestoration();
+    const container = scrollContainerRef.current;
+    if (container) container.scrollTop = 0;
+  }, [filterKey, isRestoring, cancelRestoration]);
 
   // 記事クリック時のコールバック
   const handleArticleClick = useCallback(
@@ -321,8 +293,12 @@ export function HomeClientInfinite({
 
   // 一覧が無い状態での失敗。React Query は data の無いクエリを再取得すると pending に戻すので、
   // 一度失敗したら再試行中も失敗の表示（再試行中…）を残す（issue #701）。
-  // 更新（取り直し）の失敗では一覧を残し、失敗を下の行に出す
-  if (!data && (isError || errorUpdateCount > 0)) {
+  // 再試行中は前の一覧が data に入る（isPlaceholderData）ので、それも「一覧が無い」として扱う
+  // （前の一覧に戻すと、成功したように見える）。更新（取り直し）の失敗では一覧を残し、失敗を下の行に出す
+  if (
+    (!data || isPlaceholderData) &&
+    (isError || errorUpdateCount > 0)
+  ) {
     return (
       <div className="flex min-h-[400px] items-center justify-center px-4">
         <CardV2 className="mx-auto max-w-md">
@@ -340,6 +316,18 @@ export function HomeClientInfinite({
 
   return (
     <>
+      {/* 前の一覧を残している間の印。一覧の領域の上端に走査線を流す（globals.css の .list-scan）。
+          スクロールしない親（page.tsx の relative な領域）に合わせて置き、一覧の配置は変えない */}
+      {isPlaceholderData && (
+        <>
+          <div
+            aria-hidden="true"
+            className="list-scan pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5"
+            data-testid="home-list-loading"
+          />
+          <LiveStatus message="記事を読み込んでいます" />
+        </>
+      )}
       {/* 記事リスト */}
       <div
         ref={scrollContainerRef}
@@ -358,34 +346,38 @@ export function HomeClientInfinite({
 
         {/* isPending は data === undefined と厳密に等価（v5 の isLoading は
             isPending && isFetching）。データが無いときだけスケルトンを出すため、
-            再取得中やセッション判定中に一覧 DOM を破棄しない。 */}
-        {isPending && !isCategoryChanging ? (
+            再取得中やセッション判定中に一覧 DOM を破棄しない。
+            前の一覧が空だったときは残すものが無いので、空の表示ではなくスケルトンを出す */}
+        {isPending ? (
           <ArticleListSkeleton viewMode={viewMode} />
         ) : allArticles.length > 0 ? (
-          <div className="relative">
+          // 前の一覧は操作できないようにする（inert。マウスもキーボードも。カードの中には
+          // group-focus-within で操作を受け付ける部品があり、pointer-events だけでは止まらない）
+          <div
+            className="relative"
+            aria-busy={isPlaceholderData || undefined}
+            inert={isPlaceholderData || undefined}
+          >
             <ArticleList
               articles={allArticles}
               viewMode={viewMode}
               onArticleClick={handleArticleClick}
               groupStories
               currentFilters={filters}
+              // 前の一覧は薄くする。すぐ届く（100ms 未満）ときに薄くなる瞬間を見せないよう、
+              // 薄くするのは遅らせ、戻すのはすぐに行う
               className={
-                isCategoryChanging
-                  ? 'pointer-events-none opacity-40'
-                  : undefined
+                isPlaceholderData
+                  ? 'opacity-60 transition-opacity delay-100 duration-150 ease-out'
+                  : 'transition-opacity duration-150 ease-out'
               }
             />
-            {isCategoryChanging && (
-              <div className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                {/* 領域を先に描いてから文言を入れる（issue 701） */}
-                <LiveStatus message="カテゴリを変更中..." />
-              </div>
-            )}
 
             {/* 続きのページの失敗は下端に出し、続きだけを再試行する（issue #701）。
-                自動の取得（トリガー）は止める。残すと末尾が見えている間、失敗した取得をくり返すため */}
-            {isFetchNextPageError ? (
+                自動の取得（トリガー）は止める。残すと末尾が見えている間、失敗した取得をくり返すため。
+                前の一覧を残している間は何も出さない（hasNextPage は新しい条件の側で決まり、まだ false なので、
+                出すと「すべての記事を読み込みました」が出る） */}
+            {isPlaceholderData ? null : isFetchNextPageError ? (
               <ErrorState
                 title="続きを読み込めませんでした"
                 description="時間をおいて再試行してください。"
@@ -404,7 +396,9 @@ export function HomeClientInfinite({
                 <div className="flex justify-center py-8">
                   <Button
                     onClick={() => fetchNextPage()}
-                    disabled={isFetchingNextPage || isRefreshing}
+                    disabled={
+                      isFetchingNextPage || isRefreshing || isPlaceholderData
+                    }
                     variant="outline"
                     data-testid="load-more-button"
                   >
@@ -414,7 +408,7 @@ export function HomeClientInfinite({
               )
             )}
           </div>
-        ) : isPending ? (
+        ) : isPlaceholderData ? (
           <ArticleListSkeleton viewMode={viewMode} />
         ) : (
           <HomeEmptyState
@@ -431,7 +425,8 @@ export function HomeClientInfinite({
         <HomeListStatusBar
           fetchedAt={fetchedAt}
           isRefreshing={isRefreshing}
-          refreshDisabled={isFetchingNextPage || isRestoring}
+          // 前の一覧を残している間も押せない（前の一覧の位置を、新しい条件の一覧の位置として覚えるため）
+          refreshDisabled={isFetchingNextPage || isRestoring || isPlaceholderData}
           refreshFailed={isRefetchError}
           onRefresh={() => void handleRefresh()}
           totalCount={totalCount}

@@ -166,6 +166,37 @@ html.no-transitions *::after {
     animation: none;
   }
 
+  /*
+   * 一覧を条件を変えて取り直している間の印（ホーム。home-client-infinite.tsx が一覧の領域の上端に置く）。
+   * 細い基線の上を、サムネイルの読み込み中の枠と同じ走査線が流れる。すぐ届くときに見えないよう 100ms 遅らせて出す
+   */
+  .list-scan {
+    overflow: hidden;
+    background-color: var(--tt-color-border);
+    opacity: 1;
+    transition: opacity 150ms ease-out 100ms;
+  }
+  @starting-style {
+    .list-scan {
+      opacity: 0;
+    }
+  }
+  .list-scan::after {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 40%;
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklab, var(--tt-color-primary) 55%, transparent)
+        calc(100% - 2px),
+      var(--tt-color-primary) calc(100% - 2px)
+    );
+    transform: translateX(-100%);
+    animation: thumb-scan 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+
   /* Badge Pill */
   .badge-pill {
     display: inline-flex;
@@ -340,6 +371,12 @@ html.no-transitions *::after {
   .animate-spin,
   [data-loading='true'] .animate-spin {
     animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+  /* ホームの一覧を取り直している間の印（.list-scan）。線だけが残ると取り直し中と分からない。
+     サムネイルの枠（.thumb-loading）は方眼だけで読み込み中と分かるので止める */
+  .list-scan::after {
+    animation-duration: 1.4s !important;
     animation-iteration-count: infinite !important;
   }
 

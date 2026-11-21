@@ -22,6 +22,13 @@ import {
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
+// 一覧を見ているユーザー（前の一覧を残すかどうかの判定に使う）。テストの中で切り替える
+let mockSession: { data: { user: { id: string } } | null; isPending: boolean } =
+  { data: null, isPending: false };
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: { useSession: () => mockSession },
+}));
+
 const PAGE_1_RESPONSE = {
   data: { items: [], total: 1, page: 1, totalPages: 1, limit: 20 },
 };
@@ -468,6 +475,52 @@ describe('useInfiniteArticles', () => {
 
       expect(isFavorited(result)).toBe(false);
       unmount();
+    });
+  });
+
+  describe('条件を変えたときの前の一覧（keepPreviousData。ホーム）', () => {
+    const FIRST = { sortBy: 'publishedAt' } as ArticleFilters;
+    const SECOND = { sortBy: 'createdAt' } as ArticleFilters;
+
+    async function renderWithFirstList(userId: string | null) {
+      mockSession = {
+        data: userId ? { user: { id: userId } } : null,
+        isPending: false,
+      };
+      const queryClient = createTestQueryClient();
+      const hook = renderHook(
+        ({ filters }: { filters: ArticleFilters }) =>
+          useInfiniteArticles(filters, { keepPreviousData: true }),
+        {
+          wrapper: createWrapper(queryClient),
+          initialProps: { filters: FIRST },
+        }
+      );
+      await waitFor(() => expect(hook.result.current.data).toBeDefined());
+      // 次の条件の取得は返さない（取得中のまま）
+      mockFetch.mockImplementation(() => new Promise(() => {}));
+      return hook;
+    }
+
+    afterEach(() => {
+      mockSession = { data: null, isPending: false };
+    });
+
+    it('新しい一覧が届くまで前の一覧を返す', async () => {
+      const { result, rerender } = await renderWithFirstList('user-1');
+      rerender({ filters: SECOND });
+
+      expect(result.current.isPlaceholderData).toBe(true);
+      expect(result.current.data).toBeDefined();
+    });
+
+    it('前の一覧を取った後にユーザーが替わったら（サインアウトなど）、前の一覧を返さない', async () => {
+      const { result, rerender } = await renderWithFirstList('user-1');
+      mockSession = { data: null, isPending: false };
+      rerender({ filters: SECOND });
+
+      expect(result.current.isPlaceholderData).toBe(false);
+      expect(result.current.data).toBeUndefined();
     });
   });
 });
