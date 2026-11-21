@@ -63,13 +63,22 @@ export function findFirstImageSrc(html: string): string | null {
   return null;
 }
 
+/** 並びを切る文字（従来の式の `[^"'\s]` の外側） */
+const RUN_BREAK = /["'\s]/;
+
+/** ASCII の英字だけを小文字にする（文字数が変わらない。`/i` で ASCII の接頭辞と一致する範囲と同じ） */
+function lowerAscii(text: string): string {
+  return text.replace(/[A-Z]+/g, (letters) => letters.toLowerCase());
+}
+
 /**
  * 決まったホストの画像 URL（`https://deepmind.google/….png` など）を本文から探す
  *
  * 従来の `/https:\/\/deepmind\.google[^"'\s]+(\.jpg|\.png|…)/i` と同じ結果を返す: 接頭辞から始まる、
  * 引用符と空白を含まない文字の並びのうち、最初に見つかったもので、接頭辞の後ろに 1 文字以上あってから
- * 現れる最後の拡張子までを返す（大文字小文字は区別しない）。従来の式は拡張子の無い並びで開始位置ごとに
- * 末尾まで読み直したが、ここでは並びを 1 回だけ読み、拡張子は lastIndexOf で探す。
+ * 現れる最後の拡張子までを返す（ASCII の英字の大文字小文字は区別しない）。従来の式は拡張子の無い並びで
+ * 開始位置ごとに末尾まで読み直したが、ここでは並びを 1 回だけ読み、拡張子は lastIndexOf で探す。
+ * 接頭辞は文字列のまま探し、正規表現に組み立てない（`.` が任意の 1 文字に一致する取り違えを起こさない）。
  */
 export function findImageUrlByPrefix(
   text: string,
@@ -78,26 +87,34 @@ export function findImageUrlByPrefix(
 ): string | null {
   if (!text) return null;
 
-  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const runs = new RegExp(`${escaped}[^"'\\s]*`, 'gi');
-  const lowerExtensions = extensions.map((ext) => ext.toLowerCase());
+  const lowerText = lowerAscii(text);
+  const lowerPrefix = lowerAscii(prefix);
+  const lowerExtensions = extensions.map(lowerAscii);
 
-  for (const [run] of text.matchAll(runs)) {
-    const lower = run.toLowerCase();
+  let searchFrom = 0;
+  for (;;) {
+    const start = lowerText.indexOf(lowerPrefix, searchFrom);
+    if (start === -1) return null;
+
+    let end = start + lowerPrefix.length;
+    while (end < text.length && !RUN_BREAK.test(text[end])) end++;
+
     // 従来の式は最長一致から戻るので、開始位置が最も後ろの拡張子が選ばれる（同じ位置なら列挙順で先のもの）
+    const run = lowerText.slice(start, end);
     let bestStart = -1;
     let bestEnd = -1;
     for (const ext of lowerExtensions) {
-      const at = lower.lastIndexOf(ext);
-      if (at >= prefix.length + 1 && at > bestStart) {
+      const at = run.lastIndexOf(ext);
+      if (at >= lowerPrefix.length + 1 && at > bestStart) {
         bestStart = at;
         bestEnd = at + ext.length;
       }
     }
-    if (bestEnd > 0) return run.slice(0, bestEnd);
-  }
+    if (bestEnd > 0) return text.slice(start, start + bestEnd);
 
-  return null;
+    // 従来の式（matchAll と同じく）は、並びの終わりから次を探す
+    searchFrom = end;
+  }
 }
 
 /** og:image を優先し、無ければ最初の img の src を返す */

@@ -118,15 +118,38 @@ describe('findThumbnailInHtml', () => {
 
 describe('findImageUrlByPrefix', () => {
   const DEEPMIND = ['.jpg', '.png', '.webp', '.svg'];
-  const find = (text: string) => findImageUrlByPrefix(text, 'https://deepmind.google', DEEPMIND);
+  const find = (text: string) =>
+    findImageUrlByPrefix(text, 'https://deepmind.google', DEEPMIND);
 
   it('接頭辞から最後の拡張子までを返す（従来の最長一致と同じ）', () => {
-    expect(find('see https://deepmind.google/a/b.png"')).toBe('https://deepmind.google/a/b.png');
-    expect(find('https://deepmind.google/a.png?x=1.jpg&y')).toBe('https://deepmind.google/a.png?x=1.jpg');
+    expect(find('see https://deepmind.google/a/b.png"')).toBe(
+      'https://deepmind.google/a/b.png'
+    );
+    expect(find('https://deepmind.google/a.png?x=1.jpg&y')).toBe(
+      'https://deepmind.google/a.png?x=1.jpg'
+    );
   });
 
   it('大文字小文字を区別しない', () => {
-    expect(find('HTTPS://DeepMind.Google/A.PNG')).toBe('HTTPS://DeepMind.Google/A.PNG');
+    expect(find('HTTPS://DeepMind.Google/A.PNG')).toBe(
+      'HTTPS://DeepMind.Google/A.PNG'
+    );
+  });
+
+  it('接頭辞の . は文字どおりにだけ一致する（任意の 1 文字に一致しない）', () => {
+    expect(
+      findImageUrlByPrefix(
+        'https://developerXnvidia.com/a.png',
+        'https://developer.nvidia.com',
+        ['.png']
+      )
+    ).toBeNull();
+  });
+
+  it('小文字にすると文字数が変わる文字（İ）を含んでも、位置がずれない', () => {
+    expect(find('https://deepmind.google/İİ/a.png x')).toBe(
+      'https://deepmind.google/İİ/a.png'
+    );
   });
 
   it('接頭辞の直後の拡張子は読まない（接頭辞の後ろに 1 文字以上が要る）', () => {
@@ -134,9 +157,9 @@ describe('findImageUrlByPrefix', () => {
   });
 
   it('引用符・空白で並びが切れる。拡張子の無い並びは読み飛ばす', () => {
-    expect(find("https://deepmind.google/page 'https://deepmind.google/i.webp'")).toBe(
-      'https://deepmind.google/i.webp'
-    );
+    expect(
+      find("https://deepmind.google/page 'https://deepmind.google/i.webp'")
+    ).toBe('https://deepmind.google/i.webp');
     expect(find('https://deepmind.google/page')).toBeNull();
   });
 
