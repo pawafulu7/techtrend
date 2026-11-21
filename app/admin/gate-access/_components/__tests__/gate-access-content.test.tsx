@@ -176,6 +176,20 @@ describe('サイトに入れるアカウントの管理画面', () => {
     expect(screen.getByLabelText('Gmail アドレス')).toBeDisabled();
   });
 
+  it.each([
+    ['入口が切れた（401）', 401, 'GATE_SESSION_REQUIRED', 'サイトに入り直す必要があります'],
+    ['入口から外された（403）', 403, 'GATE_NOT_ALLOWED', 'サイトに入り直す必要があります'],
+    ['管理者でなくなった（403）', 403, 'ADMIN_REQUIRED', 'この画面には管理者の権限が必要です。'],
+    ['アプリのログインが切れた（401）', 401, undefined, 'ログインの有効期限が切れました。もう一度ログインしてから開き直してください。'],
+  ] as const)('%s ときは、一覧と追加欄を出さずに案内だけを出す', async (_label, status, code, text) => {
+    routeFetch({ list: () => json(status, code ? { success: false, error: 'x', code } : {}) });
+    renderPage();
+
+    expect(await screen.findByText(text)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Gmail アドレス')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
   describe('追加', () => {
     it('送る前に空と Gmail 以外を止め、入力を直し始めたら赤い表示を外す', async () => {
       const user = userEvent.setup();
@@ -309,6 +323,30 @@ describe('サイトに入れるアカウントの管理画面', () => {
       expect(screen.getByRole('alert')).not.toHaveTextContent(
         'Failed to fetch'
       );
+    });
+
+    it('送信中に次のアドレスを打ち始めていたら、追加のあとも消さない', async () => {
+      const user = userEvent.setup();
+      let resolvePost!: (value: unknown) => void;
+      routeFetch({
+        list: () => json(200, body([FRIEND])),
+        post: () =>
+          new Promise((resolve) => {
+            resolvePost = resolve;
+          }),
+      });
+      renderPage();
+      await screen.findByText('friend@gmail.com');
+
+      const input = screen.getByLabelText('Gmail アドレス');
+      await user.type(input, 'first@gmail.com');
+      await user.click(screen.getByRole('button', { name: '追加' }));
+      await user.clear(input);
+      await user.type(input, 'second@gmail.com');
+      resolvePost({ status: 201, ok: true, json: async () => ({ entry: entry({ email: 'first@gmail.com' }) }) });
+
+      await waitFor(() => expect(mockToast).toHaveBeenCalled());
+      expect(input).toHaveValue('second@gmail.com');
     });
 
     it('送信中の二重の送信は無視する', async () => {

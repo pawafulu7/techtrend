@@ -59,7 +59,8 @@ export function GateEmailAddForm({ disabled }: GateEmailAddFormProps) {
     setError(null);
     mutation.mutate(email, {
       onSuccess: (added) => {
-        setValue('');
+        // 送信中に次のアドレスを打ち始めていたら消さない（送った値のままのときだけ空にする）
+        setValue((current) => (current.trim().toLowerCase() === email ? '' : current));
         toast({ title: `${added} を追加しました` });
         inputRef.current?.focus();
       },

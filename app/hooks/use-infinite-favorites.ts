@@ -7,10 +7,14 @@ import type {
   FavoriteArticle,
   FavoritesApiResponse,
 } from '@/lib/favorites/types';
+import { isSiteGateErrorResponse } from '@/lib/utils/action-error-messages';
 
-/** 画面で文言を選べるよう、HTTP ステータスを持たせる（issue #729） */
+/** 画面で文言を選べるよう、HTTP ステータスと、サイトの入口の拒否かを持たせる（issue #729） */
 export class FavoritesFetchError extends Error {
-  constructor(readonly status: number) {
+  constructor(
+    readonly status: number,
+    readonly siteGate = false
+  ) {
     super(`Failed to fetch favorites: ${status}`);
     this.name = 'FavoritesFetchError';
   }
@@ -209,7 +213,10 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
       );
 
       if (!response.ok) {
-        throw new FavoritesFetchError(response.status);
+        throw new FavoritesFetchError(
+          response.status,
+          await isSiteGateErrorResponse(response)
+        );
       }
 
       const data = await response.json();

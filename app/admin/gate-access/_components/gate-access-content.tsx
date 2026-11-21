@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui-v2/error-state';
+import { SiteGateReopenState } from '@/app/components/common/site-gate-reopen-state';
 import { authClient } from '@/lib/auth/auth-client';
 import { useIsHydrated } from '@/app/hooks/use-is-hydrated';
 import type { GateAllowlistEntry } from '@/lib/auth/site-gate/admin-types';
@@ -68,6 +69,24 @@ function GateAccessManager() {
   // セッションの失効や管理者でなくなったこと（401・403）が分かったら、確認のダイアログも閉じる
   if (deleting && isAuthFailure(error)) {
     setDeleting(null);
+  }
+
+  // ログイン状態が切れた・管理者でなくなった・入口が切れた（401・403）: 手元の一覧と追加欄は出さない
+  if (isAuthFailure(error)) {
+    if (error instanceof GateAllowlistFetchError && error.siteGate) {
+      return <SiteGateReopenState />;
+    }
+    return (
+      <ErrorState
+        title="この画面を表示できません"
+        description={
+          error instanceof GateAllowlistFetchError && error.status === 403
+            ? 'この画面には管理者の権限が必要です。'
+            : 'ログインの有効期限が切れました。もう一度ログインしてから開き直してください。'
+        }
+        size="block"
+      />
+    );
   }
 
   const unavailable = isLoading || (error !== null && data === undefined);

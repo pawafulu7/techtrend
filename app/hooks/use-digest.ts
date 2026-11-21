@@ -6,10 +6,14 @@ import type {
   DigestResponse,
   DigestPeriod,
 } from '@/lib/personalization/digest-service';
+import { isSiteGateErrorResponse } from '@/lib/utils/action-error-messages';
 
-/** 画面で文言を選べるよう、HTTP ステータスを持たせる（issue #701） */
+/** 画面で文言を選べるよう、HTTP ステータスと、サイトの入口の拒否かを持たせる（issue #701） */
 export class DigestFetchError extends Error {
-  constructor(readonly status: number) {
+  constructor(
+    readonly status: number,
+    readonly siteGate = false
+  ) {
     super(`Failed to fetch digest: ${status}`);
     this.name = 'DigestFetchError';
   }
@@ -21,7 +25,7 @@ async function fetchDigest(
 ): Promise<DigestResponse> {
   const res = await fetch(`/api/digest?period=${period}`, { signal });
   if (!res.ok) {
-    throw new DigestFetchError(res.status);
+    throw new DigestFetchError(res.status, await isSiteGateErrorResponse(res));
   }
   return res.json();
 }

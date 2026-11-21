@@ -1,4 +1,7 @@
-import { commonActionErrorMessage } from '@/lib/utils/action-error-messages';
+import {
+  commonActionErrorMessage,
+  isSiteGateErrorResponse,
+} from '@/lib/utils/action-error-messages';
 import type { GateAllowlistErrorCode } from '@/lib/constants/gate-allowlist-error-codes';
 import { GATE_ALLOWLIST_MAX_ENTRIES } from '@/lib/auth/site-gate/constants';
 import type {
@@ -20,9 +23,12 @@ export class GateAllowlistActionError extends Error {
   }
 }
 
-/** 一覧の取得の失敗。401・403 を見分けるために status を持つ */
+/** 一覧の取得の失敗。401・403 と、サイトの入口の拒否かを見分けるために持つ */
 export class GateAllowlistFetchError extends Error {
-  constructor(readonly status: number) {
+  constructor(
+    readonly status: number,
+    readonly siteGate = false
+  ) {
     super(`Failed to fetch the gate allowlist (${status})`);
     this.name = 'GateAllowlistFetchError';
   }
@@ -67,7 +73,9 @@ export async function fetchGateAllowlist(
   signal?: AbortSignal
 ): Promise<GateAllowlistResponse> {
   const res = await fetch('/api/admin/gate-allowlist', { signal });
-  if (!res.ok) throw new GateAllowlistFetchError(res.status);
+  if (!res.ok) {
+    throw new GateAllowlistFetchError(res.status, await isSiteGateErrorResponse(res));
+  }
   return res.json();
 }
 

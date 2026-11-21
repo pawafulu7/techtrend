@@ -292,6 +292,15 @@ describe('FavoritesContent: セッション切れ（401、issue #729）', () => 
     mockOverrides = {};
   });
 
+  it('サイトの入口の 401 では、アプリのログインではなくページを開き直す案内を出す', () => {
+    mockListError = new FavoritesFetchError(401, true);
+    renderFavorites();
+
+    expect(screen.getByText('サイトに入り直す必要があります')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ページを開き直す' })).toBeInTheDocument();
+    expect(screen.queryByText('ログインの有効期限が切れました')).not.toBeInTheDocument();
+  });
+
   it('一覧が無いときは、一般の失敗と再試行ではなくログインの案内を出す', () => {
     mockListError = new FavoritesFetchError(401);
     renderFavorites();

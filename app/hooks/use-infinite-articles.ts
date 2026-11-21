@@ -5,6 +5,10 @@ import {
   keepPreviousData,
   InfiniteData,
 } from '@tanstack/react-query';
+import {
+  SITE_GATE_REOPEN_MESSAGE,
+  isSiteGateErrorBody,
+} from '@/lib/utils/action-error-messages';
 import { ArticleWithUserData } from '@/types/models';
 import { authClient } from '@/lib/auth/auth-client';
 import { useEffect, useRef, useMemo, useCallback } from 'react';
@@ -408,7 +412,10 @@ export function useInfiniteArticles(
           let message = 'ログインが必要です。再度ログインしてください。';
           try {
             const errorData = await response.json();
-            if (errorData?.error?.message) {
+            if (isSiteGateErrorBody(errorData)) {
+              // サイトの入口（Google ログイン）が切れた: アプリのログインではなく、ページを開き直す案内にする
+              message = SITE_GATE_REOPEN_MESSAGE;
+            } else if (errorData?.error?.message) {
               message = errorData.error.message;
             }
           } catch {

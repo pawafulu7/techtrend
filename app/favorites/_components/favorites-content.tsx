@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui-v2/empty-state';
 import { LiveStatus } from '@/components/ui-v2/live-status';
 import { FavoritesLoading } from './favorites-loading';
 import {
+  FavoritesFetchError,
   isUnauthorizedFavoritesError,
   useInfiniteFavorites,
 } from '@/app/hooks/use-infinite-favorites';
@@ -23,6 +24,7 @@ import { FavoritesToolbar } from './favorites-toolbar';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { toast } from '@/app/hooks/use-toast';
 import { loginWithCallback } from '@/lib/routes/auth';
+import { SiteGateReopenState } from '@/app/components/common/site-gate-reopen-state';
 
 // 解除に失敗して一覧に戻すときは、黙って戻さずに通知する（issue #701）
 function notifyRemoveFailed() {
@@ -72,7 +74,11 @@ export function FavoritesContent({
   // 間も error が残るため、ログインし直して戻った直後に前の 401 で一覧を隠さないようにする
   const currentError = hasFailedSinceMount ? error : null;
   // セッションが切れている: 再試行しても同じなので、ログインの案内だけを出す（issue #729）
-  const isUnauthorized = isUnauthorizedFavoritesError(currentError);
+  // サイトの入口（Google ログイン）が切れた・取り消された: アプリのログインではなく、ページを開き直す案内を出す
+  const isSiteGateError =
+    currentError instanceof FavoritesFetchError && currentError.siteGate;
+  const isUnauthorized =
+    isSiteGateError || isUnauthorizedFavoritesError(currentError);
   // 取得に失敗して一覧が無い: 「0件」や空状態ではなく失敗と再試行を出す（issue #701）。
   // React Query は data の無いクエリを再取得すると pending に戻すので、失敗後の再試行中も失敗表示を残す
   const failedWithoutData =
@@ -237,7 +243,13 @@ export function FavoritesContent({
         }
       />
 
-      {isUnauthorized && (
+      {isSiteGateError && (
+        <CardV2 className="mx-auto max-w-md">
+          <SiteGateReopenState />
+        </CardV2>
+      )}
+
+      {isUnauthorized && !isSiteGateError && (
         <CardV2 className="mx-auto max-w-md">
           <ErrorState
             size="block"

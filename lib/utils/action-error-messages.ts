@@ -25,6 +25,22 @@ function codeOf(body: unknown): unknown {
     : undefined;
 }
 
+/** 本文が入口（Google ログイン）の拒否か（proxy の 401 GATE_SESSION_REQUIRED・403 GATE_NOT_ALLOWED） */
+export function isSiteGateErrorBody(body: unknown): boolean {
+  return SITE_GATE_CODES.has(codeOf(body));
+}
+
+/** 応答が入口の拒否か。本文は読み捨てる（JSON でなければ false） */
+export async function isSiteGateErrorResponse(response: Response): Promise<boolean> {
+  if (response.status !== 401 && response.status !== 403) return false;
+  try {
+    return isSiteGateErrorBody(await response.json());
+  } catch {
+    // 本文が JSON でない・読めない
+    return false;
+  }
+}
+
 /**
  * 操作ごとの文言を持たないステータス（401・429）の文言。それ以外は undefined。
  * 本文（JSON を読めたとき）を渡すと、入口の 401・403 をアプリ内のログイン切れと見分ける
