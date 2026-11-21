@@ -136,6 +136,11 @@ describe('findImageUrlByPrefix', () => {
     );
   });
 
+  it('空の接頭辞なら探さずに null を返す（探す位置が進まず止まらなくならない）', () => {
+    expect(findImageUrlByPrefix('https://example.com/a.png', '', ['.png'])).toBeNull();
+    expect(findImageUrlByPrefix(' ', '', ['.png'])).toBeNull();
+  });
+
   it('接頭辞の . は文字どおりにだけ一致する（任意の 1 文字に一致しない）', () => {
     expect(
       findImageUrlByPrefix(

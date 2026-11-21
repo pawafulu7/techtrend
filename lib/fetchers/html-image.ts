@@ -85,7 +85,8 @@ export function findImageUrlByPrefix(
   prefix: string,
   extensions: readonly string[]
 ): string | null {
-  if (!text) return null;
+  // 空の接頭辞は探す位置が進まず、下のループが終わらない
+  if (!text || !prefix) return null;
 
   const lowerText = lowerAscii(text);
   const lowerPrefix = lowerAscii(prefix);
