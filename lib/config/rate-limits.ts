@@ -58,6 +58,17 @@ export const RATE_LIMIT_POLICIES = {
     telemetryEvent: 'ratelimit.auth.gate_start',
   },
 
+  // サイトの入口の Google からの戻り（app/api/gate/[...all]/route.ts）。DB なしの state は Cookie にあり、
+  // サーバー側に「使った」記録が残らないので、同じ state の Cookie で 10 分間は戻りを繰り返せる。
+  // 戻りのたびに Google へトークンの交換を送るので、IP ごとに回数を絞る
+  'auth:gate-callback': {
+    points: 30,
+    duration: 60,
+    keyStrategy: 'ip',
+    notes: 'Throttle OAuth callbacks of the site-wide Google gate',
+    telemetryEvent: 'ratelimit.auth.gate_callback',
+  },
+
   // RAG (Existing Policies) - No block, soft throttle only
   'rag:agent': {
     points: 5,

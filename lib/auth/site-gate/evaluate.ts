@@ -99,10 +99,14 @@ function gateJson(
   );
 }
 
-/** 入口のログイン状態が無い・無効・期限切れ */
-function requireSignIn(request: NextRequest): NextResponse {
+/**
+ * 入口のログイン状態が無い・無効・期限切れ。
+ * 移動先は設定のベース URL から作る（要求の Host から作ると、Host をそのまま通す reverse proxy の後ろで
+ * 別のホストへ移せてしまう。また state の Cookie は開いたホストに付くので、正規のホストで始める）
+ */
+function requireSignIn(request: NextRequest, baseOrigin: string): NextResponse {
   if (isBrowserNavigation(request)) {
-    const start = new URL(GATE_START_PATH, request.url);
+    const start = new URL(GATE_START_PATH, baseOrigin);
     start.searchParams.set(
       'callbackURL',
       `${request.nextUrl.pathname}${request.nextUrl.search}`
@@ -119,11 +123,12 @@ function requireSignIn(request: NextRequest): NextResponse {
 /** 入口のログイン状態はあるが、許可リストから外された。入口の Cookie を消す */
 function rejectRevoked(
   request: NextRequest,
+  baseOrigin: string,
   clearCookies: string[]
 ): NextResponse {
   let response: NextResponse;
   if (isBrowserNavigation(request)) {
-    const error = new URL(GATE_ERROR_PATH, request.url);
+    const error = new URL(GATE_ERROR_PATH, baseOrigin);
     error.searchParams.set('error', 'not_allowed');
     response = noStore(NextResponse.redirect(error, 302));
   } else {
@@ -159,15 +164,16 @@ export async function evaluateSiteGate(
     return { kind: 'misconfigured', reason: config.reason };
   }
   if (isGatePublicRequest(request)) return { kind: 'public' };
+  const { baseOrigin } = config.settings;
   if (!hasGateSessionCookie(request)) {
-    return { kind: 'deny', response: requireSignIn(request) };
+    return { kind: 'deny', response: requireSignIn(request, baseOrigin) };
   }
 
   try {
     const deps = await loadDeps(config.settings);
     const { session, setCookies } = await deps.getSession(request.headers);
     if (session === null) {
-      return { kind: 'deny', response: requireSignIn(request) };
+      return { kind: 'deny', response: requireSignIn(request, baseOrigin) };
     }
 
     const email = normalizeGateEmail(session.email);
@@ -178,7 +184,7 @@ export async function evaluateSiteGate(
 
     if (access === 'allowed') return { kind: 'pass', setCookies };
     if (access === 'stale_session') {
-      return { kind: 'deny', response: requireSignIn(request) };
+      return { kind: 'deny', response: requireSignIn(request, baseOrigin) };
     }
     // 取り消し後は入口の Cookie を消す（API の 403 でも消す。開いたままのタブが要求のたびに DB を引き続けないように）
     let clearCookies: string[] = [];
@@ -187,7 +193,7 @@ export async function evaluateSiteGate(
     } catch {
       // 消せなくても拒否は続ける（次の要求でもう一度ここに来る）
     }
-    return { kind: 'deny', response: rejectRevoked(request, clearCookies) };
+    return { kind: 'deny', response: rejectRevoked(request, baseOrigin, clearCookies) };
   } catch (error) {
     return { kind: 'unavailable', error };
   }

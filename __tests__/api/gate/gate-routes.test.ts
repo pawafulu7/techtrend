@@ -203,6 +203,32 @@ describe('GET /api/gate/[...all]', () => {
     expect(mockHandler).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ['not_allowed', 'not_allowed'],
+    ['state_mismatch', 'state_mismatch'],
+    ['access_denied', 'access_denied'],
+    ['Your_access_was_revoked_call_xxx', 'unknown'],
+    ['', 'unknown'],
+  ])('shows only known codes on the error page (%p -> %p)', async (raw, shown) => {
+    await catchAll.GET(request(`/api/gate/error?error=${encodeURIComponent(raw)}`));
+    const forwarded = mockHandler.mock.calls[0][0] as Request;
+    expect(new URL(forwarded.url).searchParams.get('error')).toBe(shown);
+  });
+
+  it('limits callbacks to 30 per minute per IP (state cookies can be replayed for 10 minutes)', async () => {
+    mockHandler.mockImplementation(async () => new Response(null, { status: 302, headers: { location: '/' } }));
+    const statuses: number[] = [];
+    for (let i = 0; i < 31; i++) {
+      const response = await catchAll.GET(
+        request('/api/gate/callback/google?code=c&state=s', { ip: '198.51.100.9' })
+      );
+      statuses.push(response.status);
+    }
+    expect(statuses.slice(0, 30).every((s) => s === 302)).toBe(true);
+    expect(statuses[30]).toBe(429);
+    expect(mockHandler).toHaveBeenCalledTimes(30);
+  });
+
   it('drops error_description before showing the built-in error page', async () => {
     const response = await catchAll.GET(
       request('/api/gate/error?error=not_allowed&error_description=Call%20this%20number')

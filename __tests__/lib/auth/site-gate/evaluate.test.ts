@@ -164,6 +164,21 @@ describe('evaluateSiteGate', () => {
       expect(d.loadDeps).not.toHaveBeenCalled();
     });
 
+    it('builds the redirect from the configured base URL, not from the request host', async () => {
+      const d = deps();
+      const outcome = await evaluateSiteGate(
+        new NextRequest(new URL('http://127.0.0.1:3000/digest'), {
+          headers: { 'sec-fetch-mode': 'navigate' },
+        }),
+        ENABLED,
+        d.loadDeps
+      );
+      if (outcome.kind !== 'deny') throw new Error(outcome.kind);
+      expect(outcome.response.headers.get('location')).toBe(
+        'http://localhost:3000/api/gate/start?callbackURL=%2Fdigest'
+      );
+    });
+
     it('returns 401 JSON with a code for API requests', async () => {
       const d = deps();
       const response = await deny(
