@@ -64,6 +64,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 |-----|-----------|
 | `/admin` | 記事総数・有効なソース数・ユーザー数・本日の記事数 |
 | `/admin/users` | ユーザー一覧、ロール（user / admin）の変更、無効化 |
+| `/admin/gate-access` | サイトの入口（Google ログイン）に入れる Gmail アドレスの一覧・追加・削除。設定（`GATE_ALWAYS_ALLOWED_EMAILS`）で固定したアドレスと、管理者が今使っているアカウントは削除できない |
 | `/admin/articles` | 記事の一覧と詳細、非表示（`isHidden`）の切り替え、要約の再生成 |
 | `/admin/inquiries` | 問い合わせの一覧と状態の変更 |
 | `/admin/social-posts` | X に投稿する文面の下書きを AI で作る（記事から・意見・汎用）、編集、一括操作、件数の集計。X への投稿そのものはしない |
@@ -72,7 +73,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 | `/admin/performance` | キャッシュ・DataLoader・バッチの最適化の状態 |
 | `/sources`・`/sources/[id]` | ソースの一覧と詳細 |
 
-## 4. API（62本）
+## 4. API（66本）
 
 認証の凡例:
 
@@ -82,6 +83,8 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 - **管理者**: `withAdminAuth`
 
 書き込みのメソッドには、`proxy.ts` が CSRF の検査をかける（`/api/auth` と `/api/health` は対象外）。
+
+サイトの入口が有効なときは、どの API も `proxy.ts` が先に入口のログイン状態を確かめる（無ければ 401、許可リストから外されていれば 403。JSON の `code` は `GATE_SESSION_REQUIRED`・`GATE_NOT_ALLOWED`）。
 
 以下の表の route は、先頭の `app/api/` を省いている。
 
@@ -107,7 +110,9 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 | その他 | `inquiries` | POST RL（ログインは任意） |
 | | `changelog` | GET RL |
 | | `auth/[...all]` | Better Auth |
-| 管理 | `admin/*`（18本） | 管理者 |
+| サイトの入口 | `gate/start` | GET 公開（IP ごとに 30 回/分。Google のログインへ移す） |
+| | `gate/[...all]` | GET 公開。Google からの戻り（`gate/callback/google`）と組み込みのエラーページ（`gate/error`）だけを入口用の Better Auth に渡し、ほかは 404 |
+| 管理 | `admin/*`（20本。`admin/gate-allowlist`・`admin/gate-allowlist/[id]` を含む） | 管理者 |
 | | `sources` | GET 管理者 |
 | | `stats` | GET RL（公開） |
 | 監視 | `health` | GET 公開（Docker の healthcheck） |
@@ -172,7 +177,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 | Slack | 定期実行の失敗と、新しい要約の通知（`lib/notification/`） | `SLACK_WEBHOOK_URL`、`SLACK_NOTIFICATION_ENABLED` |
 | PostgreSQL・Redis | データとキャッシュ・レート制限 | `DATABASE_URL`、`REDIS_URL` |
 | Qiita API | Qiita の記事の取得 | `QIITA_API_TOKEN` |
-| 入口の制御 | サイト全体の Basic 認証、メンテナンスモード、AI 検索のフラグ | `BASIC_AUTH_*`、`MAINTENANCE_MODE`、`NEXT_PUBLIC_ENABLE_AI_SEARCH` |
+| 入口の制御 | サイト全体の入口（Google ログインと許可リスト。Vercel の Production では `GATE_GOOGLE_ENABLED` が未設定でも有効とみなし、外すには `false` を明示する）、メンテナンスモード、AI 検索のフラグ | `GATE_GOOGLE_ENABLED`、`GATE_GOOGLE_CLIENT_ID`・`GATE_GOOGLE_CLIENT_SECRET`、`GATE_AUTH_SECRET`、`GATE_ALWAYS_ALLOWED_EMAILS`、`MAINTENANCE_MODE`、`NEXT_PUBLIC_ENABLE_AI_SEARCH` |
 
 ## 8. 記事ソースの取得方式
 
@@ -191,12 +196,12 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 
 ## 件数の取得方法
 
-2026-10-25 時点の値と、取り直すときのコマンド。
+2026-11-21 時点の値と、取り直すときのコマンド。
 
 | 項目 | 値 | コマンド |
 |------|----|---------|
-| 画面（page.tsx） | 34 | `find app -name page.tsx \| wc -l` |
-| API（route.ts） | 62 | `find app/api -name route.ts \| wc -l` |
-| 定期実行 | 13 | `ls .github/workflows/scheduler-*.yml \| wc -l` |
+| 画面（page.tsx） | 35 | `find app -name page.tsx \| wc -l` |
+| API（route.ts） | 66 | `find app/api -name route.ts \| wc -l` |
+| 定期実行 | 14 | `ls .github/workflows/scheduler-*.yml \| wc -l` |
 | `createFetcher` のソース名 | 87 | `grep -cE "^\s+case '" lib/fetchers/index.ts` |
-| model | 33 | `grep -c '^model ' prisma/schema.prisma` |
+| model | 34 | `grep -c '^model ' prisma/schema.prisma` |
