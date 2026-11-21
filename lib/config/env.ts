@@ -251,10 +251,20 @@ const envSchema = z
     ALLOW_INSECURE_CURSOR_SECRET: booleanEnum.optional().default('false'),
     CSRF_TRUSTED_ORIGINS: z.string().optional(),
     RATE_LIMIT_OVERRIDES: z.string().optional(),
-    // Basic 認証ゲートの有効/無効。ゲート本体（proxy.ts）は生の process.env を読む。
-    // ここでは route がキャッシュヘッダを決めるためにだけ読む。
-    // booleanEnum にしないのは、不正な値で起動ごと失敗させないため（ゲートは
-    // 不正な値を設定不備として 503 にする。判定は isGateEnabled に揃える）
+    // サイトの入口（Google ログインと許可リスト。lib/auth/site-gate/）。proxy.ts は生の process.env を
+    // リクエストごとに読み、Route Handler とキャッシュヘッダの判定はここを読む。どちらも
+    // lib/auth/site-gate/config.ts の resolveSiteGateConfig で検証する。
+    // z.string().optional() にとどめるのは、不正な値 1 つで getEnv() が例外を投げ、503 ではなく
+    // アプリ全体が落ちるのを避けるため（入口は不正な値を設定不備として 503 にする）
+    GATE_GOOGLE_ENABLED: z.string().optional(),
+    GATE_GOOGLE_CLIENT_ID: z.string().optional(),
+    GATE_GOOGLE_CLIENT_SECRET: z.string().optional(),
+    GATE_AUTH_SECRET: z.string().optional(),
+    GATE_ALWAYS_ALLOWED_EMAILS: z.string().optional(),
+    // Better Auth が secret の既定として読む値。入口の鍵と同じ値を使わせないためにだけ読む
+    BETTER_AUTH_SECRET: z.string().optional(),
+    // 以前の Basic 認証の入口のフラグ。コードは消したが、設定だけが残った環境が全公開にならないよう、
+    // 残っていて入口が有効でなければ 503 にする（移行の守り）。全環境から消したあとにこの読み取りも消す
     BASIC_AUTH_ENABLED: z.string().optional(),
 
     // Translation / Tech Terms
@@ -279,6 +289,8 @@ const envSchema = z
 
     // Platform Detection (runtime-injected)
     VERCEL: z.string().optional(),
+    // production・preview・development。Production では入口のフラグが未設定でも有効とみなす（lib/auth/site-gate/config.ts）
+    VERCEL_ENV: z.string().optional(),
     NETLIFY: z.string().optional(),
     AWS_EXECUTION_ENV: z.string().optional(),
   })
