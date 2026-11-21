@@ -38,10 +38,10 @@ import type { UserCategoryPreferences } from '@/lib/personalization/types';
 import type { ArticlesResponse } from '@/app/hooks/use-infinite-articles';
 import logger from '@/lib/logger';
 
-type Session = Awaited<ReturnType<typeof getSession>>;
+export type Session = Awaited<ReturnType<typeof getSession>>;
 
 /** ハンドラに渡す要求の URL の起点。ハンドラは URL から検索条件だけを読む */
-const INTERNAL_ORIGIN = 'http://localhost';
+export const INTERNAL_ORIGIN = 'http://localhost';
 
 export interface PrefetchHomeArticlesInput {
   searchParams: URLSearchParams;
@@ -60,9 +60,12 @@ export interface PrefetchHomeArticlesResult {
   initialPersonalization: HomePersonalization | undefined;
 }
 
-async function fetchHomePreferences(
+/** ホームのパーソナライズ設定を読む（リーダーの先読みも使う。app/reader/_data/prefetch-reader-articles.ts）。読めなければ null */
+export async function fetchHomePreferences(
   session: Session,
-  cookie: string | null
+  cookie: string | null,
+  /** ログに付ける呼び出し元の名前 */
+  logLabel = 'Home SSR'
 ): Promise<UserCategoryPreferences | null> {
   try {
     const request = new NextRequest(
@@ -76,7 +79,7 @@ async function fetchHomePreferences(
   } catch (error) {
     logger.warn(
       { err: error },
-      'Home SSR: failed to load personalization preferences'
+      `${logLabel}: failed to load personalization preferences`
     );
     return null;
   }

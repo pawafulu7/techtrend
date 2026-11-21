@@ -1,6 +1,6 @@
 'use client';
 
-import { ArticleCard } from './card';
+import { ArticleCard, type ThumbnailPriority } from './card';
 import { ARTICLE_GRID_CLASS } from './article-grid';
 import { ArticleListItem } from './list-item';
 import { CompactCard } from './compact-card';
@@ -23,6 +23,18 @@ import { Newspaper } from 'lucide-react';
 // useToast は全トーストの状態を購読して一覧全体を再描画させるため、関数だけを使う
 import { toast } from '@/app/hooks/use-toast';
 
+// 遅延読み込みをやめるカードの数（遅延読み込みの画像は、レイアウトが決まるまで取り始めない）。
+// 列数は画面幅で 1〜5 列（article-grid.ts）なので、最も広い画面の1行目に合わせる。1列のスマホでは
+// 5枚目までが遅延読み込みでも取られる範囲（ブラウザは画面の少し下まで先に取る）なので、通信は増えない。
+// 優先して取るのは、どの幅でも最初に見える先頭の1枚だけ（画面外の画像と帯域を取り合わせない）
+const EAGER_THUMBNAILS = 5;
+
+function thumbnailPriorityAt(index: number): ThumbnailPriority | undefined {
+  if (index === 0) return 'high';
+  if (index < EAGER_THUMBNAILS) return 'eager';
+  return undefined;
+}
+
 // 既読状態変更イベントの型定義
 interface ArticleReadStatusChangedDetail {
   articleIds: string[];
@@ -40,21 +52,22 @@ export function ArticleList({
   // 認証状態を取得（お気に入り切り替え用）
   const { data: session } = authClient.useSession();
 
-  // ローカルで記事データを管理
+  // ローカルで記事データを管理。新しい記事（props）が届いたら、描画中に写す（楽観的更新で持っている
+  // 状態をサーバーの最新に戻す）。effect で写すと、新しい一覧が届いた直後の1回の描画だけ前の記事が残り、
+  // ホームで前の一覧を薄く残しているとき（home-client-infinite.tsx）に、前の一覧が元の濃さで一瞬見える
   const [articles, setArticles] = useState(initialArticles);
+  const [prevInitialArticles, setPrevInitialArticles] =
+    useState(initialArticles);
+  if (initialArticles !== prevInitialArticles) {
+    setPrevInitialArticles(initialArticles);
+    setArticles(initialArticles);
+  }
 
   // 競合状態を防ぐため、最新のarticles状態をrefで保持
   const articlesRef = useRef(articles);
   useEffect(() => {
     articlesRef.current = articles;
   }, [articles]);
-
-  // initialArticlesの変更を反映
-  useEffect(() => {
-    // 楽観的更新でローカル管理しているarticlesをサーバーの最新データにリセットする
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setArticles(initialArticles);
-  }, [initialArticles]);
 
   // お気に入り切り替え処理
   const handleToggleFavorite = useCallback(
@@ -270,7 +283,7 @@ export function ArticleList({
       className={cn(ARTICLE_GRID_CLASS, className)}
       data-testid="article-list"
     >
-      {groups.map((group) =>
+      {groups.map((group, index) =>
         withStory(
           group,
           <ArticleCard
@@ -282,6 +295,7 @@ export function ArticleList({
             onToggleFavorite={() => handleToggleFavorite(group.article.id)}
             layout="grid"
             thumbnailPlaceholder={thumbnailPlaceholder}
+            thumbnailPriority={thumbnailPriorityAt(index)}
           />
         )
       )}

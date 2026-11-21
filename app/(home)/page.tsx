@@ -22,6 +22,7 @@ import {
 } from '@/app/components/home/filter-sidebar';
 import { ToolbarMoreMenu } from '@/app/components/home/toolbar-more-menu';
 import { parseViewModeFromCookie } from '@/lib/cookies/view-mode-cookie';
+import { toURLSearchParams } from '@/lib/utils/url/filter-params';
 import { resolveHomeFilterDefaults } from '@/lib/articles/home-filter-defaults';
 import { tagCache } from '@/lib/cache/tag-cache';
 import { getSourceCache } from '@/lib/cache/source-cache';
@@ -36,21 +37,6 @@ interface PageProps {
   // 同じ名前が複数あると配列で届く。クライアントの useSearchParams と同じく、
   // 個々の値は先頭を使い、一覧の取得条件には URL の検索条件をすべて使う
   searchParams: Promise<Record<string, string | string[] | undefined>>;
-}
-
-/** ページの searchParams を、クライアントの useSearchParams と同じ並びの URLSearchParams にする */
-function toURLSearchParams(
-  params: Record<string, string | string[] | undefined>
-): URLSearchParams {
-  const searchParams = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (Array.isArray(value)) {
-      value.forEach((v) => searchParams.append(key, v));
-    } else if (value !== undefined) {
-      searchParams.append(key, value);
-    }
-  }
-  return searchParams;
 }
 
 async function getSources() {
@@ -191,8 +177,9 @@ export default async function Home({ searchParams }: PageProps) {
                   </div>
                 }
               >
+                {/* key で作り直さない。タグ・検索・ソースを変えても並び順と同じく一覧を残し、
+                    新しい一覧が届くまで前の一覧を薄くして出す（作り直すとスケルトンに戻る） */}
                 <HomeArticles
-                  key={`${params.sourceId ?? 'all'}-${params.tag ?? ''}-${params.search ?? ''}`}
                   searchParams={searchParamList}
                   session={session}
                   viewMode={viewMode}

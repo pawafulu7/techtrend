@@ -22,6 +22,13 @@ import {
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
+// 一覧を見ているユーザー（前の一覧を残すかどうかの判定に使う）。テストの中で切り替える
+let mockSession: { data: { user: { id: string } } | null; isPending: boolean } =
+  { data: null, isPending: false };
+jest.mock('@/lib/auth/auth-client', () => ({
+  authClient: { useSession: () => mockSession },
+}));
+
 const PAGE_1_RESPONSE = {
   data: { items: [], total: 1, page: 1, totalPages: 1, limit: 20 },
 };
@@ -206,6 +213,43 @@ describe('useInfiniteArticles', () => {
       expect(url.pathname).toBe('/api/articles/list');
       expect(url.searchParams.get('page')).toBe('2');
       expect(url.searchParams.get('total')).toBe('45');
+    });
+
+    it('手動更新で総件数が増えたら、2ページ目に新しい総件数を送る（増えた分を読めるように）', async () => {
+      // 手動更新は全ページを順に取り直し、全部そろってからキャッシュを書き換える。その間のキャッシュの
+      // 総件数は更新前のままなので、それを送るとサーバーが更新前のページ数で返し、続きを読めなくなる
+      const queryClient = createTestQueryClient();
+      seedServerPage(queryClient);
+      let total = 45;
+      mockFetch.mockImplementation((url: string) => {
+        const page = Number(new URL(url, 'http://localhost').searchParams.get('page'));
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              data: { items: [], total, page, totalPages: Math.ceil(total / 20), limit: 20 },
+            }),
+        });
+      });
+      const { result } = renderHook(() => useInfiniteArticles(FILTERS), {
+        wrapper: createWrapper(queryClient),
+      });
+      await act(async () => {
+        await result.current.fetchNextPage();
+      });
+
+      total = 65;
+      mockFetch.mockClear();
+      await act(async () => {
+        await result.current.refetch();
+      });
+
+      const page2 = articleListUrls()
+        .map((url) => new URL(url, 'http://localhost'))
+        .find((url) => url.searchParams.get('page') === '2');
+      expect(page2?.searchParams.get('total')).toBe('65');
+      expect(result.current.hasNextPage).toBe(true);
     });
   });
 
@@ -468,6 +512,61 @@ describe('useInfiniteArticles', () => {
 
       expect(isFavorited(result)).toBe(false);
       unmount();
+    });
+  });
+
+  describe('条件を変えたときの前の一覧（keepPreviousData。ホーム）', () => {
+    const FIRST = { sortBy: 'publishedAt' } as ArticleFilters;
+    const SECOND = { sortBy: 'createdAt' } as ArticleFilters;
+
+    async function renderWithFirstList(userId: string | null) {
+      mockSession = {
+        data: userId ? { user: { id: userId } } : null,
+        isPending: false,
+      };
+      const queryClient = createTestQueryClient();
+      const hook = renderHook(
+        ({ filters }: { filters: ArticleFilters }) =>
+          useInfiniteArticles(filters, { keepPreviousData: true }),
+        {
+          wrapper: createWrapper(queryClient),
+          initialProps: { filters: FIRST },
+        }
+      );
+      await waitFor(() => expect(hook.result.current.data).toBeDefined());
+      // 次の条件の取得は返さない（取得中のまま）
+      mockFetch.mockImplementation(() => new Promise(() => {}));
+      return hook;
+    }
+
+    afterEach(() => {
+      mockSession = { data: null, isPending: false };
+    });
+
+    it('新しい一覧が届くまで前の一覧を返す', async () => {
+      const { result, rerender } = await renderWithFirstList('user-1');
+      rerender({ filters: SECOND });
+
+      expect(result.current.isPlaceholderData).toBe(true);
+      expect(result.current.data).toBeDefined();
+    });
+
+    it('ユーザーの判定中（セッションの取り直しなど）は、前の一覧を返さない', async () => {
+      const { result, rerender } = await renderWithFirstList('user-1');
+      mockSession = { data: null, isPending: true };
+      rerender({ filters: SECOND });
+
+      expect(result.current.isPlaceholderData).toBe(false);
+      expect(result.current.data).toBeUndefined();
+    });
+
+    it('前の一覧を取った後にユーザーが替わったら（サインアウトなど）、前の一覧を返さない', async () => {
+      const { result, rerender } = await renderWithFirstList('user-1');
+      mockSession = { data: null, isPending: false };
+      rerender({ filters: SECOND });
+
+      expect(result.current.isPlaceholderData).toBe(false);
+      expect(result.current.data).toBeUndefined();
     });
   });
 });

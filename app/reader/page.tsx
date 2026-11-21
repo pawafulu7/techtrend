@@ -17,7 +17,8 @@ import {
 } from '@/lib/sources/paper-source';
 import { getSession } from '@/lib/auth/get-session';
 import { resolveHomeFilterDefaults } from '@/lib/articles/home-filter-defaults';
-import { ReaderClient } from './reader-client';
+import { toURLSearchParams } from '@/lib/utils/url/filter-params';
+import { ReaderArticles } from './_components/reader-articles';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,7 +103,11 @@ export default async function ReaderPage({
               </div>
             }
           >
-            <ReaderClient
+            {/* 文書の要求では、一覧の1ページ目と最初の記事の本文をサーバーで取って HTML に入れる
+                （_components/reader-articles.tsx）。取る間はこの Suspense の表示が出る */}
+            <ReaderArticles
+              searchParams={toURLSearchParams(query)}
+              session={session}
               tags={tags}
               initialSortBy={initialSortBy}
               initialSourceIds={initialSourceIds}

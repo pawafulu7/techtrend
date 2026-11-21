@@ -1,13 +1,23 @@
+// 日本時間で組み立てる。リーダーの一覧と本文はサーバーでも描くので（_components/reader-articles.tsx）、実行環境の
+// タイムゾーン（サーバーは UTC）に依ると、サーバーとブラウザで日時の文字列が食い違いハイドレーションが失敗する
+const READER_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** 記事の日時を「2026.1.2 05:30」の形にする（日本時間） */
 export function formatDate(dateStr: string): string {
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
-    const h = String(d.getHours()).padStart(2, '0');
-    const m = String(d.getMinutes()).padStart(2, '0');
-    return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()} ${h}:${m}`;
-  } catch {
-    return '';
-  }
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const parts = Object.fromEntries(
+    READER_DATE_FORMAT.formatToParts(d).map((p) => [p.type, p.value])
+  );
+  return `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
 /**

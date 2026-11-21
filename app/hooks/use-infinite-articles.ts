@@ -2,9 +2,11 @@ import {
   useInfiniteQuery,
   useQueryClient,
   replaceEqualDeep,
+  keepPreviousData,
   InfiniteData,
 } from '@tanstack/react-query';
 import { ArticleWithUserData } from '@/types/models';
+import { authClient } from '@/lib/auth/auth-client';
 import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { debounce } from '@/lib/utils/debounce';
 import {
@@ -40,13 +42,29 @@ type InfiniteArticlesData = InfiniteData<ArticlesResponse, number>;
 
 export function useInfiniteArticles(
   filters: ArticleFilters,
-  options?: { enabled?: boolean }
+  options?: {
+    enabled?: boolean;
+    /**
+     * 条件を変えたとき、新しい一覧が届くまで前の一覧を返す（isPlaceholderData が true になる）。
+     * 一覧をスケルトンに置き換えずに残すため（ホーム）
+     */
+    keepPreviousData?: boolean;
+  }
 ) {
   const queryClient = useQueryClient();
+  // 一覧を見ているユーザー（判定中は undefined）。前の一覧を残すかどうかの判定に使う
+  const { data: session, isPending: isSessionPending } =
+    authClient.useSession();
+  const principal = isSessionPending ? undefined : (session?.user?.id ?? null);
+  // 今出している（前の一覧として残しうる）一覧を最後に出したときのユーザー。ユーザーが替わった後も
+  // 取り直していない一覧は、query-provider.tsx がキャッシュの中で既読・お気に入りを剥がしている
+  const dataPrincipalRef = useRef<string | null | undefined>(undefined);
   const prevFilterKeyRef = useRef<string>('');
   // 前回の debounce の発火の後に離れた条件（発火時にまとめて消す。今の条件は含まない）
   const leftFilterKeysRef = useRef<Set<string>>(new Set());
-  const totalCountRef = useRef<number | undefined>(undefined);
+  // 条件ごとに、最後に受け取った総件数（page > 1 の要求に送り、COUNT を省く）。条件ごとに分けるのは、
+  // 一覧の部品は条件を変えても作り直さないので、前の条件の遅れた応答が今の条件の値を上書きしないようにするため
+  const totalCountsRef = useRef<Map<string, number>>(new Map());
   // Track last favorite update per article to handle race conditions
   // （時刻は古いイベントの無視に、値は取り直しの応答より新しい変更の反映に使う）
   const lastFavoriteUpdateRef = useRef<
@@ -96,6 +114,7 @@ export function useInfiniteArticles(
       queryClient.removeQueries({
         queryKey: ['infinite-articles', leftFilterKey],
       });
+      totalCountsRef.current.delete(leftFilterKey);
     }
     leftFilterKeysRef.current.clear();
   }, [queryClient]);
@@ -126,7 +145,7 @@ export function useInfiniteArticles(
     handleFilterChange();
 
     // フィルター変更時に総件数をリセット（新しいフィルターでは再計算が必要）
-    totalCountRef.current = undefined;
+    totalCountsRef.current.delete(filterKey);
 
     // 条件の変更では、次の effect が debounce を予約し直す
     return () => {
@@ -135,7 +154,7 @@ export function useInfiniteArticles(
   }, [filterKey, handleFilterChange]);
 
   // アンマウントでは debounce を待たずに消す。待つと上の cleanup で取り消され、
-  // 離れた条件のクエリが残る（検索・タグの変更で一覧が作り直されたときなど）
+  // 離れた条件のクエリが残る（条件を変えた直後に別の画面へ移ったときなど）
   useEffect(() => {
     return () => {
       handleFilterChange.cancel();
@@ -334,17 +353,32 @@ export function useInfiniteArticles(
     [applyNewerFavorites]
   );
 
+  // 関数を固定する（描画のたびに新しい関数を渡すと、前の一覧の結果を使い回せず、毎回組み立て直す）
+  const keepPreviousForSameUser = useCallback(
+    (previousData: InfiniteData<ArticlesResponse> | undefined) =>
+      // 両方のユーザーが確定していて同じときだけ残す。判定中（undefined）も残さない（セッションを
+      // 取り直す間は判定中に戻るので、その間に条件を変えると前のユーザーの一覧が出てしまう）
+      dataPrincipalRef.current !== undefined &&
+      principal !== undefined &&
+      dataPrincipalRef.current === principal
+        ? keepPreviousData(previousData)
+        : undefined,
+    [principal]
+  );
+
   const infiniteQuery = useInfiniteQuery<ArticlesResponse, Error>({
     queryKey,
     structuralSharing: shareWithNewerFavorites,
     queryFn: async ({ pageParam, signal }) => {
       const currentPage = (pageParam as number) || 1;
 
-      // page > 1 では総件数を送って COUNT を省く。サーバーで先読みしたページや
-      // キャッシュから戻ったページは、この queryFn を通らないので ref が空になる。
-      // そのときは読み込み済みの1ページ目の総件数を使う
+      // page > 1 では総件数を送って COUNT を省く。この条件で最後に受け取った総件数を先に使う。
+      // キャッシュの1ページ目は後に回す。手動更新は全ページを順に取り直し、全部そろってからキャッシュを
+      // 書き換えるので、その間のキャッシュは更新前の総件数のまま（増えた分を読めなくなる）。
+      // サーバーで先読みしたページやキャッシュから戻ったページは queryFn を通らないので、そのときは
+      // キャッシュの1ページ目の総件数を使う
       const total =
-        totalCountRef.current ??
+        totalCountsRef.current.get(filterKey) ??
         queryClient.getQueryData<InfiniteArticlesData>(queryKey)?.pages[0]?.data
           .total;
 
@@ -391,9 +425,9 @@ export function useInfiniteArticles(
 
       // Debug log removed
 
-      // 総件数を保存（次ページ取得時のCOUNTクエリスキップ用）
-      if (data?.data?.total) {
-        totalCountRef.current = data.data.total;
+      // 総件数をこの条件の値として保存（次ページ取得時のCOUNTクエリスキップ用）
+      if (typeof data?.data?.total === 'number') {
+        totalCountsRef.current.set(filterKey, data.data.total);
       }
 
       // dataUpdatedAt はお気に入りの反映（setQueryData）でも進むため、取得時刻は
@@ -424,7 +458,24 @@ export function useInfiniteArticles(
     retry: 1, // リトライ回数を制限
     retryDelay: 1000, // リトライ間隔を設定
     enabled: options?.enabled,
+    // 前の一覧を取った後にユーザーが替わったら（別のタブでのサインアウトなど）、前の一覧は残さない。
+    // 前の一覧は条件を離れて 200ms 後にキャッシュから消えるので、ユーザーが替わったときの既読・
+    // お気に入りの剥がし（query-provider.tsx）が届かず、前のユーザーの印が出てしまう
+    placeholderData: options?.keepPreviousData
+      ? keepPreviousForSameUser
+      : undefined,
   });
+
+  // 前の一覧として残しうるのは、取り直しの結果ではない（placeholder でない）一覧。そのときのユーザーを覚える
+  useEffect(() => {
+    if (
+      infiniteQuery.data &&
+      !infiniteQuery.isPlaceholderData &&
+      principal !== undefined
+    ) {
+      dataPrincipalRef.current = principal;
+    }
+  }, [infiniteQuery.data, infiniteQuery.isPlaceholderData, principal]);
 
   return infiniteQuery;
 }

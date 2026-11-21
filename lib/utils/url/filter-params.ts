@@ -26,3 +26,22 @@ export function buildFilterUrl(
   const queryString = params.toString();
   return queryString ? `${pathname}?${queryString}` : pathname;
 }
+
+/**
+ * ページの searchParams（同じ名前が複数あると配列で届く）を、クライアントの useSearchParams と
+ * 同じ並びの URLSearchParams にする。一覧の取得条件をサーバーとクライアントで同じに作るため
+ * （ホームとリーダーの先読み）
+ */
+export function toURLSearchParams(
+  params: Record<string, string | string[] | undefined>
+): URLSearchParams {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (Array.isArray(value)) {
+      value.forEach((v) => searchParams.append(key, v));
+    } else if (value !== undefined) {
+      searchParams.append(key, value);
+    }
+  }
+  return searchParams;
+}

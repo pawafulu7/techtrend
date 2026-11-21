@@ -91,7 +91,10 @@ const nextConfig: NextConfig = {
     // （vercel/vercel の packages/next/src/utils.ts の getImagesConfig）、本番は Vercel 側の上限に従う。
     // サムネイルの元画像は直近 30 日の 57 件で最大 1.55MB、既知の最大（7339×5504）でも 2.95MB
     maximumResponseBody: 5_000_000,
-    formats: ['image/avif', 'image/webp'],
+    // WebP だけにする。AVIF は WebP より 2KB ほど小さいが、変換に約4倍かかる（2026-11-21 に開発環境の sharp で
+    // 実測。サムネイル 24 枚の中央値で AVIF 60ms・WebP 15ms）。新着の記事の画像はほぼ必ず変換のキャッシュが無い
+    // 状態で初めて表示されるので、変換の待ちがそのまま表示の遅れになる
+    formats: ['image/webp'],
     // 記事カード（20vw〜100vw）・/reader の一覧（320〜380px）・記事詳細（最大 672px）で使う幅だけ。
     // sizes に vw があると deviceSizes[0] × 最小の割合より小さい候補は srcset から外れるので、
     // 384 は imageSizes ではなく deviceSizes に置く

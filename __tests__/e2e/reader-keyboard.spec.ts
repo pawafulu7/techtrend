@@ -26,6 +26,21 @@ function options(page: Page) {
 async function openReader(page: Page, path = '/reader') {
   await page.goto(path);
   await expect(options(page).nth(2)).toBeVisible({ timeout: 20000 });
+  // 一覧はサーバーで描いて HTML に入るので（app/reader/_components/reader-articles.tsx）、見えた時点では
+  // まだハイドレーションの前のことがある。操作は React が一覧に結び付いてから行う。前に押すと、キー操作が
+  // 届かなかったり、ヘッダーのリンクが Next のルーターを通らない読み込みで移ったりして、確かめたい操作に
+  // ならない。一覧は Suspense の中で、外側（ヘッダー）より後にハイドレーションされるので、一覧が済めば全体が済んでいる
+  await page.waitForFunction(
+    () => {
+      const listbox = document.querySelector('[role="listbox"]');
+      return (
+        listbox !== null &&
+        Object.keys(listbox).some((key) => key.startsWith('__reactFiber$'))
+      );
+    },
+    undefined,
+    { timeout: 20000 }
+  );
 }
 
 /** 行の id から記事の id を取り出す（readerOptionId の逆） */
