@@ -88,7 +88,7 @@ test.describe('問い合わせ窓口', () => {
     // 既定の絞り込みは「未対応」なので、完了にした行は一覧から消える
     await expect(row).toHaveCount(0, { timeout: TIMEOUTS.medium });
 
-    await dialog.getByRole('button', { name: 'Close' }).click();
+    await dialog.getByRole('button', { name: '閉じる', exact: true }).click();
     await expect(dialog).toBeHidden();
 
     await page.getByTestId('inquiry-filter-RESOLVED').click();

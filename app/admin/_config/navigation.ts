@@ -5,6 +5,7 @@ import {
   FileText,
   Gauge,
   Inbox,
+  KeyRound,
   LayoutDashboard,
   MessageSquare,
   Users,
@@ -31,6 +32,12 @@ export const adminNavigation: NavSection[] = [
     label: '管理',
     items: [
       { title: 'ユーザー', href: '/admin/users', icon: Users },
+      // サイトの入口（Google ログイン）を通ってよい Gmail アドレス。Shield はサイドバーの見出しで使っている
+      {
+        title: 'サイトに入れるアカウント',
+        href: '/admin/gate-access',
+        icon: KeyRound,
+      },
       { title: '記事管理', href: '/admin/articles', icon: FileText },
       { title: '問い合わせ', href: '/admin/inquiries', icon: Inbox },
       { title: 'SNS投稿', href: '/admin/social-posts', icon: MessageSquare },

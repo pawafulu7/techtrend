@@ -11,6 +11,7 @@ import { DeleteAccountDialog } from '@/app/profile/_components/DeleteAccountDial
 import {
   RATE_LIMITED_MESSAGE,
   SESSION_EXPIRED_MESSAGE,
+  SITE_GATE_REOPEN_MESSAGE,
 } from '@/lib/utils/action-error-messages';
 
 const mockToast = jest.fn();
@@ -73,6 +74,16 @@ describe('PasswordChangeForm: 失敗の文言', () => {
           message: 'Your session is no longer valid. Please sign in again.',
         }),
       SESSION_EXPIRED_MESSAGE,
+    ],
+    [
+      'サイトの入口のログイン切れ（proxy の 401）',
+      () =>
+        jsonResponse(401, {
+          success: false,
+          error: 'Site sign-in required',
+          code: 'GATE_SESSION_REQUIRED',
+        }),
+      SITE_GATE_REOPEN_MESSAGE,
     ],
     [
       'レート制限（429）',
@@ -166,6 +177,12 @@ describe('DeleteAccountDialog: 失敗の文言', () => {
       401,
       { error: 'Unauthorized', message: 'Authentication required' },
       SESSION_EXPIRED_MESSAGE,
+    ],
+    [
+      'サイトの入口の許可の取り消し（proxy の 403）',
+      403,
+      { success: false, error: 'Site access revoked', code: 'GATE_NOT_ALLOWED' },
+      SITE_GATE_REOPEN_MESSAGE,
     ],
     [
       'レート制限（429）',

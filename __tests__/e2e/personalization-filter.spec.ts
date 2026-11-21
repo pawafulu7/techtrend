@@ -152,8 +152,8 @@ test.describe('Personalization Filter', () => {
     await page.getByTestId('personalization-toggle').click();
     await expect(page.getByRole('dialog')).toBeVisible();
 
-    // Click X button (shadcn dialog close button with sr-only "Close" text)
-    const closeButton = page.getByRole('dialog').getByRole('button', { name: 'Close' });
+    // Click X button (shadcn dialog close button with sr-only "閉じる" text)
+    const closeButton = page.getByRole('dialog').getByRole('button', { name: '閉じる', exact: true });
     if (await closeButton.count() > 0) {
       await closeButton.click();
     } else {

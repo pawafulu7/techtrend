@@ -29,7 +29,7 @@ function adminUserActionErrorMessage(
   if (isAdminApiErrorCode(code)) {
     return CODE_MESSAGES[code];
   }
-  return commonActionErrorMessage(status) ?? fallback;
+  return commonActionErrorMessage(status, body) ?? fallback;
 }
 
 type AdminUserAction =

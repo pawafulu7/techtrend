@@ -25,7 +25,7 @@ function passwordChangeErrorMessage(status: number, body: unknown): string {
   if (status === 409) {
     return '別の操作でパスワードが変更されました。ページを再読み込みしてからやり直してください';
   }
-  return commonActionErrorMessage(status) ?? PASSWORD_CHANGE_FAILED_MESSAGE;
+  return commonActionErrorMessage(status, body) ?? PASSWORD_CHANGE_FAILED_MESSAGE;
 }
 
 type PasswordFormData = {

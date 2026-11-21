@@ -41,7 +41,8 @@ const API_ERROR_CODES: ReadonlySet<string> = new Set(
 function deleteAccountErrorMessage(
   status: number,
   error: unknown,
-  message: unknown
+  message: unknown,
+  body: unknown
 ): string {
   if (
     typeof error === 'string' &&
@@ -52,7 +53,7 @@ function deleteAccountErrorMessage(
     return message;
   }
   return (
-    commonActionErrorMessage(status) ??
+    commonActionErrorMessage(status, body) ??
     'アカウントを削除できませんでした。時間をおいて再試行してください'
   );
 }
@@ -119,7 +120,8 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
             description: deleteAccountErrorMessage(
               response.status,
               undefined,
-              undefined
+              undefined,
+              data
             ),
             variant: 'destructive',
           });
@@ -135,7 +137,8 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
             description: deleteAccountErrorMessage(
               response.status,
               errorData.error,
-              errorData.message
+              errorData.message,
+              errorData
             ),
             variant: 'destructive',
           });
@@ -151,7 +154,8 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
             description: deleteAccountErrorMessage(
               response.status,
               errorData.error,
-              errorData.message
+              errorData.message,
+              errorData
             ),
             variant: 'destructive',
           });
