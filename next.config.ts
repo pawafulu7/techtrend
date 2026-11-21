@@ -81,7 +81,7 @@ const nextConfig: NextConfig = {
   // 画像最適化（Issue #718）
   // サムネイルは 2,000 を超えるホストから集めるので allowlist は作れない。https の全ホストを許可し、
   // 取得と変換は Vercel の画像最適化が行う（開発と Docker では Next 自身が sharp で行う）。
-  // /_next/image は任意の https URL を受けるので、proxy.ts で Basic 認証ゲートの中に置き（匿名では 401）、
+  // /_next/image は任意の https URL を受けるので、proxy.ts でサイトの入口の中に置き（入口のログイン状態が無ければ 401）、
   // w と q を絞って変換枠の浪費を抑える。
   // 失敗（Hobby の枠超過の 402 など）は OptimizedImage が元の URL に切り替える
   images: {

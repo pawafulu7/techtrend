@@ -57,7 +57,7 @@ export async function patchAdminUser(
     throw new Error(failedMessage);
   }
   if (!res.ok) {
-    // 本文が JSON でない（Basic 認証の 401 など）ときも、ステータスから文言を選ぶ
+    // 本文が JSON でない（プロキシのエラーページなど）ときも、ステータスから文言を選ぶ
     const data: unknown = await res.json().catch(() => null);
     throw new Error(
       adminUserActionErrorMessage(res.status, data, failedMessage)

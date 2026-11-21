@@ -90,7 +90,7 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
   // 失われる」症状をそのまま再現していた。
   // 鮮度は再マウント経路で担保される（下の refetchOnMount は既定 true のまま）。
   // 受容する理由: bfcache 復元の発火経路自体が極小である。SPA 内遷移では
-  // pageshow(persisted) が発火せず、BASIC 認証ゲート環境では no-store により
+  // pageshow(persisted) が発火せず、サイトの入口が有効な環境では no-store により
   // そもそも bfcache の対象外になる。
 
   // Shared cache update logic for favorite removal

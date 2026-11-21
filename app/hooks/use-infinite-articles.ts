@@ -306,7 +306,7 @@ export function useInfiniteArticles(
   // したがって bfcache 復元後、別タブ等で変わった既読状態はカードのバッジに
   // 反映されず復元前のまま残りうる。
   // 受容する理由: bfcache 復元の発火経路自体が極小である。SPA 内遷移では
-  // pageshow(persisted) が発火せず、BASIC 認証ゲート環境では no-store により
+  // pageshow(persisted) が発火せず、サイトの入口が有効な環境では no-store により
   // そもそも bfcache の対象外になる。
   // 全ページの取り直し（手動更新など）は、全ページを取り終えてからキャッシュを置き換える。
   // その途中で成功したお気に入りの変更は、先に取ったページの応答に入っておらず、

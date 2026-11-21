@@ -20,7 +20,7 @@ type RateLimitRule = Parameters<RateLimitStorage['consume']>[1];
  * テストと Redis の無い開発環境はメモリ）で数える。
  *
  * Redis が使えないときは通す（fail-open）。ログインはパスワードの確認が続き、サイト全体は
- * Basic 認証ゲートの後ろにあるので、ログインごと止めるより安全。
+ * 入口（Google ログインと許可リスト。lib/auth/site-gate/）の後ろにあるので、ログインごと止めるより安全。
  *
  * 数え方は最初のリクエストからの固定の窓になる。既定のメモリは「最後に通したリクエストから」数えるので、
  * 窓の境目をまたぐと最大で 2 倍まで通る。Better Auth 自身が Redis（secondaryStorage）で数えるときも

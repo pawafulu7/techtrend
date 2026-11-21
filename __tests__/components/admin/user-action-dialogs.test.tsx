@@ -121,7 +121,7 @@ describe('UserRoleDialog: 失敗の文言', () => {
       SESSION_EXPIRED_MESSAGE,
     ],
     [
-      '本文が JSON でない 401（Basic 認証など）',
+      '本文が JSON でない 401（プロキシのエラーページなど）',
       () => nonJsonResponse(401),
       SESSION_EXPIRED_MESSAGE,
     ],
@@ -207,7 +207,7 @@ describe('UserDisableDialog: 失敗の文言', () => {
       'このユーザーは既に無効化されています',
     ],
     [
-      '本文が JSON でない 401（Basic 認証など）',
+      '本文が JSON でない 401（プロキシのエラーページなど）',
       () => nonJsonResponse(401),
       SESSION_EXPIRED_MESSAGE,
     ],

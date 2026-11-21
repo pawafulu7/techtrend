@@ -246,13 +246,13 @@ describe('/api/ai/diff-summary GET fallback logic', () => {
 });
 
 describe('/api/ai/diff-summary cache headers (issue #647)', () => {
-  const original = process.env.BASIC_AUTH_ENABLED;
+  const original = process.env.GATE_GOOGLE_ENABLED;
 
   afterEach(() => {
     if (original === undefined) {
-      delete process.env.BASIC_AUTH_ENABLED;
+      delete process.env.GATE_GOOGLE_ENABLED;
     } else {
-      process.env.BASIC_AUTH_ENABLED = original;
+      process.env.GATE_GOOGLE_ENABLED = original;
     }
     resetEnvCache();
     mockCacheGet.mockResolvedValue(null);
@@ -262,12 +262,12 @@ describe('/api/ai/diff-summary cache headers (issue #647)', () => {
     [undefined, 'public, max-age=300', null],
     ['true', 'private, no-store', 'no-store'],
   ] as const)(
-    'returns the expected headers on a cache hit (BASIC_AUTH_ENABLED=%p)',
+    'returns the expected headers on a cache hit (GATE_GOOGLE_ENABLED=%p)',
     async (gate, cacheControl, cdnCacheControl) => {
       if (gate === undefined) {
-        delete process.env.BASIC_AUTH_ENABLED;
+        delete process.env.GATE_GOOGLE_ENABLED;
       } else {
-        process.env.BASIC_AUTH_ENABLED = gate;
+        process.env.GATE_GOOGLE_ENABLED = gate;
       }
       resetEnvCache();
       mockCacheGet.mockResolvedValue({ data: [], week: '2026-W08' });

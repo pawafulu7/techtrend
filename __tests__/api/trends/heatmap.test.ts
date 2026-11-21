@@ -103,9 +103,9 @@ describe('/api/trends/heatmap', () => {
     );
   });
 
-  it('returns private, no-store when the Basic auth gate is on (issue #647)', async () => {
-    const original = process.env.BASIC_AUTH_ENABLED;
-    process.env.BASIC_AUTH_ENABLED = 'true';
+  it('returns private, no-store when the site gate is on (issue #647)', async () => {
+    const original = process.env.GATE_GOOGLE_ENABLED;
+    process.env.GATE_GOOGLE_ENABLED = 'true';
     resetEnvCache();
 
     try {
@@ -120,9 +120,9 @@ describe('/api/trends/heatmap', () => {
       expect(response.headers.get('CDN-Cache-Control')).toBe('no-store');
     } finally {
       if (original === undefined) {
-        delete process.env.BASIC_AUTH_ENABLED;
+        delete process.env.GATE_GOOGLE_ENABLED;
       } else {
-        process.env.BASIC_AUTH_ENABLED = original;
+        process.env.GATE_GOOGLE_ENABLED = original;
       }
       resetEnvCache();
     }

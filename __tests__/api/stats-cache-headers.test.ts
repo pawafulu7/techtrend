@@ -30,15 +30,15 @@ const CACHED_STATS = {
 
 function setGate(value: string | undefined) {
   if (value === undefined) {
-    delete process.env.BASIC_AUTH_ENABLED;
+    delete process.env.GATE_GOOGLE_ENABLED;
   } else {
-    process.env.BASIC_AUTH_ENABLED = value;
+    process.env.GATE_GOOGLE_ENABLED = value;
   }
   resetEnvCache();
 }
 
 describe('/api/stats cache headers (issue #647)', () => {
-  const original = process.env.BASIC_AUTH_ENABLED;
+  const original = process.env.GATE_GOOGLE_ENABLED;
 
   beforeEach(() => {
     mockStatsCacheGet.mockReset();

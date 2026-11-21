@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  BASIC_AUTH_CHALLENGE,
-  buildGateSetCookie,
-  evaluateGate,
+  resolveSiteGateConfig,
+  type SiteGateRawEnv,
+  type SiteGateSettings,
+} from '@/lib/auth/site-gate/config';
+import {
   GATED_CACHE_CONTROL,
   GATED_CDN_CACHE_CONTROL,
-  type GateEnv,
-} from '@/lib/auth/basic-auth-gate';
+} from '@/lib/auth/site-gate/constants';
+import {
+  evaluateSiteGate,
+  type SiteGateDeps,
+} from '@/lib/auth/site-gate/evaluate';
 import { getThemeFromCookie } from '@/lib/cookies/theme-cookie';
 import { setSecurityHeaders } from '@/lib/config/security-headers';
 import {
@@ -16,23 +21,50 @@ import {
 } from '@/lib/middleware/csrf-protection';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 
-// Basic 認証ゲートの設定値。lib/ 配下は process.env の直接参照を ESLint で禁止しており、
-// env.ts はモジュールロード時に一度だけ parse するため、ここ（proxy.ts）で都度読んで渡す。
-
-function readGateEnv(): GateEnv {
+// サイトの入口（Google ログインと許可リスト。lib/auth/site-gate/）の設定値。lib/ 配下は process.env の
+// 直接参照を ESLint で禁止しており、env.ts はモジュールロード時に一度だけ parse するため、ここ（proxy.ts）で
+// 都度読んで渡す。Route Handler は env.ts の値を同じ resolveSiteGateConfig に渡す。
+function readSiteGateEnv(): SiteGateRawEnv {
   return {
-    enabled: process.env.BASIC_AUTH_ENABLED,
-    user: process.env.BASIC_AUTH_USER,
-    pass: process.env.BASIC_AUTH_PASS,
-    legacyPass: process.env.BASIC_PASSWORD,
-    gateSecret: process.env.BASIC_AUTH_GATE_SECRET,
-    isProduction: process.env.NODE_ENV === 'production',
+    GATE_GOOGLE_ENABLED: process.env.GATE_GOOGLE_ENABLED,
+    GATE_GOOGLE_CLIENT_ID: process.env.GATE_GOOGLE_CLIENT_ID,
+    GATE_GOOGLE_CLIENT_SECRET: process.env.GATE_GOOGLE_CLIENT_SECRET,
+    GATE_AUTH_SECRET: process.env.GATE_AUTH_SECRET,
+    GATE_ALWAYS_ALLOWED_EMAILS: process.env.GATE_ALWAYS_ALLOWED_EMAILS,
+    // 移行の守り: 以前の Basic 認証の設定が残っていて入口が有効でなければ 503 にする
+    BASIC_AUTH_ENABLED: process.env.BASIC_AUTH_ENABLED,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    AUTH_SECRET: process.env.AUTH_SECRET,
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+    BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    PORT: process.env.PORT,
+    NODE_ENV: process.env.NODE_ENV,
   };
+}
+
+// 入口用の Better Auth と許可リスト（Prisma）は、入口の Cookie があるときにだけ読む
+async function loadSiteGateDeps(settings: SiteGateSettings): Promise<SiteGateDeps> {
+  const { createSiteGateDeps } = await import('@/lib/auth/site-gate/gate-session');
+  return createSiteGateDeps(settings);
 }
 
 // 設定不備は全リクエストが 503 になる重大事象なので必ず気づけるようにする。
 // ただしリクエスト毎に出すとログが溢れるため、プロセスにつき一度だけ出力する。
 let gateMisconfigurationLogged = false;
+// 入口の確認の失敗（DB の障害など）も、ログが溢れないよう 1 分に 1 回までにする
+const GATE_UNAVAILABLE_LOG_INTERVAL_MS = 60_000;
+let gateUnavailableLoggedAt = 0;
+
+function serviceUnavailable(request: NextRequest): NextResponse {
+  const response = new NextResponse('Service Unavailable', {
+    status: 503,
+    headers: { 'Cache-Control': 'no-store' },
+  });
+  setSecurityHeaders(response, request);
+  return response;
+}
 
 // メンテナンスモードの除外パス判定
 // メンテ中でも通常応答するパス: API・管理者ログイン・メンテ画面自身・静的アセット。
@@ -65,102 +97,70 @@ const protectedApiPaths = [
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Site-wide Basic Auth（認証済み状態は署名付きゲート Cookie で保持する）
-  // サイト全体のゲートなので CSRF より外側で評価する。未認証リクエストのために
-  // CSRF 側のセッション照会（DB アクセス）を走らせないためでもある。
-  const gateEnv = readGateEnv();
-  const gate = evaluateGate(request, gateEnv);
+  // サイトの入口（Google ログインと許可リスト）。サイト全体の入口なので CSRF より外側で評価する。
+  // 入口のログイン状態の無いリクエストのために、CSRF 側のセッション照会（DB アクセス）を走らせないためでもある。
+  const gate = await evaluateSiteGate(
+    request,
+    resolveSiteGateConfig(readSiteGateEnv()),
+    loadSiteGateDeps
+  );
 
   if (gate.kind === 'misconfigured') {
-    // fail-closed: Basic 認証が有効なのに設定が不完全。
-    // 認証を黙って無効化してサイトが全公開になるより、明示的に止める方が安全。
+    // fail-closed: 入口が有効なのに設定が不完全、または Basic 認証の設定が残っている。
+    // 入口を黙って無効化してサイトが全公開になるより、明示的に止める方が安全。
     if (!gateMisconfigurationLogged) {
       gateMisconfigurationLogged = true;
       console.error(
-        `[proxy] Basic 認証が有効ですが設定が不完全なため全リクエストを 503 にしています: ${gate.reason}`
+        `[proxy] サイトの入口の設定が不完全なため全リクエストを 503 にしています: ${gate.reason}`
       );
     }
-    const misconfiguredRes = new NextResponse('Service Unavailable', {
-      status: 503,
-      headers: { 'Cache-Control': 'no-store' },
-    });
-    setSecurityHeaders(misconfiguredRes, request);
-    return misconfiguredRes;
+    return serviceUnavailable(request);
   }
 
-  // 総当たり対策: ゲートの資格情報（Authorization ヘッダー）を送ってきたリクエストだけを IP ごとに数え、
-  // 失敗が続いた IP は正しい資格情報でもしばらく通さない（lib/auth/gate-attempt-limit.ts）。
-  // 署名付き Cookie で通るリクエストと、資格情報を送っていない最初のアクセスは Redis を引かない
-  if (
-    (gate.kind === 'basic' || gate.kind === 'fail') &&
-    request.headers.has('authorization')
-  ) {
-    let retryAfter: number | null = null;
-    try {
-      const { checkGateAttempt } = await import('@/lib/auth/gate-attempt-limit');
-      retryAfter = await checkGateAttempt(
-        request.headers,
-        gate.kind === 'fail' ? 'failure' : 'success'
-      );
-    } catch (error) {
-      // 回数を確かめられないときは数えずに通す（資格情報の確認は続く。Redis の障害と同じ扱い）
+  if (gate.kind === 'unavailable') {
+    // 入口のログイン状態・許可リストを確かめられない（DB の障害など）。拒否の側に倒す。
+    // 例外の message には接続先が入りうるので、種類だけを出す
+    const now = Date.now();
+    if (now - gateUnavailableLoggedAt >= GATE_UNAVAILABLE_LOG_INTERVAL_MS) {
+      gateUnavailableLoggedAt = now;
       console.error(
-        '[proxy] Basic 認証ゲートの試行回数を確かめられないため、数えずに通します:',
-        error instanceof Error ? error.message : 'Unknown error'
+        '[proxy] サイトの入口を確かめられないため 503 にしています:',
+        gate.error instanceof Error ? gate.error.name : 'Unknown error'
       );
     }
-    if (retryAfter !== null) {
-      // WWW-Authenticate は付けない（締め出し中にブラウザが入力を求め直さないように）
-      const lockedRes = new NextResponse('Too Many Requests', {
-        status: 429,
-        headers: {
-          'Retry-After': String(retryAfter),
-          'Cache-Control': 'no-store',
-        },
-      });
-      setSecurityHeaders(lockedRes, request);
-      return lockedRes;
-    }
+    return serviceUnavailable(request);
   }
 
-  if (gate.kind === 'fail') {
-    const challengeRes = new NextResponse('Unauthorized', {
-      status: 401,
-      headers: {
-        'WWW-Authenticate': BASIC_AUTH_CHALLENGE,
-        'Cache-Control': 'no-store',
-      },
-    });
-    setSecurityHeaders(challengeRes, request);
-    return challengeRes;
+  if (gate.kind === 'deny') {
+    // 開始・エラーページへの 302、または 401・403（どれも no-store）
+    setSecurityHeaders(gate.response, request);
+    return gate.response;
   }
 
-  // ゲート通過後の全 return をここに通す。
-  // Cookie を最後の NextResponse.next() にだけ付けると、初回アクセスがメンテナンス 503 や
-  // ログインリダイレクトに落ちた場合に発行されず、再入力の症状がそのまま残る。
+  // 入口の通過後の全 return をここに通す（メンテナンス 503 やログインリダイレクトにも、入口の Cookie の更新と
+  // キャッシュの打ち消しを付ける）。
   const finalize = <T extends NextResponse>(response: T): T => {
-    // ゲートを通過した応答は共有キャッシュに載せない。
-    // basic だけでなく cookie（2 回目以降）も対象にする必要がある。
-    // また /api/ も除外できない: ゲート済みコンテンツを下流 CDN が共有キャッシュ
-    // してはいけないため。
+    // 入口を通過した応答は共有キャッシュに載せない。
+    // /api/ も除外できない: 入口の内側のコンテンツを下流 CDN が共有キャッシュしてはいけないため。
+    // 入口自身の経路（開始・戻り・エラー）も同じ扱いにする。
     //
     // ただし、ここで設定したヘッダは Route Handler が自分で設定したヘッダに負ける
     // （2026-10-01 に本番で実測。/api/stats の CDN-Cache-Control: max-age=600 が残り、
     // Vercel のエッジにキャッシュされていた）。そのため公開キャッシュヘッダを返す
-    // route は lib/api/cache-headers.ts 経由で、ゲート有効時に自分で private, no-store
+    // route は lib/api/cache-headers.ts 経由で、入口が有効なときに自分で private, no-store
     // にする（issue #647）。ここはページ（ISR を含む）と、route が何も設定しない応答の担当。
-    const passedGate = gate.kind === 'basic' || gate.kind === 'cookie';
+    const passedGate = gate.kind === 'pass' || gate.kind === 'public';
     // 最適化した画像は元が公開 URL なので、共有キャッシュに載せてよい（Vercel の画像キャッシュと
-    // ブラウザのキャッシュを効かせる）。ゲートは通すが、キャッシュの打ち消しと Cookie の発行はしない
+    // ブラウザのキャッシュを効かせる）。入口は通すが、キャッシュの打ち消しと Cookie の発行はしない。
+    // 入口の Cookie の更新はどの要求で起きるか選べず、共有キャッシュに載る画像の応答に付くと別の人に渡りうる
     const isImageOptimizer = pathname.startsWith('/_next/image');
 
     if (passedGate && !isImageOptimizer) {
-      // Cookie はドキュメント遷移でのみ発行する。API 応答（beacon 含む）には載せない。
-      if (gate.kind === 'basic' && !pathname.startsWith('/api/')) {
-        response.headers.append(
-          'Set-Cookie',
-          buildGateSetCookie(request, gateEnv)
-        );
+      // 入口のログイン状態の確認が返した Set-Cookie（private, no-store の応答にだけ載せる）
+      if (gate.kind === 'pass') {
+        for (const cookie of gate.setCookies) {
+          response.headers.append('Set-Cookie', cookie);
+        }
       }
 
       response.headers.set('Cache-Control', GATED_CACHE_CONTROL);
@@ -203,7 +203,7 @@ export async function proxy(request: NextRequest) {
           { status: 400 }
         )
       : new NextResponse('Bad Request', { status: 400 });
-    // ゲートが無効なときは finalize が Cache-Control を付けないので、ここで付ける
+    // 入口が無効なときは finalize が Cache-Control を付けないので、ここで付ける
     badRequest.headers.set('Cache-Control', 'no-store');
     return finalize(badRequest);
   }
@@ -316,7 +316,7 @@ export async function proxy(request: NextRequest) {
   // レスポンスヘッダーにテーマ情報を追加（デバッグ用）
   response.headers.set('x-theme', theme);
 
-  // セキュリティヘッダ設定とゲート Cookie 発行は finalize がまとめて行う
+  // セキュリティヘッダ設定と入口の Cookie の更新は finalize がまとめて行う
   return finalize(response);
 }
 
@@ -325,7 +325,7 @@ export const config = {
     // Match all routes except static files, fonts, and Next.js internals.
     // /api/ は拡張子の除外から外す。外さないと /api/articles/abc.png のような動的 route の
     // パスが proxy（ゲート・CSRF・NUL の拒否・セキュリティヘッダ）を通らない（issue #687）
-    // /_next/image は除外しない。任意の https URL を受ける画像最適化を、Basic 認証ゲートの
+    // /_next/image は除外しない。任意の https URL を受ける画像最適化を、サイトの入口の
     // 外に置くと第三者が変換枠を使い切れるため（Issue #718）
     '/((?!_next/static|favicon.ico|(?!api/).*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)',
   ],

@@ -98,7 +98,7 @@ export function DeleteAccountDialog({ hasPassword }: DeleteAccountDialogProps) {
         body: JSON.stringify(requestBody),
       });
 
-      // 本文が JSON でない（Basic 認証の 401 やプロキシのエラーページなど）ときも、ステータスから文言を選ぶ
+      // 本文が JSON でない（プロキシのエラーページなど）ときも、ステータスから文言を選ぶ
       const data: unknown = await response.json().catch(() => null);
       const succeeded =
         response.ok &&
