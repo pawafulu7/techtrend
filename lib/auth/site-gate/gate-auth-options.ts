@@ -138,6 +138,9 @@ export function createGateAuthOptions(
       // 最初のログインから 7 日で切り、アクセスしても延ばさない。同じプロセスのメモリにセッションが残っていると、
       // これが無ければ期限が延びる（better-auth/dist/api/routes/session.mjs）
       disableSessionRefresh: true,
+      // DB なしの Cookie のキャッシュは期限がセッションと同じ 7 日なので、作り直しても使える期間は延びない。
+      // 作り直しを止め、期限の近い要求が Cookie を書き直して別のタブの新しいログインを上書きする余地をなくす
+      cookieCache: { refreshCache: false },
     },
     // 入口で使わない Google のトークンを Cookie に持たない（DB なしの既定は持つ）
     account: { storeAccountCookie: false },

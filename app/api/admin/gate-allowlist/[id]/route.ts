@@ -50,14 +50,24 @@ async function deleteHandler(
     });
     if (!row) return entryNotFound();
 
+    const config = getSiteGateConfig();
     let currentEmail: string | null;
     try {
-      currentEmail = await getCurrentGateEmail(getSiteGateConfig(), request.headers);
+      currentEmail = await getCurrentGateEmail(config, request.headers);
     } catch (error) {
       // 今使っているアカウントかを確かめられないときは消さない（締め出しを防ぐ側に倒す）
       logger.warn(
         { errorSummary: summarizeError(error) },
         '[GateAllowlistAPI] 入口のログイン状態を確かめられないため、削除を断りました'
+      );
+      return jsonNoStore({ success: false, error: 'Temporarily unavailable' }, 503);
+    }
+    if (config.kind === 'enabled' && currentEmail === null) {
+      // 入口が有効なのに今使っているアカウントが分からない（proxy を通ったあとに入口のログイン状態が切れたなど）。
+      // 自分のアカウントを消してしまわないよう、確かめられないときと同じく断る
+      logger.warn(
+        { adminId: context.session.user.id, entryId: row.id },
+        '[GateAllowlistAPI] 入口のログイン状態が無いため、削除を断りました'
       );
       return jsonNoStore({ success: false, error: 'Temporarily unavailable' }, 503);
     }

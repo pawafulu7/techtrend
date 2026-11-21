@@ -29,9 +29,10 @@ export class GateAllowlistUnavailableError extends Error {
 const FAILURE_MEMORY_MS = 5_000;
 /**
  * 行の追加時刻（管理 API を処理したインスタンスの時計。Prisma の @default(now()) が付ける）と、
- * ログイン状態の作成時刻（ログインを処理したインスタンスの時計）のずれの許容幅
+ * ログイン状態の作成時刻（ログインを処理したインスタンスの時計）のずれの許容幅。どちらもアプリの時計
+ * （Vercel では同期済み）なので小さくする。この幅の内に外して足し直すと、外す前のログイン状態が残りの期限まで通るため
  */
-const CLOCK_SKEW_MS = 60_000;
+const CLOCK_SKEW_MS = 5_000;
 /** キャッシュの件数がこれを超えたら、切れたものを捨てる（許可リストの上限は 100 件） */
 const CACHE_PRUNE_THRESHOLD = 500;
 
@@ -42,7 +43,13 @@ interface AllowEntry {
 }
 
 const allowCache = new Map<string, AllowEntry>();
-const inFlight = new Map<string, Promise<Date | null>>();
+interface LookupResult {
+  rowCreatedAt: Date | null;
+  /** 照合を始めた時刻。キャッシュの期限はここから数える（遅れて返った古い結果を、外してから 30 秒より長く持たないように） */
+  startedAt: number;
+}
+
+const inFlight = new Map<string, Promise<LookupResult>>();
 let lastFailureAt: number | null = null;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -61,13 +68,14 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-/** 行の追加時刻を返す。行が無ければ null。同じアドレスの照合が同時に来たら、DB へは 1 本だけ送る */
-function lookupRowCreatedAt(email: string): Promise<Date | null> {
+/** 行の追加時刻（行が無ければ null）と照合を始めた時刻。同じアドレスの照合が同時に来たら、DB へは 1 本だけ送る */
+function lookupRowCreatedAt(email: string): Promise<LookupResult> {
   const running = inFlight.get(email);
   if (running) return running;
 
   // 照合の上限はアプリの DB の接続の上限にそろえる（本番の DB が止まっていて起動を待つ間に、入口だけが先に 503 にならないように）
   const timeoutMs = Math.max(1, env.DB_CONNECT_TIMEOUT) * 1000;
+  const startedAt = Date.now();
   const promise = withTimeout(
     prisma.gateAllowedEmail.findUnique({
       where: { email },
@@ -75,7 +83,7 @@ function lookupRowCreatedAt(email: string): Promise<Date | null> {
     }),
     timeoutMs
   )
-    .then((row) => row?.createdAt ?? null)
+    .then((row) => ({ rowCreatedAt: row?.createdAt ?? null, startedAt }))
     .finally(() => {
       inFlight.delete(email);
     });
@@ -143,8 +151,9 @@ export async function checkGateEmailAccess(
   }
 
   let rowCreatedAt: Date | null;
+  let startedAt: number;
   try {
-    rowCreatedAt = await lookupRowCreatedAt(email);
+    ({ rowCreatedAt, startedAt } = await lookupRowCreatedAt(email));
   } catch (error) {
     lastFailureAt = Date.now();
     if (error instanceof GateAllowlistUnavailableError) throw error;
@@ -161,7 +170,7 @@ export async function checkGateEmailAccess(
   pruneExpired(now);
   allowCache.set(email, {
     rowCreatedAt,
-    expiresAt: Date.now() + GATE_ALLOW_CACHE_TTL_SEC * 1000,
+    expiresAt: startedAt + GATE_ALLOW_CACHE_TTL_SEC * 1000,
   });
   return judgeRow(rowCreatedAt, options.sessionCreatedAt);
 }

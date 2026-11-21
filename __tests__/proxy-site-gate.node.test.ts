@@ -142,6 +142,15 @@ describe('proxy のサイトの入口', () => {
     );
   });
 
+  it('lets the app sign-out through without a gate session', async () => {
+    const response = await proxy(
+      request('/api/auth/sign-out', { method: 'POST', mode: 'cors', headers: { origin: 'http://localhost:3000' } })
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-middleware-next')).toBe('1');
+    expect(mockCreateSiteGateDeps).not.toHaveBeenCalled();
+  });
+
   describe('入口の Cookie があるとき', () => {
     it('passes an allowed session with cache busting, Vary and the refreshed cookie', async () => {
       useDeps('allowed');

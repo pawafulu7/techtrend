@@ -331,7 +331,17 @@ describe('DELETE /api/admin/gate-allowlist/[id]', () => {
     expect(prismaMock.gateAllowedEmail.delete).not.toHaveBeenCalled();
   });
 
+  it('refuses to remove when the gate is enabled but the current account is unknown', async () => {
+    // proxy を通ったあとに入口のログイン状態が切れたなど。自分のアカウントを消さないよう断る
+    mockGetCurrentGateEmail.mockResolvedValue(null);
+    prismaMock.gateAllowedEmail.findUnique.mockResolvedValue({ id: ID_1, email: 'me@gmail.com' });
+
+    expect((await remove(ID_1)).status).toBe(503);
+    expect(prismaMock.gateAllowedEmail.delete).not.toHaveBeenCalled();
+  });
+
   it('allows removal when the gate is disabled (no current account)', async () => {
+    mockGetSiteGateConfig.mockReturnValue({ kind: 'disabled' });
     mockGetCurrentGateEmail.mockResolvedValue(null);
     prismaMock.gateAllowedEmail.findUnique.mockResolvedValue({ id: ID_1, email: 'me@gmail.com' });
     prismaMock.gateAllowedEmail.delete.mockResolvedValue({});

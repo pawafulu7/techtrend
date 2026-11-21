@@ -144,6 +144,26 @@ describe('evaluateSiteGate', () => {
     expect(response.status).toBe(401);
   });
 
+  it('lets the app sign-out through without a gate session (so signing out always works)', async () => {
+    const d = deps();
+    await expect(
+      evaluateSiteGate(
+        request('/api/auth/sign-out', { cookie: null, method: 'POST', mode: 'cors' }),
+        ENABLED,
+        d.loadDeps
+      )
+    ).resolves.toEqual({ kind: 'public' });
+    // ほかのアプリ内の認証の経路は通さない
+    const other = await deny(
+      evaluateSiteGate(
+        request('/api/auth/sign-in/email', { cookie: null, method: 'POST', mode: 'cors' }),
+        ENABLED,
+        d.loadDeps
+      )
+    );
+    expect(other.status).toBe(401);
+  });
+
   describe('入口の Cookie が無いとき', () => {
     it('redirects a page navigation to the start with the original path and query', async () => {
       const d = deps();
@@ -312,6 +332,19 @@ describe('evaluateSiteGate', () => {
       // 拒否のページを出してよい目印（ログインが拒否・失敗した直後だけ出す）
       expect(setCookiesOf(response).join('\n')).toContain('tt-gate.error_notice=1');
       expect(setCookiesOf(response)).not.toContain(REFRESH_COOKIE);
+    });
+
+    it('does not delete the state cookie of a sign-in in progress in another tab', async () => {
+      const d = deps({ access: 'not_allowed' });
+      d.signOut.mockResolvedValue([
+        ...DELETE_COOKIES,
+        'tt-gate.oauth_state=; Max-Age=0; Path=/',
+        '__Secure-tt-gate.oauth_state=; Max-Age=0; Path=/; Secure',
+      ]);
+      const response = await deny(
+        evaluateSiteGate(request('/api/stats', { mode: 'cors' }), ENABLED, d.loadDeps)
+      );
+      expect(setCookiesOf(response)).toEqual(DELETE_COOKIES);
     });
 
     it('returns 403 JSON for a revoked account on the API and clears the gate cookies', async () => {

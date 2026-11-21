@@ -59,9 +59,29 @@ export function hasGateSessionCookie(request: NextRequest): boolean {
   );
 }
 
+/**
+ * アプリ内のログアウト。入口のログイン状態が切れていても通す（通さないと、ログアウトしたつもりでアプリの
+ * ログイン状態が残り、別の許可済みのアカウントで入口を通り直したときに前のアカウントのまま使えてしまう）。
+ * ログアウトは Cookie のセッションを消すだけで、中身を返さない
+ */
+const APP_SIGN_OUT_PATH = '/api/auth/sign-out';
+
 function isGatePublicRequest(request: NextRequest): boolean {
+  if (request.method === 'POST' && request.nextUrl.pathname === APP_SIGN_OUT_PATH) {
+    return true;
+  }
   if (request.method !== 'GET' && request.method !== 'HEAD') return false;
   return GATE_PUBLIC_PATHS.includes(request.nextUrl.pathname);
+}
+
+/**
+ * 入口の Cookie を消す Set-Cookie から、state の Cookie（tt-gate.oauth_state）の削除を除く。
+ * ライブラリの削除処理は state も消すので、別のタブで進行中の入口のログインを壊すため
+ */
+export function withoutOAuthStateDeletion(setCookies: string[]): string[] {
+  return setCookies.filter(
+    (cookie) => !/^(__Secure-)?tt-gate\.oauth_state=/.test(cookie)
+  );
 }
 
 /**
@@ -141,7 +161,7 @@ function rejectRevoked(
       'Site access revoked'
     );
   }
-  for (const cookie of clearCookies) {
+  for (const cookie of withoutOAuthStateDeletion(clearCookies)) {
     response.headers.append('Set-Cookie', cookie);
   }
   return response;

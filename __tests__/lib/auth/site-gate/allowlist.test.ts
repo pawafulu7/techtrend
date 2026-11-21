@@ -158,23 +158,45 @@ describe('checkGateEmailAccess', () => {
     );
   });
 
+  it('counts the cache lifetime from when the lookup started, not when it finished', async () => {
+    // 外す直前に始まった照合が遅れて返っても、外してから 30 秒より長く許可を持たないように
+    jest.useFakeTimers({ now: new Date('2026-11-21T00:00:00Z') });
+    let resolveRow!: (value: unknown) => void;
+    findUnique.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRow = resolve;
+      })
+    );
+    const check = checkGateEmailAccess('friend@gmail.com', { fixedEmails: FIXED });
+    jest.setSystemTime(new Date('2026-11-21T00:00:08Z'));
+    resolveRow(rowResult());
+    await expect(check).resolves.toBe('allowed');
+
+    // 照合を始めてから 31 秒（返ってからは 23 秒）。キャッシュは切れていて、DB を引き直す
+    findUnique.mockResolvedValue(null);
+    jest.setSystemTime(new Date('2026-11-21T00:00:31Z'));
+    await expect(
+      checkGateEmailAccess('friend@gmail.com', { fixedEmails: FIXED })
+    ).resolves.toBe('not_allowed');
+  });
+
   describe('足し直した行より前のログイン状態', () => {
     it('treats a session created before the row as stale', async () => {
       findUnique.mockResolvedValue(rowResult(new Date('2026-11-20T00:10:00Z')));
       await expect(
         checkGateEmailAccess('friend@gmail.com', {
           fixedEmails: FIXED,
-          sessionCreatedAt: new Date('2026-11-20T00:08:59Z'),
+          sessionCreatedAt: new Date('2026-11-20T00:09:54Z'),
         })
       ).resolves.toBe('stale_session');
     });
 
-    it('allows within the 60 second clock skew', async () => {
+    it('allows within the 5 second clock skew', async () => {
       findUnique.mockResolvedValue(rowResult(new Date('2026-11-20T00:10:00Z')));
       await expect(
         checkGateEmailAccess('friend@gmail.com', {
           fixedEmails: FIXED,
-          sessionCreatedAt: new Date('2026-11-20T00:09:01Z'),
+          sessionCreatedAt: new Date('2026-11-20T00:09:56Z'),
         })
       ).resolves.toBe('allowed');
     });

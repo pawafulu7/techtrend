@@ -144,6 +144,8 @@ describe('createGateAuthOptions', () => {
     expect(options.session).toEqual({
       expiresIn: 7 * 24 * 60 * 60,
       disableSessionRefresh: true,
+      // Cookie のキャッシュも作り直さない（期限はセッションと同じで、作り直しても延びない）
+      cookieCache: { refreshCache: false },
     });
     expect(options.account).toEqual({ storeAccountCookie: false });
   });
