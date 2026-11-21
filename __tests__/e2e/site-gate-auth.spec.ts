@@ -331,11 +331,10 @@ test.describe('入口用の Better Auth（DB なし）', () => {
     ).rejects.toThrow();
   });
 
-  test('組み込みのエラーページを返す（開発の設定）', async () => {
+  test('組み込みのエラーページは HTTP で閉じている（拒否のページは自前で返す）', async () => {
     const gate = await createGate();
     const response = await gate.handler(new Request(`${BASE}${GATE_BASE_PATH}/error?error=not_allowed`));
-    expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toContain('text/html');
+    expect(response.status).toBe(404);
   });
 
   test('ライブラリの経路は、閉じる一覧と開けておく一覧のどちらかに入っている', async () => {

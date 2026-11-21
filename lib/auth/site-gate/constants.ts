@@ -18,7 +18,7 @@ export const GATE_COOKIE_PREFIX = 'tt-gate';
 export const GATE_START_PATH = `${GATE_BASE_PATH}/start`;
 /** Google からの戻り（Better Auth に渡す） */
 export const GATE_CALLBACK_PATH = `${GATE_BASE_PATH}/callback/google`;
-/** 拒否のときの組み込みのエラーページ（Better Auth に渡す） */
+/** 拒否・失敗のときのページ（自前の HTML。lib/auth/site-gate/error-page.ts） */
 export const GATE_ERROR_PATH = `${GATE_BASE_PATH}/error`;
 
 /** 入口を通さずに届けてよい経路（GET・HEAD だけ）。ここ以外の /api/gate/* は Route Handler が 404 にする */

@@ -204,16 +204,27 @@ describe('GET /api/gate/[...all]', () => {
   });
 
   it.each([
-    ['not_allowed', 'not_allowed'],
-    ['state_mismatch', 'state_mismatch'],
-    ['access_denied', 'access_denied'],
-    ['Your_access_was_revoked_call_xxx', 'unknown'],
-    ['', 'unknown'],
-  ])('shows only known codes on the error page (%p -> %p)', async (raw, shown) => {
-    await catchAll.GET(request(`/api/gate/error?error=${encodeURIComponent(raw)}`));
-    const forwarded = mockHandler.mock.calls[0][0] as Request;
-    expect(new URL(forwarded.url).searchParams.get('error')).toBe(shown);
-  });
+    ['not_allowed', 'not_allowed', 403],
+    ['state_mismatch', 'state_mismatch', 400],
+    ['access_denied', 'access_denied', 400],
+    ['temporarily_unavailable', 'temporarily_unavailable', 503],
+    ['Your_access_was_revoked_call_xxx', 'unknown', 400],
+    ['', 'unknown', 400],
+  ] as const)(
+    'returns its own error page without Better Auth, showing only known codes (%p -> %p)',
+    async (raw, shown, status) => {
+      const response = await catchAll.GET(
+        request(`/api/gate/error?error=${encodeURIComponent(raw)}`)
+      );
+      expect(response.status).toBe(status);
+      expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      const html = await response.text();
+      expect(html).toContain(`エラーのコード: ${shown}`);
+      if (raw) expect(html.includes(raw)).toBe(raw === shown);
+      expect(mockHandler).not.toHaveBeenCalled();
+    }
+  );
 
   it('limits callbacks to 30 per minute per IP (state cookies can be replayed for 10 minutes)', async () => {
     mockHandler.mockImplementation(async () => new Response(null, { status: 302, headers: { location: '/' } }));
@@ -229,15 +240,11 @@ describe('GET /api/gate/[...all]', () => {
     expect(mockHandler).toHaveBeenCalledTimes(30);
   });
 
-  it('drops error_description before showing the built-in error page', async () => {
+  it('ignores error_description (does not show text from the URL)', async () => {
     const response = await catchAll.GET(
       request('/api/gate/error?error=not_allowed&error_description=Call%20this%20number')
     );
-    expect(response.status).toBe(200);
-    const forwarded = mockHandler.mock.calls[0][0] as Request;
-    const url = new URL(forwarded.url);
-    expect(url.searchParams.get('error')).toBe('not_allowed');
-    expect(url.searchParams.has('error_description')).toBe(false);
+    expect(await response.text()).not.toContain('Call this number');
   });
 
   it.each([

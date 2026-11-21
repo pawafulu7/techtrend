@@ -170,16 +170,17 @@ describe('createGateAuthOptions', () => {
     expect(dev.advanced.useSecureCookies).toBe(false);
   });
 
-  it('shows the built-in error page in production and disables the built-in rate limit', () => {
-    expect(options.onAPIError).toEqual({ customizeDefaultErrorPage: {} });
+  it('disables the built-in rate limit and does not customize the built-in error page', () => {
     expect(options.rateLimit).toEqual({ enabled: false });
+    // 拒否・失敗のページは自前で返す（組み込みのページは disabledPaths で閉じる）
+    expect('onAPIError' in options).toBe(false);
   });
 
-  it('closes the fixed library paths and keeps the callback and the error page', () => {
+  it('closes the fixed library paths, including the built-in error page, and keeps the callback', () => {
     expect(options.disabledPaths).toEqual([...GATE_DISABLED_PATHS]);
     expect(options.disabledPaths).toContain('/sign-in/social');
     expect(options.disabledPaths).toContain('/update-user');
-    expect(options.disabledPaths).not.toContain('/error');
+    expect(options.disabledPaths).toContain('/error');
     expect(options.disabledPaths.some((p) => p.startsWith('/callback'))).toBe(
       false
     );

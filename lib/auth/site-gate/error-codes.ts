@@ -1,9 +1,8 @@
 /**
- * 入口の組み込みのエラーページ（/api/gate/error）に出してよいコード
+ * 入口の拒否・失敗のページ（/api/gate/error、lib/auth/site-gate/error-page.ts）に出してよいコード
  *
- * 組み込みのページは ?error= の値を、英数字と _ - ' だけならそのまま本文に出す
- * （better-auth/dist/api/routes/error.mjs）。入口の外から誰でも開けるので、任意の文言
- * （例: Your_access_was_revoked_call_xxx）をサイトのドメインで出せないよう、知っているコードだけを通す。
+ * ページは入口の外から誰でも開けるので、?error= の値をそのまま出すと、任意の文言
+ * （例: Your_access_was_revoked_call_xxx）をサイトのドメインで出せてしまう。知っているコードだけを通す。
  * ライブラリを上げてコードが増えたら、ここに無いものは unknown と出る（ページは出るので、入り直しはできる）。
  */
 const KNOWN_GATE_ERROR_CODES: ReadonlySet<string> = new Set([

@@ -111,7 +111,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 | | `changelog` | GET RL |
 | | `auth/[...all]` | Better Auth |
 | サイトの入口 | `gate/start` | GET 公開（IP ごとに 30 回/分。Google のログインへ移す） |
-| | `gate/[...all]` | GET 公開。Google からの戻り（`gate/callback/google`）と組み込みのエラーページ（`gate/error`）だけを入口用の Better Auth に渡し、ほかは 404 |
+| | `gate/[...all]` | GET 公開。Google からの戻り（`gate/callback/google`）だけを入口用の Better Auth に渡し（IP ごとに 30 回/分）、拒否・失敗のページ（`gate/error`）は自前の日本語の HTML を返す（`lib/auth/site-gate/error-page.ts`）。ほかは 404 |
 | 管理 | `admin/*`（20本。`admin/gate-allowlist`・`admin/gate-allowlist/[id]` を含む） | 管理者 |
 | | `sources` | GET 管理者 |
 | | `stats` | GET RL（公開） |

@@ -25,7 +25,7 @@ type ValidateUserInfo = NonNullable<
 >;
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-/** ログイン時の拒否のコード。組み込みのエラーページの ?error= に出る */
+/** ログイン時の拒否のコード。拒否・失敗のページ（/api/gate/error）の ?error= に出る */
 export const GATE_LOGIN_ERROR_CODES = {
   notAllowed: 'not_allowed',
   emailNotVerified: 'email_not_verified',
@@ -147,9 +147,8 @@ export function createGateAuthOptions(
     },
     // 守りの本体は app/api/gate/[...all]/route.ts の完全一致。これは補助（disabled-paths.ts）
     disabledPaths: [...GATE_DISABLED_PATHS],
-    // 本番（NODE_ENV=production）では、これが無いと /error が組み込みのページを返さず /?error=... へ移る
-    // （better-auth/dist/api/routes/error.mjs）
-    onAPIError: { customizeDefaultErrorPage: {} },
+    // 拒否・失敗のときは Better Auth が既定の `${baseURL}/error`（/api/gate/error）へ移す。そこは自前のページを返し
+    // （app/api/gate/[...all]/route.ts）、組み込みのページ（英語・外部へのリンク付き）は disabledPaths で閉じる
     // 戻りは Google とのコードの交換の前に state の Cookie を確かめ、開始には自前の制限がある
     // （app/api/gate/start/route.ts）。組み込みの制限は守りを足さず、回数のキーに basePath が入らない
     // 問題（アプリ内の Google ログインの戻りと回数を分け合う）だけを持ち込むので、切る

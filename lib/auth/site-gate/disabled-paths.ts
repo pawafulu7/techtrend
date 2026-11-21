@@ -15,6 +15,8 @@ export const GATE_DISABLED_PATHS = [
   '/change-password',
   '/delete-user',
   '/delete-user/callback',
+  // 拒否・失敗のページは自前で返す（lib/auth/site-gate/error-page.ts）ので、組み込みのページも閉じる
+  '/error',
   '/get-access-token',
   '/get-session',
   '/link-social',
@@ -39,9 +41,11 @@ export const GATE_DISABLED_PATHS = [
   '/verify-password',
 ] as const;
 
-/** 入口が HTTP で使う経路（閉じない）。引数付きの経路は disabledPaths で閉じられないものも含む */
+/**
+ * disabledPaths で閉じない経路。入口が使う戻り（/callback/:id）と、引数付きで disabledPaths では閉じられない
+ * /reset-password/:token（Route Handler の完全一致で 404 にする）
+ */
 export const GATE_OPEN_LIBRARY_PATHS = [
   '/callback/:id',
-  '/error',
   '/reset-password/:token',
 ] as const;
