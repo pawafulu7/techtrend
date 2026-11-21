@@ -47,12 +47,14 @@ export function decodeHtmlEntities(html: string): string {
 export function stripHtmlTags(html: string): string {
   if (!html) return '';
 
-  // Pre-process: Add spaces where tags will be removed to preserve word boundaries
-  let processedHtml = html;
-
-  // Add space between text and tags
-  processedHtml = processedHtml.replace(/>([^<]+)</g, '> $1 <');
-  processedHtml = processedHtml.replace(/([^>])(<[^>]*>)([^<])/g, '$1 $2 $3');
+  // Pre-process: Add a space after every tag to preserve word boundaries
+  // (the tag is removed, so the text before and after it stay separated; extra spaces are collapsed below).
+  // タグの中身は `[^<>]*` で読む。`[^>]*` だと `>` の無い `x<<<<…` のような入力で、開始位置ごとに
+  // 入力の終わりまで読み直して計算量が入力長の 2 乗に増える。フィードの本文は配信元が自由に
+  // 書けるので、細工した 1 件で収集のプロセスを止められる。`[^<>]*` は次の `<` で止まるので線形になる。
+  // 空白はタグの前には入れない。本文の `Mutex<Option<T>>` が `<Option <T>` になると、sanitize-html が
+  // `option` 要素と読み、その中のテキスト（以降の本文すべて）を捨てるため
+  const processedHtml = html.replace(/<[^<>]*>/g, '$& ');
 
   // Use sanitize-html library to safely remove all HTML tags
   const result = sanitizeHtmlLib(processedHtml, {
@@ -115,7 +117,8 @@ export function cleanHtml(html: string): string {
   // Pre-process: Add spaces between block elements for better text flow
   const processedHtml = html
     .replace(/<\/(p|div|li|h[1-6])>/gi, (match) => match + ' ')
-    .replace(/<(p|div|li|h[1-6])([^>]*)>/gi, (match) => ' ' + match);
+    // `[^<>]*` で読む（`[^>]*` は `<p<p<p…` で計算量が入力長の 2 乗に増える。stripHtmlTags を参照）
+    .replace(/<(p|div|li|h[1-6])([^<>]*)>/gi, (match) => ' ' + match);
 
   // First pass: Use sanitize-html to strip all tags but preserve text content
   // This ensures no malformed or incomplete tags remain

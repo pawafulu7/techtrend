@@ -12,7 +12,15 @@
  * https だけをたどる（lib/utils/url/safe-redirect.ts）。
  */
 
-import { fetchWithValidatedRedirects, readTextWithLimit } from '@/lib/utils/url/safe-redirect';
+import {
+  fetchWithValidatedRedirects,
+  readTextWithLimit,
+} from '@/lib/utils/url/safe-redirect';
+import { installLinearStripHtml } from './rss-parser-strip-html';
+
+// rss-parser を使う fetcher はすべてこのモジュールを読み込むので、ここで rss-parser の HTML 除去を
+// 同じ結果を返す線形の実装に差し替える（配信元が細工した本文で収集が止まる ReDoS の対策）
+installLinearStripHtml();
 
 export const DEFAULT_FEED_TIMEOUT_MS = 30_000;
 
@@ -23,8 +31,10 @@ export const DEFAULT_FEED_TIMEOUT_MS = 30_000;
 export const FEED_MAX_BODY_BYTES = 20 * 1024 * 1024;
 
 const FEED_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (compatible; TechTrend/1.0; +https://techtrend.example.com/bot)',
-  Accept: 'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5',
+  'User-Agent':
+    'Mozilla/5.0 (compatible; TechTrend/1.0; +https://techtrend.example.com/bot)',
+  Accept:
+    'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5',
 };
 
 export interface FetchFeedOptions {
@@ -34,9 +44,16 @@ export interface FetchFeedOptions {
   signal?: AbortSignal;
 }
 
-export async function fetchFeedXml(url: string, options: FetchFeedOptions = {}): Promise<string> {
-  const timeoutSignal = AbortSignal.timeout(options.timeoutMs ?? DEFAULT_FEED_TIMEOUT_MS);
-  const signal = options.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal;
+export async function fetchFeedXml(
+  url: string,
+  options: FetchFeedOptions = {}
+): Promise<string> {
+  const timeoutSignal = AbortSignal.timeout(
+    options.timeoutMs ?? DEFAULT_FEED_TIMEOUT_MS
+  );
+  const signal = options.signal
+    ? AbortSignal.any([options.signal, timeoutSignal])
+    : timeoutSignal;
 
   // フィードの URL は固定でも、提供元が返す転送先は固定ではないので、各段を検証し、https だけをたどる
   const { response } = await fetchWithValidatedRedirects(url, {

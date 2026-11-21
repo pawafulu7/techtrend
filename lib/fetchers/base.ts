@@ -3,6 +3,7 @@ import { FetchResult } from '@/types/fetchers';
 import { logger } from '@/lib/cli/utils/logger';
 import { stripHtmlTags } from '@/lib/utils/html-sanitizer';
 import { isNonRetryableFetchError } from '@/lib/utils/url/safe-redirect';
+import { findThumbnailInHtml } from './html-image';
 
 export abstract class BaseFetcher {
   protected source: Source;
@@ -83,16 +84,9 @@ export abstract class BaseFetcher {
     }
   }
 
+  /** og:image を優先し、無ければ最初の img の src を返す（入力長に比例する計算量で読む） */
   protected extractThumbnail(html: string): string | null {
-    // Simple OG image extraction
-    const ogImageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/);
-    if (ogImageMatch) {
-      return ogImageMatch[1];
-    }
-    
-    // Fallback to first img tag
-    const imgMatch = html.match(/<img[^>]*src="([^"]+)"/);
-    return imgMatch ? imgMatch[1] : null;
+    return findThumbnailInHtml(html);
   }
 
   protected sanitizeText(text: string): string {

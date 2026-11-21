@@ -46,6 +46,17 @@ export const RATE_LIMIT_POLICIES = {
     notes: 'Prevent brute force attacks',
     telemetryEvent: 'ratelimit.auth.login',
   },
+  // サイト全体の Basic 認証ゲートの失敗。proxy.ts が資格情報を送ってきて
+  // 通らなかったリクエストだけを数え、上限を超えた IP は正しい資格情報でも解除まで通さない
+  // （lib/auth/gate-attempt-limit.ts）。ゲートはインターネットからそのまま届く唯一の入口
+  'auth:gate': {
+    points: 10,
+    duration: 15 * 60,
+    blockDuration: 15 * 60,
+    keyStrategy: 'ip',
+    notes: 'Brute-force protection for the site-wide Basic auth gate',
+    telemetryEvent: 'ratelimit.auth.gate',
+  },
 
   // RAG (Existing Policies) - No block, soft throttle only
   'rag:agent': {

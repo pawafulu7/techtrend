@@ -47,9 +47,21 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # 手動実行の入力は run に直接埋め込まず環境変数で渡す（シェルへの注入を防ぐ）
+          INPUT_TYPE: ${{ github.event.inputs.type || 'daily' }}
+          INPUT_DATE: ${{ github.event.inputs.date }}
         run: |
-          TYPE="${{ github.event.inputs.type || 'daily' }}"
-          DATE="${{ github.event.inputs.date }}"
+          TYPE="$INPUT_TYPE"
+          DATE="$INPUT_DATE"
+
+          case "$TYPE" in
+            daily|weekly|monthly) ;;
+            *) echo "Error: Invalid report type: expected daily, weekly or monthly"; exit 1 ;;
+          esac
+          if [ -n "$DATE" ] && ! [[ "$DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "Error: Invalid date format. Expected YYYY-MM-DD"
+            exit 1
+          fi
 
           if [ -n "$DATE" ]; then
             npx tsx scripts/scheduled/generate-trend-report.ts --type "$TYPE" --date "$DATE"

@@ -15,7 +15,6 @@ import {
   requiresCSRFProtection,
 } from '@/lib/middleware/csrf-protection';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
-import { resolveCronSecret } from '@/lib/auth/cron-secret';
 
 // Basic 認証ゲートの設定値。lib/ 配下は process.env の直接参照を ESLint で禁止しており、
 // env.ts はモジュールロード時に一度だけ parse するため、ここ（proxy.ts）で都度読んで渡す。
@@ -27,10 +26,6 @@ function readGateEnv(): GateEnv {
     pass: process.env.BASIC_AUTH_PASS,
     legacyPass: process.env.BASIC_PASSWORD,
     gateSecret: process.env.BASIC_AUTH_GATE_SECRET,
-    cronSecret: resolveCronSecret(
-      process.env.CRON_TOKEN,
-      process.env.CRON_SECRET
-    ),
     isProduction: process.env.NODE_ENV === 'production',
   };
 }
@@ -93,6 +88,41 @@ export async function proxy(request: NextRequest) {
     return misconfiguredRes;
   }
 
+  // 総当たり対策: ゲートの資格情報（Authorization ヘッダー）を送ってきたリクエストだけを IP ごとに数え、
+  // 失敗が続いた IP は正しい資格情報でもしばらく通さない（lib/auth/gate-attempt-limit.ts）。
+  // 署名付き Cookie で通るリクエストと、資格情報を送っていない最初のアクセスは Redis を引かない
+  if (
+    (gate.kind === 'basic' || gate.kind === 'fail') &&
+    request.headers.has('authorization')
+  ) {
+    let retryAfter: number | null = null;
+    try {
+      const { checkGateAttempt } = await import('@/lib/auth/gate-attempt-limit');
+      retryAfter = await checkGateAttempt(
+        request.headers,
+        gate.kind === 'fail' ? 'failure' : 'success'
+      );
+    } catch (error) {
+      // 回数を確かめられないときは数えずに通す（資格情報の確認は続く。Redis の障害と同じ扱い）
+      console.error(
+        '[proxy] Basic 認証ゲートの試行回数を確かめられないため、数えずに通します:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
+    if (retryAfter !== null) {
+      // WWW-Authenticate は付けない（締め出し中にブラウザが入力を求め直さないように）
+      const lockedRes = new NextResponse('Too Many Requests', {
+        status: 429,
+        headers: {
+          'Retry-After': String(retryAfter),
+          'Cache-Control': 'no-store',
+        },
+      });
+      setSecurityHeaders(lockedRes, request);
+      return lockedRes;
+    }
+  }
+
   if (gate.kind === 'fail') {
     const challengeRes = new NextResponse('Unauthorized', {
       status: 401,
@@ -110,7 +140,7 @@ export async function proxy(request: NextRequest) {
   // ログインリダイレクトに落ちた場合に発行されず、再入力の症状がそのまま残る。
   const finalize = <T extends NextResponse>(response: T): T => {
     // ゲートを通過した応答は共有キャッシュに載せない。
-    // basic だけでなく cookie（2 回目以降）と cron も対象にする必要がある。
+    // basic だけでなく cookie（2 回目以降）も対象にする必要がある。
     // また /api/ も除外できない: ゲート済みコンテンツを下流 CDN が共有キャッシュ
     // してはいけないため。
     //
@@ -119,8 +149,7 @@ export async function proxy(request: NextRequest) {
     // Vercel のエッジにキャッシュされていた）。そのため公開キャッシュヘッダを返す
     // route は lib/api/cache-headers.ts 経由で、ゲート有効時に自分で private, no-store
     // にする（issue #647）。ここはページ（ISR を含む）と、route が何も設定しない応答の担当。
-    const passedGate =
-      gate.kind === 'basic' || gate.kind === 'cookie' || gate.kind === 'cron';
+    const passedGate = gate.kind === 'basic' || gate.kind === 'cookie';
     // 最適化した画像は元が公開 URL なので、共有キャッシュに載せてよい（Vercel の画像キャッシュと
     // ブラウザのキャッシュを効かせる）。ゲートは通すが、キャッシュの打ち消しと Cookie の発行はしない
     const isImageOptimizer = pathname.startsWith('/_next/image');

@@ -74,7 +74,7 @@ flowchart LR
 | RSS フィード / スクレイピング / API 提供ソース / ニュースレター | `Source` テーブル（2026-10-25 時点の dev DB で 87 件・全件 enabled）+ `lib/fetchers/` 各 fetcher。ニュースレターは `lib/fetchers/curated-newsletter/`。フィード・記事ページの取得は SSRF の検証（`lib/utils/url/safe-redirect.ts`）を通す（API の fetcher の一部は直接取得。[05](./05-features.md#8-記事ソースの取得方式)） | - |
 | GitHub Actions スケジューラ 14 本 | `.github/workflows/scheduler-*.yml`（`npx tsx scripts/...` を本番 DB に対して直接実行、失敗時 Slack 通知）。収集・要約の後に Redis のキャッシュも消す | `DATABASE_URL`, `REDIS_URL`, `SLACK_WEBHOOK_URL`, `SLACK_NOTIFICATION_ENABLED`, `GEMINI_API_KEY`, `OPENAI_API_KEY`、vars の `GEMINI_SUMMARY_SERVICE_TIER` など |
 | GitHub Actions CI | `ci.yml` / `codeql.yml` / `ai-regression-test.yml` / `tag-quality-check.yml` | - |
-| proxy.ts | Next.js middleware（Basic 認証ゲート / NUL バイトの拒否 / CSRF / メンテナンスモード / 保護パスのセッションゲート） | `MAINTENANCE_MODE`, `BASIC_AUTH_ENABLED`/`BASIC_AUTH_USER`/`BASIC_AUTH_PASS`（旧名 `BASIC_PASSWORD`）, `BASIC_AUTH_GATE_SECRET`, `CRON_TOKEN`（旧名 `CRON_SECRET`） |
+| proxy.ts | Next.js middleware（Basic 認証ゲート / NUL バイトの拒否 / CSRF / メンテナンスモード / 保護パスのセッションゲート） | `MAINTENANCE_MODE`, `BASIC_AUTH_ENABLED`/`BASIC_AUTH_USER`/`BASIC_AUTH_PASS`（旧名 `BASIC_PASSWORD`）, `BASIC_AUTH_GATE_SECRET` |
 | RSC Pages | `app/` 配下の公開・認証必須・管理者ページ | - |
 | API Routes | `app/api/` 配下 62 件の `route.ts`（一覧は [05 機能一覧](./05-features.md#4-api62本)） | - |
 | Better Auth | `lib/auth/auth.ts`（email+password, admin プラグインで RBAC） | `AUTH_SECRET`（フォールバック `NEXTAUTH_SECRET`） |

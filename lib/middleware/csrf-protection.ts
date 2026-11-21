@@ -197,7 +197,7 @@ export async function validateOrigin(
   //
   // Bearer の判定は lib/auth/authorization-header.ts に集約している。
   // ここで見たいのは「スキームが Bearer か」だけで token の妥当性は問わないため、
-  // token を取り出す extractBearerToken ではなく述語 hasBearerScheme を使う。
+  // 述語 hasBearerScheme を使う。
   const authHeader = request.headers.get('authorization');
   if (hasBearerScheme(authHeader) || (!origin && !referer)) {
     try {

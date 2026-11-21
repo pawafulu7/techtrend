@@ -9,7 +9,7 @@ import { trace } from '@opentelemetry/api';
 import { resolveSessionFromRequest } from './session-context';
 import { AUTH_COOKIES } from '@/lib/config/auth-cookies';
 import logger from '@/lib/logger';
-import { toRateLimitIP } from '@/lib/middleware/rate-limit-ip';
+import { clientIPFromHeaders } from '@/lib/middleware/rate-limit-ip';
 
 type RouteHandler = (
   request: NextRequest,
@@ -201,6 +201,11 @@ export function createRateLimitedResponse(
   );
 }
 
+/** Extract client IP from request（規則は clientIPFromHeaders） */
+function getClientIP(request: NextRequest): string {
+  return clientIPFromHeaders(request.headers);
+}
+
 /**
  * Resolve rate limit key based on strategy
  *
@@ -209,23 +214,6 @@ export function createRateLimitedResponse(
  * @param session - Auth.js session (pre-fetched to avoid double auth() calls)
  * @returns Rate limit key string
  */
-/**
- * Extract client IP from request
- *
- * NextRequest の `ip` は Next.js 15 で削除された（node_modules/next/dist/docs/01-app/02-guides/
- * upgrading/version-15.md の「NextRequest Geolocation」）ので、x-forwarded-for の先頭を使う。
- * x-forwarded-for は、信頼できるプロキシが上書きする前提で使っている。Vercel は送り手の値を捨てて
- * 接続元の IP で上書きする（https://vercel.com/docs/headers/request-headers の x-forwarded-for）。
- * 上書きするプロキシを置かずに公開すると、ヘッダーを変えるだけで制限を外せる
- *
- * IPv6 は /64 に丸め、IP として読めない値は unknown にまとめて数える（toRateLimitIP）
- */
-function getClientIP(request: NextRequest): string {
-  return toRateLimitIP(
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-  );
-}
-
 async function resolveDefaultKey(
   request: NextRequest,
   strategy: 'user' | 'session' | 'ip' | 'anonymous' | undefined,

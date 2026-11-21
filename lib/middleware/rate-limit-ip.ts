@@ -30,6 +30,23 @@ export function toRateLimitIP(ip: string): string {
     .join(':')}::/64`;
 }
 
+/**
+ * リクエストのヘッダーから、IP 単位のレート制限で数える IP を返す
+ *
+ * NextRequest の `ip` は Next.js 15 で削除された（node_modules/next/dist/docs/01-app/02-guides/
+ * upgrading/version-15.md の「NextRequest Geolocation」）ので、x-forwarded-for の先頭を使う。
+ * x-forwarded-for は、信頼できるプロキシが上書きする前提で使っている。Vercel は送り手の値を捨てて
+ * 接続元の IP で上書きする（https://vercel.com/docs/headers/request-headers の x-forwarded-for）。
+ * 上書きするプロキシを置かずに公開すると、ヘッダーを変えるだけで制限を外せる
+ *
+ * IPv6 は /64 に丸め、IP として読めない値は unknown にまとめて数える（toRateLimitIP）
+ */
+export function clientIPFromHeaders(headers: Headers): string {
+  return toRateLimitIP(
+    headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  );
+}
+
 /** 正規化済みの IPv6（'2001:db8::1'）を 8 つの 16 ビットの値に広げる */
 function expandIPv6(canonical: string): number[] {
   const toNumbers = (part: string) =>

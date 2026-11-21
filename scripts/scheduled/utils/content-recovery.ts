@@ -8,16 +8,11 @@
 import { prisma } from '@/lib/prisma';
 import { validateArticleContent } from '@/lib/summary/summary-orchestrator';
 import { PERMANENT_SKIP_REASONS, SUMMARY_RESET } from './summary-reset';
+import { isHttpUrl } from '@/lib/utils/url/url-validator';
 
 /** 表示・保存してよいサムネイル URL か（http / https だけ） */
 export function isValidThumbnailUrl(url: string | null | undefined): boolean {
-  if (!url) return false;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
-  } catch {
-    return false;
-  }
+  return isHttpUrl(url);
 }
 
 /**

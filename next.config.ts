@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
   // ビルド最適化設定
   compress: true,
   productionBrowserSourceMaps: false,
+  // X-Powered-By: Next.js を付けない（使っている技術を外に知らせない）
+  poweredByHeader: false,
 
   // Server external packages
   // jsdom and parse5 must be unbundled due to ESM/CJS compatibility

@@ -25,7 +25,6 @@ Vercel の Settings → Environment Variables（Production）に設定する。�
 | `DATABASE_URL` | PostgreSQL の接続先 | DB に接続できない |
 | `AUTH_SECRET`（または `NEXTAUTH_SECRET`） | 認証のセッションの署名 | 環境変数の検証で起動に失敗する |
 | `CURSOR_SECRET` | 記事一覧のページ送りのトークン（カーソル）の HMAC 署名 | 本番では `CURSOR_SECRET is required in production` で記事一覧（`/api/articles/list` など）が動かない |
-| `CRON_TOKEN`（旧名 `CRON_SECRET`） | 定期実行のジョブから API を呼ぶときの認証（`lib/auth/cron-secret.ts`） | 定期実行の API 呼び出しが 401 になる |
 
 秘密の値は次のどちらかで作る。
 

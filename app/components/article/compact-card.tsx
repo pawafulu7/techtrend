@@ -20,6 +20,7 @@ import { useIsNewArticle } from '@/app/components/common/relative-time';
 import { TranslationBadge } from '@/components/ui/translation-badge';
 import { useReadStatus } from '@/app/components/article/hooks/use-read-status';
 import { getReadingTime } from '@/app/components/article/hooks/get-reading-time';
+import { openExternalUrl } from '@/lib/utils/url/open-external-url';
 
 /**
  * CompactCard - Title-only card for increased article density
@@ -204,7 +205,7 @@ export function CompactCard({
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              window.open(article.url, '_blank', 'noopener,noreferrer');
+              openExternalUrl(article.url);
             }}
             className="h-9 min-h-[36px] min-w-[36px] px-3 text-xs"
             title="元記事を開く"

@@ -83,7 +83,23 @@ export function isHttpsUrl(urlString: string): boolean {
 }
 
 /**
- * Validate URL format
+ * http: か https: の URL か（`javascript:`・`data:` などを通さない）
+ *
+ * 外部から来た URL をリンクに使う・保存するときはこちらを使う。下の isValidUrl は
+ * URL として読めるかだけを見るので、`javascript:` も通す。
+ */
+export function isHttpUrl(urlString: string | null | undefined): boolean {
+  if (!urlString) return false;
+  try {
+    const url = new URL(urlString);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate URL format（scheme は見ない。`javascript:` も通すので、外部の URL には isHttpUrl を使う）
  *
  * Checks if a string is a valid URL format.
  *
