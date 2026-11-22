@@ -408,8 +408,12 @@ export function useInfiniteArticles(
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          let message = 'ログインが必要です。再度ログインしてください。';
+        if (response.status === 401 || response.status === 403) {
+          // 403 はサイトの入口から外されたときだけ、ページを開き直す案内にする（ほかの 403 は一般の失敗のまま）
+          let message =
+            response.status === 401
+              ? 'ログインが必要です。再度ログインしてください。'
+              : `Failed to fetch articles: ${response.status} ${response.statusText}`;
           try {
             const errorData = await response.json();
             if (isSiteGateErrorBody(errorData)) {

@@ -83,6 +83,28 @@ describe('useInfiniteArticles', () => {
     });
   });
 
+  it.each([
+    [401, { success: false, error: 'x', code: 'GATE_SESSION_REQUIRED' }, 'サイトに入り直す必要があります。ページを開き直してください'],
+    [403, { success: false, error: 'x', code: 'GATE_NOT_ALLOWED' }, 'サイトに入り直す必要があります。ページを開き直してください'],
+    [403, { error: 'Forbidden' }, 'Failed to fetch articles: 403'],
+    [401, { error: { message: 'ログインしてください' } }, 'ログインしてください'],
+  ] as const)('%d %j のときの失敗の文言', async (status, body, message) => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status,
+      statusText: '',
+      json: () => Promise.resolve(body),
+    });
+    const queryClient = createTestQueryClient();
+    const filters: ArticleFilters = { tags: 'React' };
+    const { result } = renderHook(() => useInfiniteArticles(filters), {
+      wrapper: createWrapper(queryClient),
+    });
+    // フックは 1 回だけ 1 秒後に再試行する
+    await waitFor(() => expect(result.current.error).toBeTruthy(), { timeout: 5000 });
+    expect((result.current.error as Error).message).toContain(message);
+  });
+
   it('returning の有無で queryKey が同一になる（詳細から戻るたびに1ページ目から取り直す回帰を防ぐ）', async () => {
     // returning が queryKey に混ざると別クエリ扱いになり、読み込み済みページと
     // スクロール位置が失われる。同一 QueryClient 上でキャッシュエントリが

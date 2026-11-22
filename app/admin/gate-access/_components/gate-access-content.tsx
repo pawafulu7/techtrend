@@ -61,6 +61,8 @@ function GateAccessManager() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: gateAllowlistQueryKey,
     queryFn: ({ signal }) => fetchGateAllowlist(signal),
+    // オフラインでも一時停止させずにすぐ失敗させる（削除のあとの取り直しが止まると、確認のダイアログを閉じられない）
+    networkMode: 'always',
     // 別の管理者の変更も、タブに戻れば出るようにする（既定は 5 分・フォーカスで取り直さない）
     staleTime: 30_000,
     refetchOnWindowFocus: true,

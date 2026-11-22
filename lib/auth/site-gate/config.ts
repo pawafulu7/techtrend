@@ -22,6 +22,8 @@ export interface SiteGateRawEnv {
   AUTH_SECRET?: string;
   NEXTAUTH_SECRET?: string;
   BETTER_AUTH_SECRET?: string;
+  /** Better Auth の複数の鍵（`版:値` のカンマ区切り）。あればアプリ内の Better Auth は先頭の値で署名する */
+  BETTER_AUTH_SECRETS?: string;
   BETTER_AUTH_URL?: string;
   NEXT_PUBLIC_APP_URL?: string;
   PORT?: string;
@@ -96,6 +98,19 @@ export function isSiteGateEnabled(raw: SiteGateRawEnv): boolean {
 
 function trimmed(value: string | undefined): string {
   return value?.trim() ?? '';
+}
+
+/** BETTER_AUTH_SECRETS（`版:値` のカンマ区切り）の値の部分。Better Auth の parseSecretsEnv と同じ読み方 */
+function secretValuesOf(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((entry) => entry.trim())
+    .map((entry) => {
+      const colon = entry.indexOf(':');
+      return colon === -1 ? entry : entry.slice(colon + 1).trim();
+    })
+    .filter((value) => value.length > 0);
 }
 
 /** BETTER_AUTH_URL か NEXT_PUBLIC_APP_URL の origin。どちらも無ければ開発の既定、本番では null */
@@ -178,9 +193,12 @@ export function resolveSiteGateConfig(raw: SiteGateRawEnv): SiteGateConfig {
   if (secret.length < MIN_GATE_SECRET_LENGTH) {
     missing.push(`GATE_AUTH_SECRET (${MIN_GATE_SECRET_LENGTH}文字以上)`);
   } else if (
-    [raw.AUTH_SECRET, raw.NEXTAUTH_SECRET, raw.BETTER_AUTH_SECRET].some(
-      (appSecret) => trimmed(appSecret) === secret
-    )
+    [
+      raw.AUTH_SECRET,
+      raw.NEXTAUTH_SECRET,
+      raw.BETTER_AUTH_SECRET,
+      ...secretValuesOf(raw.BETTER_AUTH_SECRETS),
+    ].some((appSecret) => trimmed(appSecret) === secret)
   ) {
     missing.push('GATE_AUTH_SECRET (アプリ内のログインの鍵と別の値にする)');
   }

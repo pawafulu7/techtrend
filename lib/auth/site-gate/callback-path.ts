@@ -11,7 +11,9 @@ export function resolveGateCallbackPath(raw: string | null): string {
   if (raw === null || raw === '') return '/';
   const path = toInternalPath(raw);
   if (path === null) return '/';
-  if (path === GATE_BASE_PATH || path.startsWith(`${GATE_BASE_PATH}/`)) return '/';
+  // 入口自身かはパスだけで見る（/api/gate?x=1 や /api/gate#x も入口自身）。戻り先はクエリとフラグメントを保つ
+  const { pathname } = new URL(path, 'http://internal.invalid');
+  if (pathname === GATE_BASE_PATH || pathname.startsWith(`${GATE_BASE_PATH}/`)) return '/';
   if (path.length > GATE_CALLBACK_MAX_LENGTH) return '/';
   return path;
 }

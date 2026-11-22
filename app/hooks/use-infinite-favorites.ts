@@ -100,12 +100,12 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
   // Shared cache update logic for favorite removal
   const updateCacheOnRemove = useCallback(
     (articleId: string) => {
-      // 401 の間はキャッシュを書き換えない。setQueryData は（同じデータを返しても）error を消して
-      // success にするため、ログインし直していないのにログインの案内が消えて一覧が戻ってしまう
+      // 401 とサイトの入口の拒否（403 を含む）の間はキャッシュを書き換えない。setQueryData は（同じデータを
+      // 返しても）error を消して success にするため、入り直していないのに案内が消えて一覧が戻ってしまう
+      const cachedError = queryClient.getQueryState(['infinite-favorites'])?.error;
       if (
-        isUnauthorizedFavoritesError(
-          queryClient.getQueryState(['infinite-favorites'])?.error
-        )
+        isUnauthorizedFavoritesError(cachedError) ||
+        (cachedError instanceof FavoritesFetchError && cachedError.siteGate)
       ) {
         return;
       }

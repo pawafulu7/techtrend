@@ -332,4 +332,65 @@ describe('useInfiniteFavorites: セッション切れ（401、issue #729）', ()
     );
     expect(favoritesUrls()).toHaveLength(2);
   });
+
+  it('続きのページがサイトの入口の 403 になったら、その後の解除イベントでも状態を消さない', async () => {
+    const page1 = {
+      favorites: [
+        {
+          id: 'a1',
+          title: 'Article',
+          summary: null,
+          url: 'https://example.com/a1',
+          publishedAt: '2026-01-01T00:00:00.000Z',
+          source: { id: 's1', name: 'Source' },
+          favoriteId: 'f1',
+          favoritedAt: '2026-01-02T00:00:00.000Z',
+        },
+      ],
+      pagination: { page: 1, limit: 20, total: 21, totalPages: 2 },
+    };
+    mockFetch.mockReset();
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(page1),
+      })
+      .mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: () =>
+          Promise.resolve({ success: false, error: 'Site access revoked', code: 'GATE_NOT_ALLOWED' }),
+      });
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(() => useInfiniteFavorites(), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+    // 入口の 403 は 1 回だけ 1 秒後に再試行する（再試行の判定は 401 だけを止める）
+    await waitFor(
+      () => {
+        expect(result.current.isFetchNextPageError).toBe(true);
+      },
+      { timeout: 4000 }
+    );
+    expect((result.current.error as FavoritesFetchError | null)?.siteGate).toBe(true);
+
+    // 遅れて届いた解除の完了イベント。setQueryData は error を消すので、401 の間は書き換えない
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('article-favorite-changed', {
+          detail: { articleId: 'a1', isFavorited: false },
+        })
+      );
+    });
+    await flush();
+    expect((result.current.error as FavoritesFetchError | null)?.siteGate).toBe(true);
+  });
 });

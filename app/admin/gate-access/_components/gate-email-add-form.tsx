@@ -37,6 +37,8 @@ export function GateEmailAddForm({ disabled }: GateEmailAddFormProps) {
 
   const mutation = useMutation({
     mutationFn: (email: string) => addGateEmail(email),
+    // オフラインでも一時停止させずにすぐ失敗させ、失敗の文言を出す
+    networkMode: 'always',
     // 失敗しても一覧を取り直す（追加が済んだ後に応答だけ失われたとき、一覧を古いまま残さない）
     onSettled: () => queryClient.invalidateQueries({ queryKey: gateAllowlistQueryKey }),
   });

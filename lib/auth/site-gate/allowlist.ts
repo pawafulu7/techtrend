@@ -163,6 +163,13 @@ export async function checkGateEmailAccess(
   }
   lastFailureAt = null;
 
+  // 照合を始めてからキャッシュの期限（30 秒）を過ぎて返った結果は使わない。その間に外されていても許可してしまうため
+  // （DB_CONNECT_TIMEOUT を 30 秒より長くしたときだけ起きる）
+  const expiresAt = startedAt + GATE_ALLOW_CACHE_TTL_SEC * 1000;
+  if (Date.now() >= expiresAt) {
+    throw new GateAllowlistUnavailableError('allowlist lookup returned after the cache lifetime');
+  }
+
   if (rowCreatedAt === null) {
     allowCache.delete(email);
     return 'not_allowed';
@@ -170,7 +177,7 @@ export async function checkGateEmailAccess(
   pruneExpired(now);
   allowCache.set(email, {
     rowCreatedAt,
-    expiresAt: startedAt + GATE_ALLOW_CACHE_TTL_SEC * 1000,
+    expiresAt,
   });
   return judgeRow(rowCreatedAt, options.sessionCreatedAt);
 }

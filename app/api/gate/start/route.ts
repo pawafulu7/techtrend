@@ -5,6 +5,7 @@ import { getGateAuth } from '@/lib/auth/site-gate/gate-auth';
 import { resolveGateCallbackPath } from '@/lib/auth/site-gate/callback-path';
 import { GATE_START_PATH } from '@/lib/auth/site-gate/constants';
 import type { SiteGateSettings } from '@/lib/auth/site-gate/config';
+import { z } from 'zod';
 import logger from '@/lib/logger';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 
@@ -15,6 +16,16 @@ import { summarizeError } from '@/lib/utils/sanitize-error';
  * auth.api.signInSocial を呼ぶ。サーバー側からの呼び出しは戻り先の検査もレート制限も通らないので、
  * どちらもここで行う。
  */
+
+/**
+ * 戻り先の入力。同じサイトのパスに解決し（入口自身・1,024 文字超・外部は `/`）、文字列でなければ `/`。
+ * 確認メールのリンク（/auth/verify?...）などはそのまま戻す（resolveGateCallbackPath）
+ */
+const callbackURLSchema = z
+  .string()
+  .nullable()
+  .catch(null)
+  .transform(resolveGateCallbackPath);
 
 function notFound(): NextResponse {
   return new NextResponse('Not Found', {
@@ -27,7 +38,7 @@ async function startSignIn(
   request: NextRequest,
   settings: SiteGateSettings
 ): Promise<Response> {
-  const callbackURL = resolveGateCallbackPath(
+  const callbackURL = callbackURLSchema.parse(
     request.nextUrl.searchParams.get('callbackURL')
   );
 

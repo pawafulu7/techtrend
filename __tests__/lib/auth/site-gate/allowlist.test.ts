@@ -4,6 +4,7 @@ import {
   resetGateAllowlistStateForTests,
 } from '@/lib/auth/site-gate/allowlist';
 import { prisma } from '@/lib/prisma';
+import { resetEnvCache } from '@/lib/config/env';
 
 const findUnique = prisma.gateAllowedEmail.findUnique as unknown as jest.Mock;
 
@@ -178,6 +179,38 @@ describe('checkGateEmailAccess', () => {
     await expect(
       checkGateEmailAccess('friend@gmail.com', { fixedEmails: FIXED })
     ).resolves.toBe('not_allowed');
+  });
+
+  it('does not use or cache a result that came back after the cache lifetime', async () => {
+    // DB_CONNECT_TIMEOUT を 30 秒より長くした環境で、照合が 30 秒を超えてから返った
+    const original = process.env.DB_CONNECT_TIMEOUT;
+    process.env.DB_CONNECT_TIMEOUT = '60';
+    resetEnvCache();
+    try {
+      jest.useFakeTimers({ now: new Date('2026-11-21T00:00:00Z') });
+      let resolveRow!: (value: unknown) => void;
+      findUnique.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRow = resolve;
+        })
+      );
+      const check = checkGateEmailAccess('friend@gmail.com', { fixedEmails: FIXED });
+      const settled = check.catch((e: unknown) => e);
+      jest.setSystemTime(new Date('2026-11-21T00:00:31Z'));
+      resolveRow(rowResult());
+      await expect(settled).resolves.toBeInstanceOf(GateAllowlistUnavailableError);
+
+      // キャッシュに入っていないので、次は DB を引き直す
+      jest.setSystemTime(new Date('2026-11-21T00:00:40Z'));
+      findUnique.mockResolvedValue(null);
+      await expect(
+        checkGateEmailAccess('friend@gmail.com', { fixedEmails: FIXED })
+      ).resolves.toBe('not_allowed');
+    } finally {
+      if (original === undefined) delete process.env.DB_CONNECT_TIMEOUT;
+      else process.env.DB_CONNECT_TIMEOUT = original;
+      resetEnvCache();
+    }
   });
 
   describe('足し直した行より前のログイン状態', () => {

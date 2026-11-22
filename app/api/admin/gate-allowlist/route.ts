@@ -42,6 +42,9 @@ export const dynamic = 'force-dynamic';
 
 const ENTRY_SELECT = { id: true, email: true, createdAt: true } as const;
 
+/** 許可リストへの追加を直列にするアドバイザリロックの鍵（このテーブルの追加だけが使う） */
+const GATE_ALLOWLIST_ADD_LOCK_KEY = BigInt(0x67617465); // 'gate'
+
 async function currentGateEmailOrNull(
   request: NextRequest,
   config: ReturnType<typeof getSiteGateConfig>
@@ -143,26 +146,31 @@ async function postHandler(request: NextRequest, context: WithAdminAuthContext) 
   }
 
   try {
-    // 固定のアドレスと重なる行（環境変数を変えたときに残りうる）は、一覧でも固定の扱いなので数えない
-    const count = await prisma.gateAllowedEmail.count({
-      where:
-        config.kind === 'enabled'
-          ? { email: { notIn: [...config.settings.fixedEmails] } }
-          : undefined,
+    // 件数の確認と追加を 1 つのトランザクションにし、アドバイザリロックで追加どうしを直列にする
+    // （別々に流すと、残り 1 件のときに別のアドレスの追加が同時に来て、両方とも上限を超えて入るため）
+    const created = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${GATE_ALLOWLIST_ADD_LOCK_KEY})`;
+      // 固定のアドレスと重なる行（環境変数を変えたときに残りうる）は、一覧でも固定の扱いなので数えない
+      const count = await tx.gateAllowedEmail.count({
+        where:
+          config.kind === 'enabled'
+            ? { email: { notIn: [...config.settings.fixedEmails] } }
+            : undefined,
+      });
+      if (count >= GATE_ALLOWLIST_MAX_ENTRIES) return null;
+      // 先に探してから作ると、二重送信で一意制約の違反（500）になる。作って、違反を 409 にする
+      return tx.gateAllowedEmail.create({
+        data: { email, createdById: context.session.user.id },
+        select: ENTRY_SELECT,
+      });
     });
-    if (count >= GATE_ALLOWLIST_MAX_ENTRIES) {
+    if (created === null) {
       return gateAllowlistError(
         400,
         GATE_ALLOWLIST_ERROR_CODES.LIST_FULL,
         'The allowlist is full'
       );
     }
-
-    // 先に探してから作ると、二重送信で一意制約の違反（500）になる。作って、違反を 409 にする
-    const created = await prisma.gateAllowedEmail.create({
-      data: { email, createdById: context.session.user.id },
-      select: ENTRY_SELECT,
-    });
 
     logger.info(
       {

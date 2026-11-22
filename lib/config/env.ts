@@ -263,6 +263,7 @@ const envSchema = z
     GATE_ALWAYS_ALLOWED_EMAILS: z.string().optional(),
     // Better Auth が secret の既定として読む値。入口の鍵と同じ値を使わせないためにだけ読む
     BETTER_AUTH_SECRET: z.string().optional(),
+    BETTER_AUTH_SECRETS: z.string().optional(),
     // 以前の Basic 認証の入口のフラグ。コードは消したが、設定だけが残った環境が全公開にならないよう、
     // 残っていて入口が有効でなければ 503 にする（移行の守り）。全環境から消したあとにこの読み取りも消す
     BASIC_AUTH_ENABLED: z.string().optional(),

@@ -183,6 +183,11 @@ describe('resolveGateCallbackPath', () => {
     ['/\\evil.example', '/'],
     ['/api/gate/start?callbackURL=/x', '/'],
     ['/api/gate', '/'],
+    // 入口自身かはパスだけで見る
+    ['/api/gate?x=1', '/'],
+    ['/api/gate#section', '/'],
+    ['/api/gate/start?x=1#y', '/'],
+    ['/digest?x=1#y', '/digest?x=1#y'],
     ['/api/gateway', '/api/gateway'],
     [`/${'a'.repeat(1023)}`, `/${'a'.repeat(1023)}`],
     [`/${'a'.repeat(1024)}`, '/'],
@@ -281,6 +286,13 @@ describe('GET /api/gate/[...all]', () => {
     );
     const allowed = await catchAll.GET(request('/api/gate/callback/google?code=c&state=s'));
     expect(setCookiesOf(allowed).join('\n')).not.toContain('error_notice');
+  });
+
+  it('treats an overly long error code as unknown', async () => {
+    const response = await catchAll.GET(
+      request(`/api/gate/error?error=${'not_allowed'.repeat(10)}`)
+    );
+    expect(await response.text()).toContain('エラーのコード: unknown');
   });
 
   it('ignores error_description (does not show text from the URL)', async () => {

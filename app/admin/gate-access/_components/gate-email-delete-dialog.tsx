@@ -38,6 +38,8 @@ export function GateEmailDeleteDialog({
 
   const mutation = useMutation({
     mutationFn: (id: string) => removeGateEmail(id),
+    // オフラインでも一時停止させずにすぐ失敗させる（一時停止すると送信中のままになり、ダイアログを閉じられない）
+    networkMode: 'always',
     // 失敗しても一覧を取り直す（削除が済んだ後に応答だけ失われたとき・すでに消えていたとき）。
     // 取り直しが終わってから閉じる（閉じた直後に消えたはずの行が残って見えないように）
     onSettled: () => queryClient.invalidateQueries({ queryKey: gateAllowlistQueryKey }),

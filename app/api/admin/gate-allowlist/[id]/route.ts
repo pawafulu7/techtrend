@@ -51,6 +51,14 @@ async function deleteHandler(
     if (!row) return entryNotFound();
 
     const config = getSiteGateConfig();
+    // 設定で固定したアドレスと重なる行（環境変数を変えたときに残りうる）は、一覧でも固定の扱いで削除できない
+    if (config.kind === 'enabled' && config.settings.fixedEmails.includes(row.email)) {
+      return gateAllowlistError(
+        409,
+        GATE_ALLOWLIST_ERROR_CODES.ALREADY_FIXED,
+        'The address is fixed by the environment'
+      );
+    }
     let currentEmail: string | null;
     try {
       currentEmail = await getCurrentGateEmail(config, request.headers);

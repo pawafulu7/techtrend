@@ -277,6 +277,17 @@ describe('POST /api/admin/gate-allowlist', () => {
     });
   });
 
+  it('counts and creates in one transaction under an advisory lock', async () => {
+    prismaMock.gateAllowedEmail.create.mockResolvedValue(
+      row(ID_1, 'friend@gmail.com', '2026-11-21T03:00:00Z')
+    );
+    await post({ email: 'friend@gmail.com' });
+    expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+    expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1);
+    const sql = (prismaMock.$executeRaw.mock.calls[0][0] as TemplateStringsArray).join('?');
+    expect(sql).toContain('pg_advisory_xact_lock');
+  });
+
   it('rejects when the list is full', async () => {
     prismaMock.gateAllowedEmail.count.mockResolvedValue(100);
     const response = await post({ email: 'friend@gmail.com' });
@@ -354,6 +365,15 @@ describe('DELETE /api/admin/gate-allowlist/[id]', () => {
     expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({ code: 'ENTRY_NOT_FOUND' });
     expect(prismaMock.gateAllowedEmail.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('refuses to remove a row that overlaps a fixed address', async () => {
+    prismaMock.gateAllowedEmail.findUnique.mockResolvedValue({ id: ID_1, email: 'owner@gmail.com' });
+
+    const response = await remove(ID_1);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: 'ALREADY_FIXED' });
+    expect(prismaMock.gateAllowedEmail.delete).not.toHaveBeenCalled();
   });
 
   it('removes a row whose id is not a cuid (inserted by hand)', async () => {

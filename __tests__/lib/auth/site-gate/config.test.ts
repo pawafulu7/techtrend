@@ -206,6 +206,15 @@ describe('resolveSiteGateConfig', () => {
     expect(reason).not.toContain('secret-person');
   });
 
+  it('is misconfigured when GATE_AUTH_SECRET equals one of BETTER_AUTH_SECRETS (version:value)', () => {
+    expect(
+      reasonOf(rawEnv({ BETTER_AUTH_SECRETS: `2:${'x'.repeat(40)}, 1:${GATE_SECRET}` }))
+    ).toContain('アプリ内のログインの鍵と別の値');
+    expect(
+      resolveSiteGateConfig(rawEnv({ BETTER_AUTH_SECRETS: `1:${'x'.repeat(40)}` })).kind
+    ).toBe('enabled');
+  });
+
   it.each(['AUTH_SECRET', 'NEXTAUTH_SECRET', 'BETTER_AUTH_SECRET'] as const)(
     'is misconfigured when GATE_AUTH_SECRET equals %s',
     (name) => {
