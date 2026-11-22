@@ -18,7 +18,7 @@ import { summarizeError } from '@/lib/utils/sanitize-error';
  */
 
 /**
- * 戻り先の入力（API の入力は Zod で受ける。.claude/skills/_shared/project-patterns.md「バリデーション」）。
+ * 戻り先の入力（API の入力は Zod で受ける。.coderabbit.yaml の app/api の規則）。
  * 同じサイトのパスに解決し、解決できない・入口自身・1,024 文字超は `/`（resolveGateCallbackPath）
  */
 const callbackURLSchema = z

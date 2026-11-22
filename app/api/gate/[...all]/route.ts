@@ -35,7 +35,7 @@ const HANDLED_PATHS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * エラーページの ?error=（API の入力は Zod で受ける。.claude/skills/_shared/project-patterns.md「バリデーション」）。
+ * エラーページの ?error=（API の入力は Zod で受ける。.coderabbit.yaml の app/api の規則）。
  * 知っているコードだけを通し、無い・長すぎる・知らないコードは unknown（lib/auth/site-gate/error-codes.ts）
  */
 const errorCodeSchema = z
