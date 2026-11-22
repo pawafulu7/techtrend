@@ -3,7 +3,7 @@
  *
  * Route Handler が自分で付けた Cache-Control / CDN-Cache-Control は、proxy.ts の
  * finalize の private, no-store に勝って最終応答に残る（2026-10-01 に本番で実測）。
- * 共有キャッシュ可能なヘッダは lib/api/cache-headers.ts 経由で付け、Basic 認証ゲートが
+ * 共有キャッシュ可能なヘッダは lib/api/cache-headers.ts 経由で付け、サイトの入口が
  * 有効なときは private, no-store に切り替える必要がある。
  *
  * 次の書き方を検出する（改行をまたいでもよい）。

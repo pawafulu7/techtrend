@@ -14,6 +14,7 @@ import { CategoryPreferenceDialog } from '@/app/components/personalization/categ
 import { useUpdatePreferences } from '@/app/hooks/use-personalization-preferences';
 import { DigestFetchError, useDigest } from '@/app/hooks/use-digest';
 import { loginWithCallback } from '@/lib/routes/auth';
+import { SiteGateReopenState } from '@/app/components/common/site-gate-reopen-state';
 import type { DigestPeriod } from '@/lib/personalization/digest-service';
 import type { PeriodPreset } from '@/lib/personalization/types';
 
@@ -29,8 +30,10 @@ export function DigestClient() {
     isFetching,
     hasFailedSinceMount,
   } = useDigest(period);
+  // サイトの入口（Google ログイン）が切れた・取り消された: アプリのログインではなく、ページを開き直す案内を出す
+  const isSiteGateError = error instanceof DigestFetchError && error.siteGate;
   const isUnauthorized =
-    error instanceof DigestFetchError && error.status === 401;
+    isSiteGateError || (error instanceof DigestFetchError && error.status === 401);
   // React Query は data の無いクエリを再取得すると pending に戻す。読み込み中の表示は初回だけにし、
   // 失敗後の再試行中は失敗表示（再試行中…）を残す（issue #701）
   const showInitialLoading = isLoading && !hasFailedSinceMount;
@@ -97,7 +100,9 @@ export function DigestClient() {
       </Tabs>
 
       {/* Error State: 生の error.message は出さない（issue #701） */}
-      {error && isUnauthorized && (
+      {error && isSiteGateError && <SiteGateReopenState />}
+
+      {error && isUnauthorized && !isSiteGateError && (
         <ErrorState
           size="block"
           title="ログインの有効期限が切れました"

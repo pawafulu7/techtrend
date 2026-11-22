@@ -7,10 +7,14 @@ import type {
   FavoriteArticle,
   FavoritesApiResponse,
 } from '@/lib/favorites/types';
+import { isSiteGateErrorResponse } from '@/lib/utils/action-error-messages';
 
-/** 画面で文言を選べるよう、HTTP ステータスを持たせる（issue #729） */
+/** 画面で文言を選べるよう、HTTP ステータスと、サイトの入口の拒否かを持たせる（issue #729） */
 export class FavoritesFetchError extends Error {
-  constructor(readonly status: number) {
+  constructor(
+    readonly status: number,
+    readonly siteGate = false
+  ) {
     super(`Failed to fetch favorites: ${status}`);
     this.name = 'FavoritesFetchError';
   }
@@ -20,6 +24,11 @@ export const isUnauthorizedFavoritesError = (
   error: unknown
 ): error is FavoritesFetchError =>
   error instanceof FavoritesFetchError && error.status === 401;
+
+/** 取り直しても同じ結果になる失敗（アプリのログイン切れの 401 と、サイトの入口の拒否の 401・403） */
+const isPersistentFavoritesError = (error: unknown): boolean =>
+  isUnauthorizedFavoritesError(error) ||
+  (error instanceof FavoritesFetchError && error.siteGate);
 
 interface UseFavoritesOptions {
   /** 1ページあたりの件数 */
@@ -90,16 +99,16 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
   // 失われる」症状をそのまま再現していた。
   // 鮮度は再マウント経路で担保される（下の refetchOnMount は既定 true のまま）。
   // 受容する理由: bfcache 復元の発火経路自体が極小である。SPA 内遷移では
-  // pageshow(persisted) が発火せず、BASIC 認証ゲート環境では no-store により
+  // pageshow(persisted) が発火せず、サイトの入口が有効な環境では no-store により
   // そもそも bfcache の対象外になる。
 
   // Shared cache update logic for favorite removal
   const updateCacheOnRemove = useCallback(
     (articleId: string) => {
-      // 401 の間はキャッシュを書き換えない。setQueryData は（同じデータを返しても）error を消して
-      // success にするため、ログインし直していないのにログインの案内が消えて一覧が戻ってしまう
+      // 401 とサイトの入口の拒否（403 を含む）の間はキャッシュを書き換えない。setQueryData は（同じデータを
+      // 返しても）error を消して success にするため、入り直していないのに案内が消えて一覧が戻ってしまう
       if (
-        isUnauthorizedFavoritesError(
+        isPersistentFavoritesError(
           queryClient.getQueryState(['infinite-favorites'])?.error
         )
       ) {
@@ -209,7 +218,10 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
       );
 
       if (!response.ok) {
-        throw new FavoritesFetchError(response.status);
+        throw new FavoritesFetchError(
+          response.status,
+          await isSiteGateErrorResponse(response)
+        );
       }
 
       const data = await response.json();
@@ -250,15 +262,15 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     // （app/favorites/_components/favorites-content.tsx）で、未マウント中に他画面で
     // 起きたお気に入りの追加・削除を上の window イベントリスナーで拾えないため、
     // false にするとキャッシュが最大 gcTime ぶん古いまま表示される。
-    // 401 は取り直してもログインし直すまで同じ結果になるので、自動では取り直さない。data の無い
-    // クエリは取り直すと error が消え、その間ログインの案内が一般の失敗表示に変わってしまう。
+    // 401 とサイトの入口の拒否は、取り直してもログインし直す（入り直す）まで同じ結果になるので、自動では取り直さない。
+    // data の無いクエリは取り直すと error が消え、その間ログインの案内が一般の失敗表示に変わってしまう。
     // enabled はお気に入りの変更イベントでの invalidate も止める。手動の refetch() は enabled を見ない
     retry: (failureCount, error) =>
-      !isUnauthorizedFavoritesError(error) && failureCount < 1,
+      !isPersistentFavoritesError(error) && failureCount < 1,
     retryDelay: 1000,
     enabled: (query) =>
       !(
-        isUnauthorizedFavoritesError(query.state.error) &&
+        isPersistentFavoritesError(query.state.error) &&
         query.state.errorUpdatedAt >= mountedAt
       ),
   });

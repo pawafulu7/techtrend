@@ -10,6 +10,7 @@ import { renderToString } from 'react-dom/server';
 import { hydrateRoot } from 'react-dom/client';
 import { HomeClientInfinite } from '@/app/components/home/home-client-infinite';
 import type { Source, Tag } from '@/lib/prisma-exports';
+import { ArticlesFetchError } from '@/lib/articles/articles-fetch-error';
 
 /**
  * ホーム一覧の「非破壊ローディング」を固定する回帰テスト。
@@ -43,6 +44,7 @@ type MockInfiniteArticles = {
   errorUpdateCount?: number;
   isFetchNextPageError?: boolean;
   isPlaceholderData?: boolean;
+  error?: Error | null;
   refetch: jest.Mock;
 };
 type MockPreferences = {
@@ -429,6 +431,33 @@ describe('HomeClientInfinite の手動更新', () => {
       screen.queryByText('記事を読み込めませんでした')
     ).not.toBeInTheDocument();
   });
+
+  it.each([
+    ['続きのページ', { isFetchNextPageError: true }],
+    ['取り直し', { isRefetchError: true }],
+  ] as const)(
+    '%sがサイトの入口に拒否されたら、一覧の代わりにページを開き直す案内だけを出す',
+    (_label, flags) => {
+      mockUseInfiniteArticles.mockReturnValue({
+        ...pageWith(ARTICLES, FETCHED_AT),
+        isError: true,
+        error: new ArticlesFetchError('x', 403, true),
+        ...flags,
+      });
+      renderHome();
+
+      expect(
+        screen.getByText('サイトに入り直す必要があります')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'ページを開き直す' })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: '再試行' })
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('記事1')).not.toBeInTheDocument();
+    }
+  );
 
   it('初回の取得の失敗は従来どおりエラー画面を出す', () => {
     const state = {

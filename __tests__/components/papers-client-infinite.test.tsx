@@ -4,6 +4,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { PapersClientInfinite } from '@/app/components/papers/papers-client-infinite';
+import { ArticlesFetchError } from '@/lib/articles/articles-fetch-error';
 import {
   ARXIV_SOURCE_ID,
   HUGGINGFACE_PAPERS_SOURCE_ID,
@@ -113,6 +114,34 @@ describe('PapersClientInfinite: 取得の状態（issue #701）', () => {
     pages: [{ data: { items: [{ id: 'p1' }], total: 40 } }],
     pageParams: [1],
   };
+
+  it.each([
+    ['一覧が無い', { data: undefined, errorUpdateCount: 1 }],
+    ['続きのページ', { data: pages, hasNextPage: true, isFetchNextPageError: true }],
+  ] as const)(
+    '%sときにサイトの入口に拒否されたら、ページを開き直す案内だけを出す',
+    (_label, flags) => {
+      mockUseInfiniteArticles.mockReturnValue(
+        state({
+          isError: true,
+          error: new ArticlesFetchError('x', 401, true),
+          ...flags,
+        })
+      );
+      renderPapers();
+
+      expect(
+        screen.getByText('サイトに入り直す必要があります')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'ページを開き直す' })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: '再試行' })
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('article-list')).not.toBeInTheDocument();
+    }
+  );
 
   it('続きのページの失敗は一覧を残して下端に出し、自動の取得を止める', () => {
     const current = state({

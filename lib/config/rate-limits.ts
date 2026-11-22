@@ -46,16 +46,27 @@ export const RATE_LIMIT_POLICIES = {
     notes: 'Prevent brute force attacks',
     telemetryEvent: 'ratelimit.auth.login',
   },
-  // サイト全体の Basic 認証ゲートの失敗。proxy.ts が資格情報を送ってきて
-  // 通らなかったリクエストだけを数え、上限を超えた IP は正しい資格情報でも解除まで通さない
-  // （lib/auth/gate-attempt-limit.ts）。ゲートはインターネットからそのまま届く唯一の入口
-  'auth:gate': {
-    points: 10,
-    duration: 15 * 60,
-    blockDuration: 15 * 60,
+
+  // サイトの入口のログインの開始（app/api/gate/start/route.ts）。開始は Cookie を 1 つ作るだけで外部へ
+  // 通信しないので緩めにする（プリフェッチや複数のタブの復元で本人が締め出されないように）。
+  // 守りの本体は Google のログインと許可リストの照合
+  'auth:gate-start': {
+    points: 30,
+    duration: 60,
     keyStrategy: 'ip',
-    notes: 'Brute-force protection for the site-wide Basic auth gate',
-    telemetryEvent: 'ratelimit.auth.gate',
+    notes: 'Throttle sign-in starts of the site-wide Google gate',
+    telemetryEvent: 'ratelimit.auth.gate_start',
+  },
+
+  // サイトの入口の Google からの戻り（app/api/gate/[...all]/route.ts）。DB なしの state は Cookie にあり、
+  // サーバー側に「使った」記録が残らないので、同じ state の Cookie で 10 分間は戻りを繰り返せる。
+  // 戻りのたびに Google へトークンの交換を送るので、IP ごとに回数を絞る
+  'auth:gate-callback': {
+    points: 30,
+    duration: 60,
+    keyStrategy: 'ip',
+    notes: 'Throttle OAuth callbacks of the site-wide Google gate',
+    telemetryEvent: 'ratelimit.auth.gate_callback',
   },
 
   // RAG (Existing Policies) - No block, soft throttle only

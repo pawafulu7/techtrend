@@ -12,6 +12,7 @@ import { UserDisableDialog } from '@/app/admin/users/_components/user-disable-di
 import {
   RATE_LIMITED_MESSAGE,
   SESSION_EXPIRED_MESSAGE,
+  SITE_GATE_REOPEN_MESSAGE,
 } from '@/lib/utils/action-error-messages';
 
 const ROLE_FAILED =
@@ -121,7 +122,27 @@ describe('UserRoleDialog: 失敗の文言', () => {
       SESSION_EXPIRED_MESSAGE,
     ],
     [
-      '本文が JSON でない 401（Basic 認証など）',
+      'サイトの入口のログイン切れ（proxy の 401）',
+      () =>
+        jsonResponse(401, {
+          success: false,
+          error: 'Site sign-in required',
+          code: 'GATE_SESSION_REQUIRED',
+        }),
+      SITE_GATE_REOPEN_MESSAGE,
+    ],
+    [
+      'サイトの入口の許可の取り消し（proxy の 403）',
+      () =>
+        jsonResponse(403, {
+          success: false,
+          error: 'Site access revoked',
+          code: 'GATE_NOT_ALLOWED',
+        }),
+      SITE_GATE_REOPEN_MESSAGE,
+    ],
+    [
+      '本文が JSON でない 401（プロキシのエラーページなど）',
       () => nonJsonResponse(401),
       SESSION_EXPIRED_MESSAGE,
     ],
@@ -207,7 +228,27 @@ describe('UserDisableDialog: 失敗の文言', () => {
       'このユーザーは既に無効化されています',
     ],
     [
-      '本文が JSON でない 401（Basic 認証など）',
+      'サイトの入口のログイン切れ（proxy の 401）',
+      () =>
+        jsonResponse(401, {
+          success: false,
+          error: 'Site sign-in required',
+          code: 'GATE_SESSION_REQUIRED',
+        }),
+      SITE_GATE_REOPEN_MESSAGE,
+    ],
+    [
+      'サイトの入口の許可の取り消し（proxy の 403）',
+      () =>
+        jsonResponse(403, {
+          success: false,
+          error: 'Site access revoked',
+          code: 'GATE_NOT_ALLOWED',
+        }),
+      SITE_GATE_REOPEN_MESSAGE,
+    ],
+    [
+      '本文が JSON でない 401（プロキシのエラーページなど）',
       () => nonJsonResponse(401),
       SESSION_EXPIRED_MESSAGE,
     ],

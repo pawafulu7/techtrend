@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
 import { useQueryClient } from '@tanstack/react-query';
 import logger from '@/lib/logger.client';
+import { isWritableArticlesQuery } from '@/lib/articles/articles-fetch-error';
 
 interface ReadTrackerProps {
   articleId: string;
@@ -59,8 +60,13 @@ export function ReadTracker({
     // Helper: optimistic cache/event/localStorage updates
     // Shared by markAsRead success handler and cleanup beacon
     const applyOptimisticUpdates = () => {
+      // サイトの入口に拒否されている一覧は書き換えない（拒否の案内が消えるため。isWritableArticlesQuery）
       queryClient.setQueriesData(
-        { queryKey: ['infinite-articles'], exact: false },
+        {
+          queryKey: ['infinite-articles'],
+          exact: false,
+          predicate: isWritableArticlesQuery,
+        },
         (oldData: any) => {
           if (!oldData || !Array.isArray(oldData.pages)) return oldData;
 

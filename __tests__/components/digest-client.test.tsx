@@ -69,6 +69,24 @@ describe('DigestClient: 取得の失敗（issue #701）', () => {
     expect(screen.queryByTestId('error-message')).not.toBeInTheDocument();
   });
 
+  it.each([
+    [401, 'GATE_SESSION_REQUIRED'],
+    [403, 'GATE_NOT_ALLOWED'],
+  ])('サイトの入口の %d（%s）では、アプリのログインではなくページを開き直す案内を出す', async (status, code) => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status,
+      json: async () => ({ success: false, error: 'x', code }),
+    });
+
+    renderDigest();
+
+    expect(await screen.findByText('サイトに入り直す必要があります')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ページを開き直す' })).toBeInTheDocument();
+    expect(screen.queryByText('ログインの有効期限が切れました')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '再試行' })).not.toBeInTheDocument();
+  });
+
   it('401 のときは再試行ではなくログインへの導線を出す', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 401 });
 

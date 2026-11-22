@@ -76,7 +76,7 @@ git push origin main
 # Vercel auto-deploys
 ```
 
-**Verification**: 本番はゲート（Basic 認証）とログインの内側にあるので、認証なしの curl では確かめられない。ログインしたブラウザで AI 検索（`/search/agent`）を実行し、開発者ツールの Network で `/api/rag/agent-search` が 503 を返すことを確かめる。
+**Verification**: 本番はサイトの入口（Google ログインと許可リスト）とログインの内側にあるので、認証なしの curl では確かめられない。ログインしたブラウザで AI 検索（`/search/agent`）を実行し、開発者ツールの Network で `/api/rag/agent-search` が 503 を返すことを確かめる。
 
 ---
 

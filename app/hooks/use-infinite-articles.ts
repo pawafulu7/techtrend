@@ -5,10 +5,18 @@ import {
   keepPreviousData,
   InfiniteData,
 } from '@tanstack/react-query';
+import {
+  SITE_GATE_REOPEN_MESSAGE,
+  isSiteGateErrorBody,
+} from '@/lib/utils/action-error-messages';
 import { ArticleWithUserData } from '@/types/models';
 import { authClient } from '@/lib/auth/auth-client';
 import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { debounce } from '@/lib/utils/debounce';
+import {
+  ArticlesFetchError,
+  isWritableArticlesQuery,
+} from '@/lib/articles/articles-fetch-error';
 import {
   buildArticlesRequest,
   infiniteArticlesQueryKey,
@@ -171,9 +179,11 @@ export function useInfiniteArticles(
       // Debug log removed
 
       // すべての関連するキャッシュを更新
+      // サイトの入口に拒否されている一覧は書き換えない（拒否の案内が消えるため。isWritableArticlesQuery）
       const cacheKeys = queryClient.getQueryCache().findAll({
         queryKey: ['infinite-articles'],
         exact: false,
+        predicate: isWritableArticlesQuery,
       });
 
       // Debug log removed
@@ -239,7 +249,11 @@ export function useInfiniteArticles(
 
       // Update all infinite-articles caches using setQueriesData
       queryClient.setQueriesData<InfiniteArticlesData>(
-        { queryKey: ['infinite-articles'], exact: false },
+        {
+          queryKey: ['infinite-articles'],
+          exact: false,
+          predicate: isWritableArticlesQuery,
+        },
         (oldData) => {
           if (!oldData?.pages) return oldData;
           return {
@@ -306,7 +320,7 @@ export function useInfiniteArticles(
   // したがって bfcache 復元後、別タブ等で変わった既読状態はカードのバッジに
   // 反映されず復元前のまま残りうる。
   // 受容する理由: bfcache 復元の発火経路自体が極小である。SPA 内遷移では
-  // pageshow(persisted) が発火せず、BASIC 認証ゲート環境では no-store により
+  // pageshow(persisted) が発火せず、サイトの入口が有効な環境では no-store により
   // そもそも bfcache の対象外になる。
   // 全ページの取り直し（手動更新など）は、全ページを取り終えてからキャッシュを置き換える。
   // その途中で成功したお気に入りの変更は、先に取ったページの応答に入っておらず、
@@ -404,20 +418,30 @@ export function useInfiniteArticles(
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          let message = 'ログインが必要です。再度ログインしてください。';
+        if (response.status === 401 || response.status === 403) {
+          // 403 はサイトの入口から外されたときだけ、ページを開き直す案内にする（ほかの 403 は一般の失敗のまま）
+          let message =
+            response.status === 401
+              ? 'ログインが必要です。再度ログインしてください。'
+              : `Failed to fetch articles: ${response.status} ${response.statusText}`;
+          let siteGate = false;
           try {
             const errorData = await response.json();
-            if (errorData?.error?.message) {
+            if (isSiteGateErrorBody(errorData)) {
+              // サイトの入口（Google ログイン）が切れた: アプリのログインではなく、ページを開き直す案内にする
+              message = SITE_GATE_REOPEN_MESSAGE;
+              siteGate = true;
+            } else if (response.status === 401 && errorData?.error?.message) {
               message = errorData.error.message;
             }
           } catch {
             // response.json() failed - keep default message
           }
-          throw new Error(message);
+          throw new ArticlesFetchError(message, response.status, siteGate);
         }
-        throw new Error(
-          `Failed to fetch articles: ${response.status} ${response.statusText}`
+        throw new ArticlesFetchError(
+          `Failed to fetch articles: ${response.status} ${response.statusText}`,
+          response.status
         );
       }
 

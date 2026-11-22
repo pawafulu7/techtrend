@@ -8,11 +8,12 @@
 flowchart TD
     Browser["ブラウザ / RSC"] --> Proxy["proxy.ts"]
 
-    Proxy --> BasicGate{"Basic gate<br/>BASIC_AUTH_ENABLED?"}
-    BasicGate -->|"有効・設定不備"| Err503["503<br/>Service Unavailable"]
-    BasicGate -->|"有効・資格情報不一致"| Err401["401<br/>WWW-Authenticate"]
-    BasicGate -->|"有効・同じ IP の失敗が上限超え"| Err429["429<br/>Retry-After"]
-    BasicGate -->|"無効 or 通過<br/>(basic/cookie)"| Nul{"URL に %00?"}
+    Proxy --> SiteGate{"サイトの入口<br/>GATE_GOOGLE_ENABLED?"}
+    SiteGate -->|"設定不備・Basic の設定の残り<br/>・確認の失敗（DB の障害など）"| Err503["503<br/>Service Unavailable"]
+    SiteGate -->|"入口のログイン状態なし<br/>（ブラウザの遷移）"| GateStart["302<br/>/api/gate/start → Google"]
+    SiteGate -->|"入口のログイン状態なし<br/>（API・画面内の取得）"| Err401["401<br/>GATE_SESSION_REQUIRED"]
+    SiteGate -->|"許可リストから外された"| Err403["302 /api/gate/error か<br/>403 GATE_NOT_ALLOWED"]
+    SiteGate -->|"無効 or 通過<br/>(pass/public)"| Nul{"URL に %00?"}
     Nul -->|"含む"| Err400["400"]
     Nul -->|"含まない"| Csrf{"CSRF チェック<br/>/api/* かつ変更系メソッド"}
 
@@ -25,7 +26,7 @@ flowchart TD
     Protected -->|"Cookie 無し"| Redirect["ログインへ<br/>redirect / 401"]
     Protected -->|"Cookie 存在<br/>(検証はしない)"| Finalize["finalize()<br/>setSecurityHeaders"]
 
-    Finalize -.->|"basic/cookie/cron<br/>通過時のみ"| GateHeaders["private, no-store<br/>CDN-Cache-Control<br/>Vercel-CDN-Cache-Control<br/>Vary 追加"]
+    Finalize -.->|"入口の通過時のみ<br/>(pass/public)"| GateHeaders["private, no-store<br/>CDN-Cache-Control<br/>Vercel-CDN-Cache-Control<br/>Vary 追加"]
 
     Finalize --> RouteType{"ルート種別"}
     RouteType -->|"通常通過時のみ x-theme 付与"| RSC["RSC page"]
@@ -43,14 +44,14 @@ flowchart TD
 
 ### 読み方
 
-- `proxy.ts` は全リクエスト共通の直列パイプラインではなく、**5 つの独立した条件分岐**です。各ゲートは有効化条件が異なり、無効時はスキップされます（Basic gate は `BASIC_AUTH_ENABLED` 時のみ、NUL の拒否は URL に `%00` を含むときのみ、CSRF は `/api/*` の変更系メソッドのみ、メンテナンスは `MAINTENANCE_MODE` 時のみ、保護パスガードは対象パスのみ）。
-- `finalize()` が付与する `Cache-Control: private, no-store` / `CDN-Cache-Control` / `Vercel-CDN-Cache-Control` / `Vary` 追加は、**Basic gate を通過したリクエスト（`gate.kind === 'basic' | 'cookie'`）のときだけ**実行されます。Basic 認証で通したときはゲートの Cookie も発行します。`/_next/image` はこの処理から外します。Basic 認証が無効な環境ではこれらのヘッダーは付与されません（`proxy.ts:141-188`）。route 側でも、ゲートが有効なときは `lib/api/cache-headers.ts` が公開キャッシュのヘッダーを private に変えます。
+- `proxy.ts` は全リクエスト共通の直列パイプラインではなく、**5 つの独立した条件分岐**です。各ゲートは有効化条件が異なり、無効時はスキップされます（サイトの入口は `GATE_GOOGLE_ENABLED` が true のとき（Vercel の Production では未設定も有効）のみ、NUL の拒否は URL に `%00` を含むときのみ、CSRF は `/api/*` の変更系メソッドのみ、メンテナンスは `MAINTENANCE_MODE` 時のみ、保護パスガードは対象パスのみ）。
+- `finalize()` が付与する `Cache-Control: private, no-store` / `CDN-Cache-Control` / `Vercel-CDN-Cache-Control` / `Vary` 追加は、**サイトの入口を通過したリクエスト（`gate.kind === 'pass' | 'public'`）のときだけ**実行されます。入口のログイン状態の確認が返した Set-Cookie もここで載せます。`/_next/image` はこの処理から外します（キャッシュの打ち消しも Cookie もしない）。入口が無効な環境ではこれらのヘッダーは付与されません（`proxy.ts:142-188`）。route 側でも、入口が有効になりうるときは `lib/api/cache-headers.ts` が公開キャッシュのヘッダーを private に変えます。
 - 保護パスガード（`/profile` `/favorites` `/history` `/digest` `/api/favorites`）は**セッション Cookie の存在確認のみ**で、セッションの有効性やロールは検証していません。実際の検証は RSC 側の `getSession()` / `requireAdmin()` や API 側のラッパーで行われます。
-- Basic gate は、資格情報（Authorization ヘッダー）を送ってきて通らなかったリクエストを IP ごとに数え、15 分に 10 回を超えた IP には、正しい資格情報でも 15 分のあいだ 429 を返します（`lib/auth/gate-attempt-limit.ts`、ポリシー `auth:gate`）。署名付き Cookie で通るリクエストは数えません。
-- `setSecurityHeaders()` はすべての応答に適用されます。Basic gate の 503/401/429 は `finalize()` を通らず直接呼び（`proxy.ts:87`, `:121`, `:134`）、それ以外（CSRF エラー・メンテナンス 503・リダイレクトを含む）は `finalize()` 経由です。一方 `x-theme` ヘッダーは `finalize()` では付与されず、**ゲートに引っかからず通常通過したリクエストのときだけ**設定されます（`proxy.ts:317`）。
+- サイトの入口は、入口用の Better Auth（DB なし。ログイン状態は暗号化した Cookie `tt-gate.*` に持ち、最初のログインから 7 日で切れて延びない）と、許可リスト（`GateAllowedEmail`。管理画面 `/admin/gate-access` で管理）で判定します（`lib/auth/site-gate/evaluate.ts`）。入口の Cookie が無ければ DB に触れずに拒否し、あれば Gmail・Google のメールの確認・許可リストの 3 つを照らします。許可の結果だけをプロセス内に 30 秒持つので、外したアドレスは最長 30 秒で入れなくなり、足したアドレスはすぐ入れます。設定で固定したアドレス（`GATE_ALWAYS_ALLOWED_EMAILS`）は DB を読まずに通します。ログインの開始は `/api/gate/start`（IP ごとに 30 回/分、ポリシー `auth:gate-start`）。
+- `setSecurityHeaders()` はすべての応答に適用されます。サイトの入口の 503・302・401・403 は `finalize()` を通らず直接呼び（`proxy.ts:65`, `:134-138`）、それ以外（CSRF エラー・メンテナンス 503・リダイレクトを含む）は `finalize()` 経由です。一方 `x-theme` ヘッダーは `finalize()` では付与されず、**ゲートに引っかからず通常通過したリクエストのときだけ**設定されます（`proxy.ts:317`）。
 - キャッシュは「記事一覧」「お気に入り・既読」「記事詳細」の 3 経路があり、`LayeredCache` の L1/L2/L3 は段階的フォールバック層ではなく、**すべて Redis を使う用途別キャッシュ**（L1 公開記事リスト / L2 ユーザー系 / L3 検索）です。
 - **記事詳細の Redis キャッシュと ISR は RSC ページ側の仕組み**です（`app/articles/[id]/page.tsx:53` が `articleDetailCache.getArticleWithRelations()` を呼び、`:58` で `revalidate = 60` を宣言）。API 側で同じキャッシュを使うのは関連記事・関係グラフなど別ルートです。
-- **すべての API がラッパーを通るわけではありません。** 例えば `app/api/articles/[id]/route.ts` の GET は素の `export async function GET` です。認証・レート制限の有無はルートごとに確認が必要です（一覧は [05 機能一覧](./05-features.md#4-api62本)）。
+- **すべての API がラッパーを通るわけではありません。** 例えば `app/api/articles/[id]/route.ts` の GET は素の `export async function GET` です。認証・レート制限の有無はルートごとに確認が必要です（一覧は [05 機能一覧](./05-features.md#4-api66本)）。
 - DataLoader は 2 つとも**バッチ化**が主目的ですが、リクエスト内メモ化の扱いは異なります。favorite loader は DataLoader のキャッシュを有効にし（`lib/dataloader/favorite-loader.ts:221`）、view loader は `cache: false` で無効にしています（`lib/dataloader/article-view-loader.ts:135`）。
 
 ## 記事一覧取得のシーケンス
@@ -87,8 +88,8 @@ sequenceDiagram
 
 | 図中の要素 | ファイル:行番号 |
 |-----------|----------------|
-| Basic gate 判定・503/429/401 応答（失敗の回数制限は `lib/auth/gate-attempt-limit.ts`） | `proxy.ts:72-136` |
-| `finalize()`（`private, no-store` / `CDN-Cache-Control` / `Vercel-CDN-Cache-Control` / `Vary`） | `proxy.ts:141-188`（ヘッダー付与本体は `:157-184`） |
+| サイトの入口の判定・503/302/401/403 応答（判定の本体は `lib/auth/site-gate/evaluate.ts`、許可リストの照合は `lib/auth/site-gate/allowlist.ts`、設定の検証は `lib/auth/site-gate/config.ts`） | `proxy.ts:100-138` |
+| `finalize()`（`private, no-store` / `CDN-Cache-Control` / `Vercel-CDN-Cache-Control` / `Vary`） | `proxy.ts:142-188`（ヘッダー付与本体は `:158-183`） |
 | NUL バイト（`%00`）の拒否 | `proxy.ts:196-209` |
 | CSRF チェック（`/api/*` 変更系のみ） | `proxy.ts:211-219` |
 | メンテナンスモード（管理者判定は Redis キャッシュ + DB） | `proxy.ts:221-276` |
@@ -111,8 +112,8 @@ sequenceDiagram
 
 - `revalidate = 60` の ISR は記事詳細ページ（`app/articles/[id]/page.tsx`）にのみ適用されます。記事更新時は `articleDetailCache.invalidateArticle()`（`lib/cache/article-detail-cache.ts:274`）から `revalidatePath` も呼ばれます。
 - クライアント側の React Query は本図の対象外です（上記シーケンス図の補足を参照）。
-- `Cache-Control: private, no-store` / `CDN-Cache-Control` / `Vary` の付与は Basic gate 通過時（`gate.kind === 'basic' | 'cookie'`）のみで、Basic 認証が無効な構成では付与されません。
+- `Cache-Control: private, no-store` / `CDN-Cache-Control` / `Vary` の付与はサイトの入口の通過時（`gate.kind === 'pass' | 'public'`）のみで、入口が無効な構成では付与されません。
 - 保護パスガード（`/profile` 等）は Cookie の**存在確認のみ**であり、セッションの有効性やロールの検証はしていません。実際の検証は各ページ・API ハンドラ側（`getSession()` / `requireAdmin()` / ラッパー）で行われます。
 
 ---
-2026-08-15 時点のコードをもとに作成し、2026-10-25 時点のコードに合わせて更新。更新ルールは [索引](./README.md) を参照。
+2026-08-15 時点のコードをもとに作成し、2026-11-21 時点のコードに合わせて更新。更新ルールは [索引](./README.md) を参照。
