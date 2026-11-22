@@ -16,8 +16,10 @@ import {
   type WithAdminAuthContext,
 } from '@/lib/middleware/with-admin-auth';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@/lib/prisma-exports';
-import { env } from '@/lib/config/env';
+import {
+  GATE_ALLOWLIST_ENTRY_SELECT,
+  addGateAllowedEmail,
+} from '@/lib/auth/site-gate/allowlist-store';
 import logger from '@/lib/logger';
 import { getSiteGateConfig } from '@/lib/auth/site-gate/server-config';
 import { getCurrentGateEmail } from '@/lib/auth/site-gate/current-account';
@@ -41,11 +43,6 @@ import { summarizeError } from '@/lib/utils/sanitize-error';
 import { gateAllowlistError, jsonNoStore } from './_shared';
 
 export const dynamic = 'force-dynamic';
-
-const ENTRY_SELECT = { id: true, email: true, createdAt: true } as const;
-
-/** 許可リストへの追加を直列にするアドバイザリロックの鍵（このテーブルの追加だけが使う） */
-const GATE_ALLOWLIST_ADD_LOCK_KEY = BigInt(0x67617465); // 'gate'
 
 async function currentGateEmailOrNull(
   request: NextRequest,
@@ -71,7 +68,7 @@ async function getHandler(request: NextRequest) {
   try {
     const [rows, currentEmail] = await Promise.all([
       prisma.gateAllowedEmail.findMany({
-        select: ENTRY_SELECT,
+        select: GATE_ALLOWLIST_ENTRY_SELECT,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: GATE_ALLOWLIST_LIST_LIMIT,
       }),
@@ -160,32 +157,11 @@ async function postHandler(
   }
 
   try {
-    // 件数の確認と追加を 1 つのトランザクションにし、アドバイザリロックで追加どうしを直列にする
-    // （別々に流すと、残り 1 件のときに別のアドレスの追加が同時に来て、両方とも上限を超えて入るため）
-    const created = await prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${GATE_ALLOWLIST_ADD_LOCK_KEY})`;
-        // 固定のアドレスと重なる行（環境変数を変えたときに残りうる）は、一覧でも固定の扱いなので数えない
-        const count = await tx.gateAllowedEmail.count({
-          where:
-            config.kind === 'enabled'
-              ? { email: { notIn: [...config.settings.fixedEmails] } }
-              : undefined,
-        });
-        if (count >= GATE_ALLOWLIST_MAX_ENTRIES) return null;
-        // 先に探してから作ると、二重送信で一意制約の違反（500）になる。作って、違反を 409 にする
-        return tx.gateAllowedEmail.create({
-          data: { email, createdById: context.session.user.id },
-          select: ENTRY_SELECT,
-        });
-      },
-      {
-        // ロックのあとの count が先に終わった追加を見るのは、文ごとにスナップショットを取る READ COMMITTED だけ
-        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
-        // 開始の待ち（接続の取得を含む）の既定は 2 秒。DB が起きるのを待てるよう、接続の待ちと同じにする
-        maxWait: env.DB_POOL_TIMEOUT * 1000,
-      }
-    );
+    const created = await addGateAllowedEmail(prisma, {
+      email,
+      createdById: context.session.user.id,
+      fixedEmails: config.kind === 'enabled' ? config.settings.fixedEmails : [],
+    });
     if (created === null) {
       return gateAllowlistError(
         400,

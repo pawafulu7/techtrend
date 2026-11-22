@@ -7,7 +7,12 @@ import {
   GATE_ERROR_PATH,
 } from '@/lib/auth/site-gate/constants';
 import type { SiteGateSettings } from '@/lib/auth/site-gate/config';
+import { z } from 'zod';
 import { renderGateErrorPage } from '@/lib/auth/site-gate/error-page';
+import {
+  UNKNOWN_GATE_ERROR_CODE,
+  toDisplayedGateErrorCode,
+} from '@/lib/auth/site-gate/error-codes';
 import {
   GATE_ERROR_NOTICE_COOKIE,
   buildGateErrorNoticeCookie,
@@ -28,6 +33,16 @@ const HANDLED_PATHS: ReadonlySet<string> = new Set([
   GATE_CALLBACK_PATH,
   GATE_ERROR_PATH,
 ]);
+
+/**
+ * エラーページの ?error=（API の入力は Zod で受ける。.claude/skills/_shared/project-patterns.md「バリデーション」）。
+ * 知っているコードだけを通し、無い・長すぎる・知らないコードは unknown（lib/auth/site-gate/error-codes.ts）
+ */
+const errorCodeSchema = z
+  .string()
+  .max(64)
+  .transform(toDisplayedGateErrorCode)
+  .catch(UNKNOWN_GATE_ERROR_CODE);
 
 function notFound(): NextResponse {
   return new NextResponse('Not Found', {
@@ -84,7 +99,9 @@ export async function GET(request: NextRequest): Promise<Response> {
 
   // Better Auth の組み込みのページ（英語・外部へのリンク付き）は使わない（lib/auth/site-gate/error-page.ts）。
   // コードは知っているものだけを出し、error_description は読まない
-  const { status, html } = renderGateErrorPage(url.searchParams.get('error'));
+  const { status, html } = renderGateErrorPage(
+    errorCodeSchema.parse(url.searchParams.get('error'))
+  );
   return new Response(html, {
     status,
     headers: {
