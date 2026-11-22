@@ -1,13 +1,16 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type Query } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui-v2/error-state';
 import { SiteGateReopenState } from '@/app/components/common/site-gate-reopen-state';
 import { authClient } from '@/lib/auth/auth-client';
 import { useIsHydrated } from '@/app/hooks/use-is-hydrated';
-import type { GateAllowlistEntry } from '@/lib/auth/site-gate/admin-types';
+import type {
+  GateAllowlistEntry,
+  GateAllowlistResponse,
+} from '@/lib/auth/site-gate/admin-types';
 import {
   GateAllowlistFetchError,
   fetchGateAllowlist,
@@ -52,6 +55,11 @@ function isAuthFailure(error: unknown): boolean {
   );
 }
 
+/** 再接続・フォーカスで取り直すか。401・403 の間は取り直さない（retry の説明と同じ理由） */
+function canRefetchAutomatically(query: Query<GateAllowlistResponse>): boolean {
+  return !isAuthFailure(query.state.error);
+}
+
 function GateAccessManager() {
   const [deleting, setDeleting] = useState<GateAllowlistEntry | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -63,9 +71,14 @@ function GateAccessManager() {
     queryFn: ({ signal }) => fetchGateAllowlist(signal),
     // オフラインでも一時停止させずにすぐ失敗させる（削除のあとの取り直しが止まると、確認のダイアログを閉じられない）
     networkMode: 'always',
+    // networkMode が always だと再接続での取り直しが既定で切れるので、明示して戻す（オフラインで失敗した一覧を自動で直す）
+    refetchOnReconnect: canRefetchAutomatically,
     // 別の管理者の変更も、タブに戻れば出るようにする（既定は 5 分・フォーカスで取り直さない）
     staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: canRefetchAutomatically,
+    // 401・403 は取り直しても入り直す（開き直す）まで同じ。data が無いと取り直しの間は error が消え、
+    // 案内の代わりに読み込み中の表示が一瞬出るので、自動では取り直さない
+    retry: (failureCount, cause) => !isAuthFailure(cause) && failureCount < 1,
   });
 
   // セッションの失効や管理者でなくなったこと（401・403）が分かったら、確認のダイアログも閉じる

@@ -2,7 +2,11 @@ import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  onlineManager,
+} from '@tanstack/react-query';
 import { GateAccessContent } from '../gate-access-content';
 import type {
   GateAllowlistEntry,
@@ -170,9 +174,13 @@ describe('サイトに入れるアカウントの管理画面', () => {
     routeFetch({ list: () => json(500) });
     renderPage();
 
+    // 401・403 以外の失敗は、1 秒後に 1 回だけ再試行してから失敗を出す（全体の既定と同じ）
     expect(
-      await screen.findByText('一覧を読み込めませんでした')
+      await screen.findByText('一覧を読み込めませんでした', undefined, {
+        timeout: 3000,
+      })
     ).toBeInTheDocument();
+    expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(screen.getByLabelText('Gmail アドレス')).toBeDisabled();
   });
 
@@ -186,6 +194,8 @@ describe('サイトに入れるアカウントの管理画面', () => {
     renderPage();
 
     expect(await screen.findByText(text)).toBeInTheDocument();
+    // 取り直しても同じなので再試行しない
+    expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(screen.queryByLabelText('Gmail アドレス')).not.toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
@@ -423,6 +433,41 @@ describe('サイトに入れるアカウントの管理画面', () => {
       expect(remove![0]).toBe(
         '/api/admin/gate-allowlist/ckgateentry000000000000001'
       );
+    });
+
+    it('オフラインでも送信中のまま止めず、失敗を出して閉じられるようにする', async () => {
+      const user = userEvent.setup();
+      routeFetch({
+        list: () => json(200, body([FRIEND])),
+        remove: () => Promise.reject(new TypeError('Failed to fetch')),
+      });
+      renderPage();
+      await screen.findByText('friend@gmail.com');
+      await user.click(
+        screen.getByRole('button', { name: 'friend@gmail.com を削除' })
+      );
+      const dialog = await screen.findByRole('dialog');
+
+      // 一時停止すると、削除と取り直しが送信中のまま止まり、キャンセルも押せない
+      onlineManager.setOnline(false);
+      try {
+        await user.click(
+          within(dialog).getByRole('button', { name: '削除する' })
+        );
+        expect(
+          await within(dialog).findByText(
+            '削除できませんでした。時間をおいて再試行してください'
+          )
+        ).toBeInTheDocument();
+        await user.click(
+          within(dialog).getByRole('button', { name: 'キャンセル' })
+        );
+        await waitFor(() =>
+          expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        );
+      } finally {
+        onlineManager.setOnline(true);
+      }
     });
 
     it('キャンセルしたら開いたボタンへフォーカスを戻す', async () => {

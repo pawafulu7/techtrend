@@ -14,6 +14,10 @@ import { authClient } from '@/lib/auth/auth-client';
 import { useEffect, useRef, useMemo, useCallback } from 'react';
 import { debounce } from '@/lib/utils/debounce';
 import {
+  ArticlesFetchError,
+  isWritableArticlesQuery,
+} from '@/lib/articles/articles-fetch-error';
+import {
   buildArticlesRequest,
   infiniteArticlesQueryKey,
   isMobileUserAgent,
@@ -175,9 +179,11 @@ export function useInfiniteArticles(
       // Debug log removed
 
       // すべての関連するキャッシュを更新
+      // サイトの入口に拒否されている一覧は書き換えない（拒否の案内が消えるため。isWritableArticlesQuery）
       const cacheKeys = queryClient.getQueryCache().findAll({
         queryKey: ['infinite-articles'],
         exact: false,
+        predicate: isWritableArticlesQuery,
       });
 
       // Debug log removed
@@ -243,7 +249,11 @@ export function useInfiniteArticles(
 
       // Update all infinite-articles caches using setQueriesData
       queryClient.setQueriesData<InfiniteArticlesData>(
-        { queryKey: ['infinite-articles'], exact: false },
+        {
+          queryKey: ['infinite-articles'],
+          exact: false,
+          predicate: isWritableArticlesQuery,
+        },
         (oldData) => {
           if (!oldData?.pages) return oldData;
           return {
@@ -414,21 +424,24 @@ export function useInfiniteArticles(
             response.status === 401
               ? 'ログインが必要です。再度ログインしてください。'
               : `Failed to fetch articles: ${response.status} ${response.statusText}`;
+          let siteGate = false;
           try {
             const errorData = await response.json();
             if (isSiteGateErrorBody(errorData)) {
               // サイトの入口（Google ログイン）が切れた: アプリのログインではなく、ページを開き直す案内にする
               message = SITE_GATE_REOPEN_MESSAGE;
-            } else if (errorData?.error?.message) {
+              siteGate = true;
+            } else if (response.status === 401 && errorData?.error?.message) {
               message = errorData.error.message;
             }
           } catch {
             // response.json() failed - keep default message
           }
-          throw new Error(message);
+          throw new ArticlesFetchError(message, response.status, siteGate);
         }
-        throw new Error(
-          `Failed to fetch articles: ${response.status} ${response.statusText}`
+        throw new ArticlesFetchError(
+          `Failed to fetch articles: ${response.status} ${response.statusText}`,
+          response.status
         );
       }
 

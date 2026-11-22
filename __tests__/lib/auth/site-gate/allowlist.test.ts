@@ -181,7 +181,7 @@ describe('checkGateEmailAccess', () => {
     ).resolves.toBe('not_allowed');
   });
 
-  it('does not use or cache a result that came back after the cache lifetime', async () => {
+  it('does not use an allow result that came back after the cache lifetime, and remembers it as a failure', async () => {
     // DB_CONNECT_TIMEOUT を 30 秒より長くした環境で、照合が 30 秒を超えてから返った
     const original = process.env.DB_CONNECT_TIMEOUT;
     process.env.DB_CONNECT_TIMEOUT = '60';
@@ -200,12 +200,27 @@ describe('checkGateEmailAccess', () => {
       resolveRow(rowResult());
       await expect(settled).resolves.toBeInstanceOf(GateAllowlistUnavailableError);
 
-      // キャッシュに入っていないので、次は DB を引き直す
-      jest.setSystemTime(new Date('2026-11-21T00:00:40Z'));
-      findUnique.mockResolvedValue(null);
+      // 失敗として覚えるので、5 秒の間は DB を引き直さずに断る
+      const callsAfterExpiry = findUnique.mock.calls.length;
       await expect(
         checkGateEmailAccess('friend@gmail.com', { fixedEmails: FIXED })
-      ).resolves.toBe('not_allowed');
+      ).rejects.toBeInstanceOf(GateAllowlistUnavailableError);
+      expect(findUnique.mock.calls.length).toBe(callsAfterExpiry);
+
+      // 期限を過ぎて返った拒否（行が無い）は、そのまま拒否として返す
+      jest.setSystemTime(new Date('2026-11-21T00:01:00Z'));
+      let resolveMissing!: (value: unknown) => void;
+      findUnique.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveMissing = resolve;
+        })
+      );
+      const denied = checkGateEmailAccess('other@gmail.com', {
+        fixedEmails: FIXED,
+      });
+      jest.setSystemTime(new Date('2026-11-21T00:01:31Z'));
+      resolveMissing(null);
+      await expect(denied).resolves.toBe('not_allowed');
     } finally {
       if (original === undefined) delete process.env.DB_CONNECT_TIMEOUT;
       else process.env.DB_CONNECT_TIMEOUT = original;

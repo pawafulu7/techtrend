@@ -15,6 +15,8 @@ import { FileText } from 'lucide-react';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { EmptyState } from '@/components/ui-v2/empty-state';
 import { ErrorState } from '@/components/ui-v2/error-state';
+import { SiteGateReopenState } from '@/app/components/common/site-gate-reopen-state';
+import { isSiteGateArticlesError } from '@/lib/articles/articles-fetch-error';
 
 interface PapersClientInfiniteProps {
   viewMode: ViewMode;
@@ -118,6 +120,7 @@ export function PapersClientInfinite({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    error,
     isError,
     isPending,
     isFetching,
@@ -191,6 +194,18 @@ export function PapersClientInfinite({
   // 取得済みの一覧がある状態で取り直しに失敗した: 一覧を残し、古いことと再試行を示す。
   // 続きのページの失敗は一覧の下端に出す
   const staleAfterError = isError && !!data && !isFetchNextPageError;
+  // サイトの入口（Google ログイン）が切れた・取り消された: 再試行しても同じなので、一覧（続きのページの失敗を含む）
+  // の代わりにページを開き直す案内だけを出す（お気に入りと同じ）
+  if (isSiteGateArticlesError(error)) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center px-4">
+        <CardV2 className="mx-auto max-w-md">
+          <SiteGateReopenState />
+        </CardV2>
+      </div>
+    );
+  }
+
   if (failedWithoutData) {
     return (
       <div className="flex min-h-[400px] items-center justify-center px-4">

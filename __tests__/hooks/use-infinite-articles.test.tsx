@@ -12,6 +12,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode } from 'react';
 import { useInfiniteArticles } from '@/app/hooks/use-infinite-articles';
+import { isSiteGateArticlesError } from '@/lib/articles/articles-fetch-error';
 import {
   infiniteArticlesQueryKey,
   normalizeArticleFilters,
@@ -87,6 +88,7 @@ describe('useInfiniteArticles', () => {
     [401, { success: false, error: 'x', code: 'GATE_SESSION_REQUIRED' }, 'サイトに入り直す必要があります。ページを開き直してください'],
     [403, { success: false, error: 'x', code: 'GATE_NOT_ALLOWED' }, 'サイトに入り直す必要があります。ページを開き直してください'],
     [403, { error: 'Forbidden' }, 'Failed to fetch articles: 403'],
+    [403, { error: { message: 'サーバーの文言' } }, 'Failed to fetch articles: 403'],
     [401, { error: { message: 'ログインしてください' } }, 'ログインしてください'],
   ] as const)('%d %j のときの失敗の文言', async (status, body, message) => {
     mockFetch.mockResolvedValue({
@@ -103,6 +105,46 @@ describe('useInfiniteArticles', () => {
     // フックは 1 回だけ 1 秒後に再試行する
     await waitFor(() => expect(result.current.error).toBeTruthy(), { timeout: 5000 });
     expect((result.current.error as Error).message).toContain(message);
+  });
+
+  it('サイトの入口に拒否された一覧は、お気に入りの変更イベントで書き換えない（拒否の案内が消えないように）', async () => {
+    const queryClient = createTestQueryClient();
+    const filters: ArticleFilters = { tags: 'React' };
+    const { result } = renderHook(() => useInfiniteArticles(filters), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: '',
+      json: () =>
+        Promise.resolve({ success: false, error: 'x', code: 'GATE_NOT_ALLOWED' }),
+    });
+    await act(async () => {
+      await result.current.refetch();
+    });
+    await waitFor(() =>
+      expect(isSiteGateArticlesError(result.current.error)).toBe(true)
+    );
+
+    // setQueryData は error を消して success にするので、拒否の間は書き換えない
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('article-favorite-changed', {
+          detail: { articleId: 'a1', isFavorited: true, timestamp: Date.now() },
+        })
+      );
+      window.dispatchEvent(
+        new CustomEvent('article-read-status-changed', {
+          detail: { articleId: 'a1', isRead: true },
+        })
+      );
+    });
+    await flush();
+    expect(isSiteGateArticlesError(result.current.error)).toBe(true);
+    expect(result.current.isError).toBe(true);
   });
 
   it('returning の有無で queryKey が同一になる（詳細から戻るたびに1ページ目から取り直す回帰を防ぐ）', async () => {

@@ -16,6 +16,8 @@ import {
   type WithAdminAuthContext,
 } from '@/lib/middleware/with-admin-auth';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/lib/prisma-exports';
+import { env } from '@/lib/config/env';
 import logger from '@/lib/logger';
 import { getSiteGateConfig } from '@/lib/auth/site-gate/server-config';
 import { getCurrentGateEmail } from '@/lib/auth/site-gate/current-account';
@@ -63,7 +65,8 @@ async function currentGateEmailOrNull(
 
 async function getHandler(request: NextRequest) {
   const config = getSiteGateConfig();
-  const fixedEmails = config.kind === 'enabled' ? config.settings.fixedEmails : [];
+  const fixedEmails =
+    config.kind === 'enabled' ? config.settings.fixedEmails : [];
 
   try {
     const [rows, currentEmail] = await Promise.all([
@@ -90,7 +93,9 @@ async function getHandler(request: NextRequest) {
 
     const entries: GateAllowlistEntry[] = [
       // 環境変数を変えて DB の行と固定のアドレスが重なったときは 1 行にまとめ、固定の扱いにする
-      ...fixedEmails.map((email) => toEntry(email, rowByEmail.get(email), true)),
+      ...fixedEmails.map((email) =>
+        toEntry(email, rowByEmail.get(email), true)
+      ),
       ...rows
         .filter((row) => !fixedEmails.includes(row.email))
         .map((row) => toEntry(row.email, row, false)),
@@ -107,7 +112,10 @@ async function getHandler(request: NextRequest) {
       { errorSummary: summarizeError(error) },
       '[GateAllowlistAPI] 一覧を読めませんでした'
     );
-    return jsonNoStore({ success: false, error: 'Failed to load the allowlist' }, 500);
+    return jsonNoStore(
+      { success: false, error: 'Failed to load the allowlist' },
+      500
+    );
   }
 }
 
@@ -115,7 +123,10 @@ const addSchema = z
   .object({ email: z.string().max(GATE_EMAIL_MAX_LENGTH) })
   .strict();
 
-async function postHandler(request: NextRequest, context: WithAdminAuthContext) {
+async function postHandler(
+  request: NextRequest,
+  context: WithAdminAuthContext
+) {
   let rawBody: unknown;
   try {
     rawBody = await request.json();
@@ -137,7 +148,10 @@ async function postHandler(request: NextRequest, context: WithAdminAuthContext) 
   }
 
   const config = getSiteGateConfig();
-  if (config.kind === 'enabled' && config.settings.fixedEmails.includes(email)) {
+  if (
+    config.kind === 'enabled' &&
+    config.settings.fixedEmails.includes(email)
+  ) {
     return gateAllowlistError(
       409,
       GATE_ALLOWLIST_ERROR_CODES.ALREADY_FIXED,
@@ -148,22 +162,30 @@ async function postHandler(request: NextRequest, context: WithAdminAuthContext) 
   try {
     // 件数の確認と追加を 1 つのトランザクションにし、アドバイザリロックで追加どうしを直列にする
     // （別々に流すと、残り 1 件のときに別のアドレスの追加が同時に来て、両方とも上限を超えて入るため）
-    const created = await prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${GATE_ALLOWLIST_ADD_LOCK_KEY})`;
-      // 固定のアドレスと重なる行（環境変数を変えたときに残りうる）は、一覧でも固定の扱いなので数えない
-      const count = await tx.gateAllowedEmail.count({
-        where:
-          config.kind === 'enabled'
-            ? { email: { notIn: [...config.settings.fixedEmails] } }
-            : undefined,
-      });
-      if (count >= GATE_ALLOWLIST_MAX_ENTRIES) return null;
-      // 先に探してから作ると、二重送信で一意制約の違反（500）になる。作って、違反を 409 にする
-      return tx.gateAllowedEmail.create({
-        data: { email, createdById: context.session.user.id },
-        select: ENTRY_SELECT,
-      });
-    });
+    const created = await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${GATE_ALLOWLIST_ADD_LOCK_KEY})`;
+        // 固定のアドレスと重なる行（環境変数を変えたときに残りうる）は、一覧でも固定の扱いなので数えない
+        const count = await tx.gateAllowedEmail.count({
+          where:
+            config.kind === 'enabled'
+              ? { email: { notIn: [...config.settings.fixedEmails] } }
+              : undefined,
+        });
+        if (count >= GATE_ALLOWLIST_MAX_ENTRIES) return null;
+        // 先に探してから作ると、二重送信で一意制約の違反（500）になる。作って、違反を 409 にする
+        return tx.gateAllowedEmail.create({
+          data: { email, createdById: context.session.user.id },
+          select: ENTRY_SELECT,
+        });
+      },
+      {
+        // ロックのあとの count が先に終わった追加を見るのは、文ごとにスナップショットを取る READ COMMITTED だけ
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        // 開始の待ち（接続の取得を含む）の既定は 2 秒。DB が起きるのを待てるよう、接続の待ちと同じにする
+        maxWait: env.DB_POOL_TIMEOUT * 1000,
+      }
+    );
     if (created === null) {
       return gateAllowlistError(
         400,
@@ -203,7 +225,10 @@ async function postHandler(request: NextRequest, context: WithAdminAuthContext) 
       { errorSummary: summarizeError(error) },
       '[GateAllowlistAPI] アドレスを追加できませんでした'
     );
-    return jsonNoStore({ success: false, error: 'Failed to add the address' }, 500);
+    return jsonNoStore(
+      { success: false, error: 'Failed to add the address' },
+      500
+    );
   }
 }
 

@@ -161,14 +161,18 @@ export async function checkGateEmailAccess(
       cause: error,
     });
   }
-  lastFailureAt = null;
 
-  // 照合を始めてからキャッシュの期限（30 秒）を過ぎて返った結果は使わない。その間に外されていても許可してしまうため
-  // （DB_CONNECT_TIMEOUT を 30 秒より長くしたときだけ起きる）
+  // 照合を始めてからキャッシュの期限（30 秒）を過ぎて返った「許可」は使わない。その間に外されていても許可して
+  // しまうため（DB_CONNECT_TIMEOUT を 30 秒より長くしたときだけ起きる）。拒否はそのまま返してよい。
+  // 遅い DB への照合をくり返さないよう、失敗として覚える
   const expiresAt = startedAt + GATE_ALLOW_CACHE_TTL_SEC * 1000;
-  if (Date.now() >= expiresAt) {
-    throw new GateAllowlistUnavailableError('allowlist lookup returned after the cache lifetime');
+  if (rowCreatedAt !== null && Date.now() >= expiresAt) {
+    lastFailureAt = Date.now();
+    throw new GateAllowlistUnavailableError(
+      'allowlist lookup returned after the cache lifetime'
+    );
   }
+  lastFailureAt = null;
 
   if (rowCreatedAt === null) {
     allowCache.delete(email);

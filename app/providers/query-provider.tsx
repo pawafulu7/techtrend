@@ -16,6 +16,7 @@ const ReactQueryDevtools = dynamic(
 );
 import { useEffect, useState, useRef } from 'react';
 import { authClient } from '@/lib/auth/auth-client';
+import { isWritableArticlesQuery } from '@/lib/articles/articles-fetch-error';
 import type { ArticleWithUserData } from '@/types/models';
 import {
   FAVORITE_STATUSES_QUERY_KEY,
@@ -205,8 +206,13 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       // すでに解決済みゲストなら剥がすものが無い
       if (prevPrincipal === null) return;
 
+      // サイトの入口に拒否されている一覧は書き換えない（拒否の案内が消えるため。isWritableArticlesQuery）
       queryClient.setQueriesData<InfiniteArticlesData>(
-        { queryKey: ['infinite-articles'], exact: false },
+        {
+          queryKey: ['infinite-articles'],
+          exact: false,
+          predicate: isWritableArticlesQuery,
+        },
         (oldData) => {
           if (!oldData?.pages) return oldData;
           let changed = false;
@@ -262,8 +268,13 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       if (timestamp < lastUpdate) return;
       lastFavoriteUpdateRef.current.set(articleId, timestamp);
 
+      // サイトの入口に拒否されている一覧は書き換えない（拒否の案内が消えるため。isWritableArticlesQuery）
       queryClient.setQueriesData<InfiniteArticlesData>(
-        { queryKey: ['infinite-articles'], exact: false },
+        {
+          queryKey: ['infinite-articles'],
+          exact: false,
+          predicate: isWritableArticlesQuery,
+        },
         (oldData) => {
           if (!oldData?.pages) return oldData;
           return {
@@ -338,8 +349,13 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
       const { articleId, isRead } = detail;
 
+      // サイトの入口に拒否されている一覧は書き換えない（拒否の案内が消えるため。isWritableArticlesQuery）
       queryClient.setQueriesData<InfiniteArticlesData>(
-        { queryKey: ['infinite-articles'], exact: false },
+        {
+          queryKey: ['infinite-articles'],
+          exact: false,
+          predicate: isWritableArticlesQuery,
+        },
         (oldData) => {
           if (!oldData?.pages) return oldData;
           let changed = false;

@@ -25,6 +25,11 @@ export const isUnauthorizedFavoritesError = (
 ): error is FavoritesFetchError =>
   error instanceof FavoritesFetchError && error.status === 401;
 
+/** 取り直しても同じ結果になる失敗（アプリのログイン切れの 401 と、サイトの入口の拒否の 401・403） */
+const isPersistentFavoritesError = (error: unknown): boolean =>
+  isUnauthorizedFavoritesError(error) ||
+  (error instanceof FavoritesFetchError && error.siteGate);
+
 interface UseFavoritesOptions {
   /** 1ページあたりの件数 */
   limit?: number;
@@ -102,10 +107,10 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     (articleId: string) => {
       // 401 とサイトの入口の拒否（403 を含む）の間はキャッシュを書き換えない。setQueryData は（同じデータを
       // 返しても）error を消して success にするため、入り直していないのに案内が消えて一覧が戻ってしまう
-      const cachedError = queryClient.getQueryState(['infinite-favorites'])?.error;
       if (
-        isUnauthorizedFavoritesError(cachedError) ||
-        (cachedError instanceof FavoritesFetchError && cachedError.siteGate)
+        isPersistentFavoritesError(
+          queryClient.getQueryState(['infinite-favorites'])?.error
+        )
       ) {
         return;
       }
@@ -257,15 +262,15 @@ export function useInfiniteFavorites(options: UseFavoritesOptions = {}) {
     // （app/favorites/_components/favorites-content.tsx）で、未マウント中に他画面で
     // 起きたお気に入りの追加・削除を上の window イベントリスナーで拾えないため、
     // false にするとキャッシュが最大 gcTime ぶん古いまま表示される。
-    // 401 は取り直してもログインし直すまで同じ結果になるので、自動では取り直さない。data の無い
-    // クエリは取り直すと error が消え、その間ログインの案内が一般の失敗表示に変わってしまう。
+    // 401 とサイトの入口の拒否は、取り直してもログインし直す（入り直す）まで同じ結果になるので、自動では取り直さない。
+    // data の無いクエリは取り直すと error が消え、その間ログインの案内が一般の失敗表示に変わってしまう。
     // enabled はお気に入りの変更イベントでの invalidate も止める。手動の refetch() は enabled を見ない
     retry: (failureCount, error) =>
-      !isUnauthorizedFavoritesError(error) && failureCount < 1,
+      !isPersistentFavoritesError(error) && failureCount < 1,
     retryDelay: 1000,
     enabled: (query) =>
       !(
-        isUnauthorizedFavoritesError(query.state.error) &&
+        isPersistentFavoritesError(query.state.error) &&
         query.state.errorUpdatedAt >= mountedAt
       ),
   });

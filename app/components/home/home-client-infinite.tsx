@@ -22,6 +22,8 @@ import { Button } from '@/components/ui-v2/button-v2';
 import { ScrollRestorationLoading } from '@/app/components/common/scroll-restoration-loading';
 import { CardV2 } from '@/components/ui-v2/card-v2';
 import { ErrorState } from '@/components/ui-v2/error-state';
+import { SiteGateReopenState } from '@/app/components/common/site-gate-reopen-state';
+import { isSiteGateArticlesError } from '@/lib/articles/articles-fetch-error';
 import { LiveStatus } from '@/components/ui-v2/live-status';
 import type { ViewMode } from '@/types/components';
 import { HomeListStatusBar } from '@/app/components/home/home-list-status-bar';
@@ -170,6 +172,7 @@ export function HomeClientInfinite({
     hasNextPage,
     isFetchingNextPage,
     isPending,
+    error,
     isError,
     isRefetchError,
     isFetching,
@@ -295,6 +298,18 @@ export function HomeClientInfinite({
   // 一度失敗したら再試行中も失敗の表示（再試行中…）を残す（issue #701）。
   // 再試行中は前の一覧が data に入る（isPlaceholderData）ので、それも「一覧が無い」として扱う
   // （前の一覧に戻すと、成功したように見える）。更新（取り直し）の失敗では一覧を残し、失敗を下の行に出す
+  // サイトの入口（Google ログイン）が切れた・取り消された: 再試行しても同じなので、一覧（続きのページの失敗を含む）
+  // の代わりにページを開き直す案内だけを出す（お気に入りと同じ）
+  if (isSiteGateArticlesError(error)) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center px-4">
+        <CardV2 className="mx-auto max-w-md">
+          <SiteGateReopenState />
+        </CardV2>
+      </div>
+    );
+  }
+
   if (
     (!data || isPlaceholderData) &&
     (isError || errorUpdateCount > 0)

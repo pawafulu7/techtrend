@@ -373,16 +373,14 @@ describe('useInfiniteFavorites: セッション切れ（401、issue #729）', ()
     await act(async () => {
       await result.current.fetchNextPage();
     });
-    // 入口の 403 は 1 回だけ 1 秒後に再試行する（再試行の判定は 401 だけを止める）
-    await waitFor(
-      () => {
-        expect(result.current.isFetchNextPageError).toBe(true);
-      },
-      { timeout: 4000 }
-    );
+    // 入口の拒否は取り直しても同じなので、再試行しない
+    await waitFor(() => {
+      expect(result.current.isFetchNextPageError).toBe(true);
+    });
+    expect(favoritesUrls()).toHaveLength(2);
     expect((result.current.error as FavoritesFetchError | null)?.siteGate).toBe(true);
 
-    // 遅れて届いた解除の完了イベント。setQueryData は error を消すので、401 の間は書き換えない
+    // 遅れて届いた解除の完了イベント。setQueryData は error を消すので、入口の拒否の間は書き換えない
     act(() => {
       window.dispatchEvent(
         new CustomEvent('article-favorite-changed', {

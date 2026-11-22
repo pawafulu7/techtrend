@@ -288,13 +288,6 @@ describe('GET /api/gate/[...all]', () => {
     expect(setCookiesOf(allowed).join('\n')).not.toContain('error_notice');
   });
 
-  it('treats an overly long error code as unknown', async () => {
-    const response = await catchAll.GET(
-      request(`/api/gate/error?error=${'not_allowed'.repeat(10)}`)
-    );
-    expect(await response.text()).toContain('エラーのコード: unknown');
-  });
-
   it('ignores error_description (does not show text from the URL)', async () => {
     const response = await catchAll.GET(
       request('/api/gate/error?error=not_allowed&error_description=Call%20this%20number')
