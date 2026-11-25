@@ -71,17 +71,31 @@ function json(status: number, value: unknown = {}) {
   });
 }
 
-/** GET の一覧と POST・DELETE の応答を返す */
+const REQUESTS_URL = '/api/admin/gate-requests';
+
+/**
+ * GET の一覧と POST・DELETE の応答を返す。同じ画面の「利用の申請」の一覧（gate-request-section.tsx。
+ * そちらのテストは gate-request-section.test.tsx）は、既定では 0 件を返す
+ */
 function routeFetch(handlers: {
   list: () => Promise<unknown>;
   post?: () => Promise<unknown>;
   remove?: () => Promise<unknown>;
+  requests?: () => Promise<unknown>;
 }) {
-  mockFetch.mockImplementation((_url: string, init?: RequestInit) => {
+  mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+    if (String(url).startsWith(REQUESTS_URL)) {
+      return handlers.requests ? handlers.requests() : json(200, { requests: [] });
+    }
     if (init?.method === 'POST' && handlers.post) return handlers.post();
     if (init?.method === 'DELETE' && handlers.remove) return handlers.remove();
     return handlers.list();
   });
+}
+
+/** 許可リストの API への呼び出しだけ（申請の一覧の取得を除く） */
+function allowlistCalls(): unknown[][] {
+  return mockFetch.mock.calls.filter(([url]) => !String(url).startsWith(REQUESTS_URL));
 }
 
 function renderPage(viewerId = 'admin-1') {
@@ -180,7 +194,7 @@ describe('サイトに入れるアカウントの管理画面', () => {
         timeout: 3000,
       })
     ).toBeInTheDocument();
-    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(allowlistCalls()).toHaveLength(2);
     expect(screen.getByLabelText('Gmail アドレス')).toBeDisabled();
   });
 
@@ -195,8 +209,10 @@ describe('サイトに入れるアカウントの管理画面', () => {
 
     expect(await screen.findByText(text)).toBeInTheDocument();
     // 取り直しても同じなので再試行しない
-    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(allowlistCalls()).toHaveLength(1);
     expect(screen.queryByLabelText('Gmail アドレス')).not.toBeInTheDocument();
+    // 同じ画面の利用の申請も出さない（案内だけにする）
+    expect(screen.queryByText('利用の申請')).not.toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
@@ -259,6 +275,12 @@ describe('サイトに入れるアカウントの管理画面', () => {
         expect(
           mockFetch.mock.calls.filter(([, init]) => !init?.method).length
         ).toBeGreaterThan(listCallsBefore)
+      );
+      // 追加すると同じアカウントの利用の申請はサーバーで消えるので、申請の一覧（とメニューの件数）も取り直す
+      await waitFor(() =>
+        expect(
+          mockFetch.mock.calls.filter(([url]) => String(url).startsWith(REQUESTS_URL))
+        ).toHaveLength(2)
       );
     });
 

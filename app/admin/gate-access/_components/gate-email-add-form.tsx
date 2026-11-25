@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui-v2/button-v2';
 import { useToast } from '@/app/hooks/use-toast';
 import { normalizeGateEmail } from '@/lib/auth/site-gate/email';
+import { gateAccessRequestsQueryKey } from '@/lib/auth/site-gate/admin-request-query';
 import {
   ADD_FAILED_MESSAGE,
   GateAllowlistActionError,
@@ -39,8 +40,13 @@ export function GateEmailAddForm({ disabled }: GateEmailAddFormProps) {
     mutationFn: (email: string) => addGateEmail(email),
     // オフラインでも一時停止させずにすぐ失敗させ、失敗の文言を出す
     networkMode: 'always',
-    // 失敗しても一覧を取り直す（追加が済んだ後に応答だけ失われたとき、一覧を古いまま残さない）
-    onSettled: () => queryClient.invalidateQueries({ queryKey: gateAllowlistQueryKey }),
+    // 失敗しても一覧を取り直す（追加が済んだ後に応答だけ失われたとき、一覧を古いまま残さない）。
+    // 追加すると同じアカウントの利用の申請は消えるので、申請の一覧（とメニューの件数）も取り直す
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: gateAllowlistQueryKey }),
+        queryClient.invalidateQueries({ queryKey: gateAccessRequestsQueryKey }),
+      ]),
   });
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
