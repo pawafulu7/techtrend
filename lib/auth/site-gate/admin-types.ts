@@ -42,8 +42,18 @@ export interface GateAccessRequestsResponse {
   requests: GateAccessRequestEntry[];
 }
 
+/** 利用の申請を許可したときの、申請のアドレスへの通知メール */
+export type GateApprovalNotification =
+  /** 通知メールを送った */
+  | 'sent'
+  /** 送ろうとして送れなかった（送信の失敗・時間切れ・送信の設定が無い）。許可は済んでいる */
+  | 'failed'
+  /** 送っていない（すでに許可されていた・入口が無効・メールを送らない設定の環境） */
+  | 'none';
+
 export interface GateAccessRequestApproveResponse {
   /** approved: 許可リストに足した / already_allowed: すでに許可されていたので申請だけ消した */
   status: 'approved' | 'already_allowed';
   email: string;
+  notification: GateApprovalNotification;
 }

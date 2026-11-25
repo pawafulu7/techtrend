@@ -212,11 +212,102 @@ describe('利用の申請の一覧', () => {
       expect(screen.getByTestId('gate-request-section')).toHaveFocus();
     });
 
+    it('通知メールを送れたら、そのことも知らせる', async () => {
+      const user = userEvent.setup();
+      routeFetch({
+        requests: () => json(200, { requests: [TARO] }),
+        approve: () =>
+          json(200, { status: 'approved', email: 'tarosuzuki@gmail.com', notification: 'sent' }),
+      });
+      renderSection();
+      await screen.findByText('tarosuzuki@gmail.com');
+      await user.click(screen.getByRole('button', { name: 'tarosuzuki@gmail.com を許可' }));
+
+      await waitFor(() =>
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'tarosuzuki@gmail.com を許可しました',
+          description: '通知メールを送りました',
+        })
+      );
+      expect(screen.queryByTestId('gate-request-error')).not.toBeInTheDocument();
+    });
+
+    it('通知メールを送れなかったら、許可は済んだことと、本人に知らせる必要があることを残す', async () => {
+      const user = userEvent.setup();
+      let requests = [TARO, HANAKO];
+      const notifications = ['failed', 'sent'];
+      routeFetch({
+        requests: () => json(200, { requests }),
+        approve: () => {
+          const [approved, ...rest] = requests;
+          requests = rest;
+          return json(200, {
+            status: 'approved',
+            email: approved.email,
+            notification: notifications.shift(),
+          });
+        },
+      });
+      renderSection();
+      await screen.findByText('tarosuzuki@gmail.com');
+      await user.click(screen.getByRole('button', { name: 'tarosuzuki@gmail.com を許可' }));
+
+      await waitFor(() =>
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'tarosuzuki@gmail.com を許可しました',
+          description: '通知メールは送れませんでした。本人に直接知らせてください',
+        })
+      );
+      // 行が一覧から消えたあとも、どのアドレスかが分かる形で残る
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', { name: 'tarosuzuki@gmail.com を許可' })
+        ).not.toBeInTheDocument()
+      );
+      const MESSAGE =
+        'tarosuzuki@gmail.com を許可しましたが、通知メールを送れませんでした。本人に直接知らせてください';
+      expect(screen.getByTestId('gate-request-unnotified')).toHaveTextContent(MESSAGE);
+
+      // 続けて別の申請を許可しても消えない（誰に知らせる必要があるかが、ほかに残らないため）
+      await user.click(screen.getByRole('button', { name: 'hanako@gmail.com を許可' }));
+      await screen.findByTestId('gate-request-empty');
+      expect(screen.getByTestId('gate-request-unnotified')).toHaveTextContent(MESSAGE);
+      expect(screen.getByTestId('gate-request-unnotified')).not.toHaveTextContent('hanako');
+    });
+
+    it.each([
+      ['送っていない（none）', 'none'],
+      ['知らない値', 'weird'],
+      ['欄が無い', undefined],
+    ])('通知メールの結果が %s なら、メールのことは何も出さない', async (_label, notification) => {
+      const user = userEvent.setup();
+      routeFetch({
+        requests: () => json(200, { requests: [TARO] }),
+        approve: () =>
+          json(200, { status: 'approved', email: 'tarosuzuki@gmail.com', notification }),
+      });
+      renderSection();
+      await screen.findByText('tarosuzuki@gmail.com');
+      await user.click(screen.getByRole('button', { name: 'tarosuzuki@gmail.com を許可' }));
+
+      await waitFor(() =>
+        expect(mockToast).toHaveBeenCalledWith({ title: 'tarosuzuki@gmail.com を許可しました' })
+      );
+      expect(screen.queryByTestId('gate-request-unnotified')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('gate-request-error')).not.toBeInTheDocument();
+    });
+
     it('すでに許可されていたら、そのことを知らせる', async () => {
       const user = userEvent.setup();
       routeFetch({
         requests: () => json(200, { requests: [TARO] }),
-        approve: () => json(200, { status: 'already_allowed', email: 'tarosuzuki@gmail.com' }),
+        // すでに許可されていたときは、サーバーはメールを送らない。万一 failed が付いていても出さない
+        approve: () =>
+          json(200, {
+            status: 'already_allowed',
+            email: 'tarosuzuki@gmail.com',
+            notification: 'failed',
+          }),
       });
       renderSection();
       await screen.findByText('tarosuzuki@gmail.com');
@@ -227,6 +318,7 @@ describe('利用の申請の一覧', () => {
           title: 'tarosuzuki@gmail.com はすでに許可されています',
         })
       );
+      expect(screen.queryByTestId('gate-request-unnotified')).not.toBeInTheDocument();
     });
 
     it.each([

@@ -82,7 +82,7 @@ flowchart LR
 | Redis | `lib/cache/`（LayeredCache: 用途別キャッシュ）+ `lib/middleware/rate-limiter.ts`（`getRedisClient()` 兼用） | `REDIS_URL` |
 | Gemini | 要約・抽出（`lib/ai/`） | `GEMINI_API_KEY` |
 | OpenAI embeddings | `text-embedding-3-small`（RAG, `lib/rag/`） | `OPENAI_API_KEY` |
-| Resend / SMTP | メールアドレスの確認メール（Better Auth、`lib/auth/auth.ts`）。ほかにメールを送る処理は無い | `RESEND_API_KEY`, `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD`/`SMTP_SECURE` |
+| Resend / SMTP | メールアドレスの確認メール（Better Auth、`lib/auth/auth.ts`）と、サイトの入口の利用の申請を許可した知らせ（`lib/auth/site-gate/approval-email.ts`）。送信は `lib/email/mailer.ts`。ほかにメールを送る処理は無い | `RESEND_API_KEY`, `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD`/`SMTP_SECURE` |
 | Slack Webhook | バッチ失敗通知 | `SLACK_WEBHOOK_URL` |
 | Google / GitHub OAuth | Better Auth 経由のソーシャルログイン。サイトの入口の Google ログインは、アプリ内のものと別の OAuth クライアントを使う | `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`。入口は `GATE_GOOGLE_CLIENT_ID`/`GATE_GOOGLE_CLIENT_SECRET` |
 | New Relic | 本番 APM。Vercel Marketplace 統合で導入する（`README.md:191`「Phase 1.5: 本番環境（Vercel + New Relic）」、手順は `docs/operations/phase2a/monitoring-setup.md`） | アプリ側が読むのは OTLP エクスポータ設定の `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_HEADERS` / `OTEL_SERVICE_NAME`（`instrumentation.ts`）。New Relic 固有の変数はコードから参照していない |

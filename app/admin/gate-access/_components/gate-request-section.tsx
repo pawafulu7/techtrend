@@ -22,7 +22,13 @@ import {
   isGateAccessRequestsAuthFailure,
 } from '@/lib/auth/site-gate/admin-request-query';
 import { GateAllowlistActionError, gateAllowlistQueryKey } from './gate-allowlist-api';
-import { APPROVE_FAILED_MESSAGE, approveGateRequest } from './gate-requests-api';
+import {
+  APPROVAL_EMAIL_FAILED_DESCRIPTION,
+  APPROVAL_EMAIL_SENT_DESCRIPTION,
+  APPROVE_FAILED_MESSAGE,
+  approvalEmailFailedMessage,
+  approveGateRequest,
+} from './gate-requests-api';
 import { GateRequestRejectDialog } from './gate-request-reject-dialog';
 
 function formatRequestedDate(createdAt: string): string {
@@ -30,7 +36,8 @@ function formatRequestedDate(createdAt: string): string {
 }
 
 /**
- * 入口で未登録と拒否された人からの、利用の申請（対応待ち）。許可すると許可リストに入り、申請は消える。
+ * 入口で未登録と拒否された人からの、利用の申請（対応待ち）。許可すると許可リストに入り、申請は消え、
+ * 申請のアドレスに通知メールが出る（lib/auth/site-gate/approval-email.ts）。
  * 自動では許可しない（2026-11-25 のユーザーの決定）
  */
 export function GateRequestSection() {
@@ -39,6 +46,9 @@ export function GateRequestSection() {
   const { toast } = useToast();
   const [rejecting, setRejecting] = useState<GateAccessRequestEntry | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  // 許可したが通知メールを送れなかったアドレス。管理者が本人に知らせる必要があるので、次の許可・却下では
+  // 消さず、ページを開き直すまで残す（行は一覧から消えていて、ほかに辿る手がかりが無い）
+  const [unnotified, setUnnotified] = useState<string[]>([]);
   const openerRef = useRef<HTMLElement | null>(null);
   const regionRef = useRef<HTMLElement>(null);
 
@@ -93,13 +103,25 @@ export function GateRequestSection() {
     if (approve.isPending) return;
     setActionError(null);
     approve.mutate(request, {
+      // この onSuccess は、区画が画面に残っているときだけ呼ばれる。許可の応答は通知メールの送信を待つ
+      // （最大 10 秒）ので、その間にログアウトや別のアカウントへの切り替えが起きうる。申請者のアドレスを
+      // そのあとの画面に出さないよう、知らせは useMutation の側（画面から外れても呼ばれる）には置かない
       onSuccess: (result) => {
+        const emailFailed = result.status === 'approved' && result.notification === 'failed';
+        const emailSent = result.status === 'approved' && result.notification === 'sent';
         toast({
           title:
             result.status === 'already_allowed'
               ? `${result.email} はすでに許可されています`
               : `${result.email} を許可しました`,
+          ...(emailSent && { description: APPROVAL_EMAIL_SENT_DESCRIPTION }),
+          ...(emailFailed && { description: APPROVAL_EMAIL_FAILED_DESCRIPTION }),
         });
+        if (emailFailed) {
+          setUnnotified((current) =>
+            current.includes(result.email) ? current : [...current, result.email]
+          );
+        }
         // 行が消えるので、フォーカスを区画へ戻す
         regionRef.current?.focus();
       },
@@ -151,6 +173,19 @@ export function GateRequestSection() {
           onRetry={() => void refetch()}
           size="compact"
         />
+      )}
+      {unnotified.length > 0 && (
+        <div
+          role="alert"
+          className="space-y-1 text-sm text-(--tt-color-negative)"
+          data-testid="gate-request-unnotified"
+        >
+          {unnotified.map((email) => (
+            <p key={email} className="[overflow-wrap:anywhere]">
+              {approvalEmailFailedMessage(email)}
+            </p>
+          ))}
+        </div>
       )}
       {actionError && (
         <p
