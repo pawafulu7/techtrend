@@ -1,6 +1,6 @@
 # データモデル概要
 
-34 model（2026-11-21 時点）のうち、`Article` を中心に実際の Prisma `@relation` でつながるものだけを抜き出し、コア記事系（04-A）とユーザー・パーソナライズ系（04-B）の 2 図に分けて示す。関係を持たない/薄い独立系テーブルは図に含めず、末尾の表にまとめた。
+35 model（2026-11-25 時点）のうち、`Article` を中心に実際の Prisma `@relation` でつながるものだけを抜き出し、コア記事系（04-A）とユーザー・パーソナライズ系（04-B）の 2 図に分けて示す。関係を持たない/薄い独立系テーブルは図に含めず、末尾の表にまとめた。
 
 ---
 
@@ -214,6 +214,7 @@ erDiagram
 | `ViewpointMap` | トピック別の論点マップ（AI生成） | [未確認] `lib/ai/extraction/extraction-schemas.ts` に出力スキーマ（zod）はあるが、DB への `create`/`upsert` 呼び出しはリポジトリ内で確認できず | `@relation` なし。`articleIds` は `String[]` の論理参照 |
 | `ChangelogProject` → `ChangelogVersion` → `ChangelogEntry` | OSS/製品の変更履歴収集（親: プロジェクト、子: バージョン、孫: 変更点） | `scripts/scheduled/collect-changelog.ts`（`scheduler-changelog`、日次） | 3 モデルは互いに `@relation` を持つ独立系。`ChangelogProject 1 - N ChangelogVersion 1 - N ChangelogEntry`（いずれも `onDelete: Cascade`）。`Article`/`User` への関係はない |
 | `GateAllowedEmail` | サイトの入口（Google ログイン）に入れる Gmail アドレスの許可リスト | `app/api/admin/gate-allowlist/route.ts`（管理画面 `/admin/gate-access` から追加・削除）。読み取りは `lib/auth/site-gate/allowlist.ts`（proxy の入口の判定） | 追加した管理者 `createdById` だけを `User` に `@relation`（`onDelete: SetNull`）。`email` は正規化した形（小文字・ローカル部のドットを除く）だけを CHECK 制約で受け付ける。本番 DB の複製（`scripts/db/sync-prod.sh`）では写さない |
+| `GateAccessRequest` | サイトの入口で未登録と拒否された人からの、利用の申請（対応待ち）。行があるあいだが対応待ちで、状態の列は持たない | 書き込みは `app/api/gate/request/route.ts`（拒否のページのフォーム。`lib/auth/site-gate/access-request-store.ts`）。管理画面 `/admin/gate-access` で許可（`GateAllowedEmail` に足して行を消す。`lib/auth/site-gate/allowlist-store.ts` の `approveGateAccessRequest`）か却下（行を消す） | `@relation` なし。`email` は一意で、`GateAllowedEmail` と同じ正規化した形だけを CHECK 制約で受け付ける（1 つのアドレスにつき 1 件）。フォームには拒否された Google アカウントが入っているが、申請者が別の Gmail アドレスに書き換えられるので、Google の確認を経ているとは限らない。`note` は申請者が書いた生の文字列（500 文字まで）。本番 DB の複製では写さない |
 | `UserDeletionLog` | ユーザー退会・削除の監査ログ | `lib/auth/utils.ts`、`app/api/admin/users/[id]/route.ts`（自己退会・管理者削除時） | `@relation` なし。`userId`/`email` は削除後も残すためスナップショット的に保持（論理参照） |
 | `Verification` | Better Auth のメール確認トークン管理 | Better Auth ライブラリ内部（`lib/auth/auth.ts` の `emailVerification` 設定経由）。アプリコードから直接書き込まない | `@relation` なし |
 | `SourceTag` / `SourceTagAssignment` | ソースへのタグ付け（`Tag`/`InterestCategory` の記事タグとは別系統） | 初期移行スクリプト `scripts/migrate/phase2-data-migration.ts:185`（`tx.sourceTagAssignment.createMany()`）。定常バッチ・API からの書き込みは確認できず、[推測] 移行時に投入したきりとみられる | `SourceTagAssignment` は `Source`（04-A）と `SourceTag` の双方に `@relation`（`onDelete: Cascade`）を持つ。ただし `Article`/`User` へは繋がらないため図には含めていない |
@@ -225,8 +226,8 @@ erDiagram
 - **pgvector を使うフィールドは 3 つ**: `ArticleEmbedding.embedding`、`ArticleChunk.embedding`、`InterestCategory.centroidEmbedding`。いずれも `Unsupported("vector(1536)")`（1536 次元）。Mermaid の `erDiagram` は型に `()` を使えないため、図上は `vector embedding` のように次元を省略して表記している
 - pgvector 拡張を追加したマイグレーション: `prisma/migrations/20251018154552_add_article_embeddings/migration.sql`
 - **`ArticleChunk` は現行パイプラインでは書き込まれない**: embedding 生成の実装 `lib/rag/article-embedding-pipeline.ts` が書き込むのは `ArticleEmbedding` のみで、`ArticleChunk` への `create`/`upsert`/`INSERT` はリポジトリ内に存在しない（`grep -rn 'articleChunk\.(create|upsert)|INSERT INTO "ArticleChunk"' lib app scripts` で確認）。スキーマ上は将来のチャンク分割 RAG 用に残っている
-- model 総数: **33**（2026-10-25 時点）。取得コマンド: `grep -c '^model ' prisma/schema.prisma`
-- 全 34 model の完全な列挙・カラム定義は `prisma/schema.prisma` を参照
+- model 総数: **35**（2026-11-25 時点）。取得コマンド: `grep -c '^model ' prisma/schema.prisma`
+- 全 35 model の完全な列挙・カラム定義は `prisma/schema.prisma` を参照
 
 ---
 

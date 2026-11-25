@@ -76,9 +76,9 @@ flowchart LR
 | GitHub Actions CI | `ci.yml` / `codeql.yml` / `ai-regression-test.yml` / `tag-quality-check.yml` | - |
 | proxy.ts | Next.js middleware（サイトの入口: Google ログインと許可リスト（`lib/auth/site-gate/`）/ NUL バイトの拒否 / CSRF / メンテナンスモード / 保護パスのセッションゲート） | `MAINTENANCE_MODE`, `GATE_GOOGLE_ENABLED`, `GATE_GOOGLE_CLIENT_ID`/`GATE_GOOGLE_CLIENT_SECRET`, `GATE_AUTH_SECRET`, `GATE_ALWAYS_ALLOWED_EMAILS`（`BASIC_AUTH_ENABLED` は、以前の Basic 認証の設定が残っていないかの確認にだけ読む） |
 | RSC Pages | `app/` 配下の公開・認証必須・管理者ページ | - |
-| API Routes | `app/api/` 配下 66 件の `route.ts`（一覧は [05 機能一覧](./05-features.md#4-api66本)） | - |
+| API Routes | `app/api/` 配下 70 件の `route.ts`（一覧は [05 機能一覧](./05-features.md#4-api70本)） | - |
 | Better Auth | `lib/auth/auth.ts`（email+password, admin プラグインで RBAC）。サイトの入口は DB なしの別インスタンス（`lib/auth/site-gate/gate-auth.ts`、`/api/gate`、Cookie は `tt-gate.*`） | `AUTH_SECRET`（フォールバック `NEXTAUTH_SECRET`）。入口は `GATE_AUTH_SECRET` |
-| PostgreSQL + pgvector | Prisma 7（`prisma/schema.prisma`, 34 model）。マネージド。バージョン・提供元は注記参照 | `DATABASE_URL` |
+| PostgreSQL + pgvector | Prisma 7（`prisma/schema.prisma`, 35 model）。マネージド。バージョン・提供元は注記参照 | `DATABASE_URL` |
 | Redis | `lib/cache/`（LayeredCache: 用途別キャッシュ）+ `lib/middleware/rate-limiter.ts`（`getRedisClient()` 兼用） | `REDIS_URL` |
 | Gemini | 要約・抽出（`lib/ai/`） | `GEMINI_API_KEY` |
 | OpenAI embeddings | `text-embedding-3-small`（RAG, `lib/rag/`） | `OPENAI_API_KEY` |
@@ -134,7 +134,7 @@ flowchart LR
 - **本番 PostgreSQL のバージョンと提供元は断定しない**。`pg17` と確認できるのはローカル用の `Dockerfile.postgres-pgvector`（`FROM pgvector/pgvector:pg17`、`docker-compose.dev.yml` が使用）だけで、本番の接続先バージョンはコードから取得していない [推測]。提供元についても、運用手順書 `docs/operations/rag-rollback-procedure.md` では Neon の操作（Snapshot 取得、`console.neon.tech`）を記載しているが、`docs/VERCEL_MIGRATION_SETUP.md` は Prisma Postgres（db.prisma.io）と記述が混在しており、現行の提供元はコードからは確定できない [推測]。GitHub Actions は `secrets.DATABASE_URL` のみを参照しており、接続先そのものはワークフロー定義から特定できない
 - **Upstash は使っていない**。レート制限の実体は `lib/middleware/rate-limiter.ts` で、`REDIS_URL` の ioredis クライアント（未設定時はメモリ）を使う。したがってキャッシュとレート制限は同じ Redis 1 ノードを共有している（Upstash 用の env の定義は使われていなかったので削除した）
 - Source 87 件は 2026-10-25 時点の **dev DB** の値（本番の件数は未確認）。取得コマンド: `docker exec techtrend-postgres psql -U postgres -d techtrend_dev -c 'SELECT COUNT(*), COUNT(*) FILTER (WHERE enabled) FROM "Source";'`
-- API routes 66 件（2026-11-21 時点）の取得コマンド: `find app/api -name route.ts | wc -l`
+- API routes 70 件（2026-11-25 時点）の取得コマンド: `find app/api -name route.ts | wc -l`
 - GitHub Actions スケジューラ 14 本の取得コマンド: `ls .github/workflows/scheduler-*.yml | wc -l`
 
 ---
