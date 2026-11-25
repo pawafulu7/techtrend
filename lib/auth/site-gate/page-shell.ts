@@ -81,9 +81,18 @@ const WORDMARK_SVG = `<svg class="wordmark" viewBox="${WORDMARK_VIEWBOX}" aria-h
  * 入口のログインの開始へのリンク。
  * 開始は Google のアカウントの選択を毎回出す（prompt=select_account）ので、別のアカウントで入り直せる
  */
-export function gateStartLink(label: string, secondary = false): string {
-  const href = `${GATE_START_PATH}?callbackURL=${encodeURIComponent('/')}`;
-  return `<a class="action${secondary ? ' secondary' : ''}" href="${escapeHtml(href)}">${escapeHtml(label)}</a>`;
+export function gateStartLink(
+  label: string,
+  secondary = false,
+  options: {
+    /** ログインのあとに戻る先（同じサイトのパス。resolveGateCallbackPath を通したもの）。既定は / */
+    callbackPath?: string;
+    /** リンク先に、このページの URL（Referer）を送らない */
+    noReferrer?: boolean;
+  } = {}
+): string {
+  const href = `${GATE_START_PATH}?callbackURL=${encodeURIComponent(options.callbackPath ?? '/')}`;
+  return `<a class="action${secondary ? ' secondary' : ''}" href="${escapeHtml(href)}"${options.noReferrer ? ' rel="noreferrer"' : ''}>${escapeHtml(label)}</a>`;
 }
 
 /** どのアカウントの話かを示す帯（申請の結果のページ）。入力欄に見えないよう、枠線ではなく地の色で分ける */

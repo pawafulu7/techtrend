@@ -172,11 +172,27 @@ describe('GET /api/gate/start', () => {
     expect(mockSignInSocial).not.toHaveBeenCalled();
   });
 
-  it('returns 503 when Better Auth fails, without leaking the error', async () => {
+  it('returns a 503 page when Better Auth fails, without leaking the error', async () => {
     mockSignInSocial.mockRejectedValue(new Error('internal detail'));
+    const response = await startGET(request('/api/gate/start?callbackURL=%2Fdigest'));
+    expect(response.status).toBe(503);
+    // 開始は画面の遷移で開くので、素の文字列ではなくページで返す。入り直すと、開こうとしていたページへ戻る
+    expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    const html = await response.text();
+    expect(html).toContain('<h1>いまはログインできません</h1>');
+    expect(html).toContain('href="/api/gate/start?callbackURL=%2Fdigest"');
+    expect(html).not.toContain('internal detail');
+  });
+
+  it('returns the same 503 page when Better Auth returns no URL', async () => {
+    mockSignInSocial.mockResolvedValue({
+      headers: new Headers(),
+      response: { url: undefined, redirect: false },
+    });
     const response = await startGET(request('/api/gate/start'));
     expect(response.status).toBe(503);
-    expect(await response.text()).not.toContain('internal detail');
+    expect(await response.text()).toContain('<h1>いまはログインできません</h1>');
   });
 
   it('limits starts to 30 per minute per IP', async () => {
@@ -308,6 +324,16 @@ describe('GET /api/gate/[...all]', () => {
     const html = await last.text();
     expect(html).toContain('<h1>しばらくお待ちください</h1>');
     expect(html).not.toContain('rate_limited');
+    expect(html).toContain('rel="noreferrer"');
+  });
+
+  it('keeps the page the visitor was opening on the rate limited page of the start', async () => {
+    let last = await startGET(request('/api/gate/start?callbackURL=%2Fdigest%3Fx%3D1', { ip: '198.51.100.24' }));
+    for (let i = 0; i < 30; i++) {
+      last = await startGET(request('/api/gate/start?callbackURL=%2Fdigest%3Fx%3D1', { ip: '198.51.100.24' }));
+    }
+    expect(last.status).toBe(429);
+    expect(await last.text()).toContain('href="/api/gate/start?callbackURL=%2Fdigest%3Fx%3D1"');
   });
 
   it('does not show the error page when opened directly (no notice cookie) and starts sign-in instead', async () => {

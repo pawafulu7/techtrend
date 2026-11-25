@@ -216,6 +216,51 @@ describe('サイトに入れるアカウントの管理画面', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
+  describe('利用の申請の一覧だけがログイン切れ（401）になったとき', () => {
+    // 申請の一覧は 1 分ごとに取り直すので、許可リストより先に失効に気づく。区画が許可リストを取り直させる
+    it('許可リストが読めるうちは、区画に案内を出し、許可リストと追加欄はそのまま使える', async () => {
+      routeFetch({
+        list: () => json(200, body([FRIEND])),
+        requests: () => json(401),
+      });
+      renderPage();
+
+      expect(await screen.findByText('申請を表示できません')).toBeInTheDocument();
+      expect(await screen.findByText('friend@gmail.com')).toBeInTheDocument();
+      expect(screen.getByLabelText('Gmail アドレス')).toBeEnabled();
+      // 許可リストの取り直しは 1 回だけ（最初の取得と合わせて 2 回）。描画し直しても繰り返さない
+      await waitFor(() => expect(allowlistCalls()).toHaveLength(2));
+      await new Promise((resolve) => setTimeout(resolve, 1300));
+      expect(allowlistCalls()).toHaveLength(2);
+      expect(
+        mockFetch.mock.calls.filter(([url]) => String(url).startsWith(REQUESTS_URL))
+      ).toHaveLength(1);
+    });
+
+    it('取り直した許可リストも 401 なら、画面全体の案内に替える', async () => {
+      let listCalls = 0;
+      routeFetch({
+        list: () => {
+          listCalls += 1;
+          return listCalls === 1 ? json(200, body([FRIEND])) : json(401);
+        },
+        requests: () => json(401),
+      });
+      renderPage();
+
+      expect(
+        await screen.findByText(
+          'ログインの有効期限が切れました。もう一度ログインしてから開き直してください。'
+        )
+      ).toBeInTheDocument();
+      // 許可リストのアドレスと追加欄、区画の案内は出さない
+      expect(screen.queryByText('friend@gmail.com')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Gmail アドレス')).not.toBeInTheDocument();
+      expect(screen.queryByText('申請を表示できません')).not.toBeInTheDocument();
+      expect(listCalls).toBe(2);
+    });
+  });
+
   describe('追加', () => {
     it('送る前に空と Gmail 以外を止め、入力を直し始めたら赤い表示を外す', async () => {
       const user = userEvent.setup();

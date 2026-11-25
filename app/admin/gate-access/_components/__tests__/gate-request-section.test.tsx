@@ -133,8 +133,12 @@ describe('利用の申請の一覧', () => {
         screen.getByText('ログインの状態が変わりました。このページを開き直してください。')
       ).toBeInTheDocument();
       expect(screen.queryByRole('table')).not.toBeInTheDocument();
+      // 許可・却下のあとの取り直しが走っていれば、中断せずに相乗りする指定で呼ぶ
       await waitFor(() =>
-        expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'gate-allowlist'] })
+        expect(invalidate).toHaveBeenCalledWith(
+          { queryKey: ['admin', 'gate-allowlist'] },
+          { cancelRefetch: false }
+        )
       );
       // 申請の一覧は、取り直しても同じなので再試行しない（再試行は 1 秒後。それを過ぎても取り直していない）
       await new Promise((resolve) => setTimeout(resolve, 1300));

@@ -1,6 +1,7 @@
 import {
   renderGateErrorPage,
   renderGateRequestFormPage,
+  renderGateStartFailedPage,
   toGateRateLimitedPage,
 } from '@/lib/auth/site-gate/error-page';
 
@@ -209,10 +210,14 @@ describe('toGateRateLimitedPage', () => {
     expect(response.headers.get('retry-after')).toBe('42');
     expect(response.headers.get('x-ratelimit-limit')).toBe('30');
     expect(response.headers.get('x-ratelimit-remaining')).toBe('0');
+    expect(response.headers.get('x-ratelimit-reset')).toBe('2026-11-25T00:01:00.000Z');
     const html = await response.text();
     expect(html).toContain('<h1>しばらくお待ちください</h1>');
     expect(html).toContain('アクセスの回数が多すぎます。');
-    expect(html).toContain('>もう一度ログインする</a>');
+    // Google からの戻りの URL には、まだ使っていない認可コードが載っている。リンク先に Referer を送らない
+    expect(html).toContain(
+      '<a class="action" href="/api/gate/start?callbackURL=%2F" rel="noreferrer">もう一度ログインする</a>'
+    );
     expect(html).not.toContain('rate_limited');
     expect(html).not.toContain('<script');
   });
@@ -229,10 +234,52 @@ describe('toGateRateLimitedPage', () => {
     for (const line of lines) expect(line.length).toBeLessThanOrEqual(18);
   });
 
+  it('sends the retry button back to the page the visitor was opening', async () => {
+    const html = await toGateRateLimitedPage(limited(), {
+      callbackPath: '/digest?x=1&y="2"',
+    }).text();
+    expect(html).toContain('href="/api/gate/start?callbackURL=%2Fdigest%3Fx%3D1%26y%3D%222%22"');
+  });
+
   it('returns other responses as they are', () => {
     for (const status of [200, 302, 403, 503]) {
       const response = new Response('x', { status });
       expect(toGateRateLimitedPage(response)).toBe(response);
     }
+  });
+
+  it('does not replace a 429 that is not the JSON of the rate limiter (it may carry cookies)', () => {
+    // 中の処理（Better Auth など）が自分で返した 429 は、付いている Set-Cookie ごとそのまま返す
+    const response = new Response('<html>too many</html>', {
+      status: 429,
+      headers: { 'Content-Type': 'text/html', 'Set-Cookie': 'tt-gate.oauth_state=; Max-Age=0' },
+    });
+    expect(toGateRateLimitedPage(response)).toBe(response);
+    expect(toGateRateLimitedPage(new Response(null, { status: 429 })).status).toBe(429);
+  });
+});
+
+describe('renderGateStartFailedPage', () => {
+  it('is a 503 page that sends the visitor back to the page they were opening', () => {
+    const { status, html } = renderGateStartFailedPage('/digest?x=1');
+    expect(status).toBe(503);
+    expect(html).toContain('<h1>いまはログインできません</h1>');
+    expect(html).toContain(
+      '<a class="action" href="/api/gate/start?callbackURL=%2Fdigest%3Fx%3D1">もう一度ログインする</a>'
+    );
+    expect(html).toContain('<meta name="robots" content="noindex">');
+    expect(html).not.toContain('<script');
+  });
+
+  it('keeps the title within 12 and sentences within 18 characters', () => {
+    const { html } = renderGateStartFailedPage('/');
+    expect(html.match(/<h1>(.*?)<\/h1>/)![1].length).toBeLessThanOrEqual(12);
+    const lines = html
+      .match(/<div class="lines">(.*?)<\/div>/)![1]
+      .split('</p>')
+      .filter(Boolean)
+      .map((p) => p.replace('<p>', ''));
+    expect(lines).toHaveLength(2);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(18);
   });
 });

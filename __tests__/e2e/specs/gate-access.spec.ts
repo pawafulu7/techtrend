@@ -120,7 +120,9 @@ test.describe('サイトに入れるアカウント', () => {
       const rows = section.getByTestId('gate-request-row');
       const navMatchesList = async () => {
         const listed = await rows.count();
-        const shown = (await navCount.count()) === 0 ? 0 : Number((await navCount.innerText()).trim());
+        // allInnerTexts は要素を待たない（数えた直後に件数の表示が消えても、待ち続けない）
+        const [text] = await navCount.allInnerTexts();
+        const shown = text === undefined ? 0 : Number(text.trim());
         return shown === listed ? 'same' : `menu ${shown} / list ${listed}`;
       };
       await expect(navCount).toBeVisible();

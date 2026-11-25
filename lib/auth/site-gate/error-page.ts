@@ -195,18 +195,52 @@ export function renderGateErrorPage(
 }
 
 /**
+ * 入口のログインを始められなかったとき（入口用の Better Auth の失敗）のページ。
+ * 開始は画面の遷移で開くので、素の文字列ではなくページで返す。callbackPath は、開こうとしていたページ
+ */
+export function renderGateStartFailedPage(callbackPath: string): {
+  status: number;
+  html: string;
+} {
+  return renderGatePage({
+    status: 503,
+    title: 'いまはログインできません',
+    lines: ['ログインを始められませんでした。', '少し待ってから入り直してください。'],
+    bodyHtml: gateStartLink(RETRY, false, { callbackPath }),
+  });
+}
+
+/**
  * 回数の制限（withRateLimit）が返す JSON の 429 を、ページに直す。
  *
  * 入口のログインの開始・Google からの戻り・拒否のページは、どれも画面の遷移で開く。JSON のままだと、
- * 利用者は JSON の文字列を見ることになる。429 のほかはそのまま返す。Retry-After などの見出しは残す
+ * 利用者は JSON の文字列を見ることになる。Retry-After などの見出しは残す。
+ *
+ * 直すのは JSON の 429 だけ（利用の申請の受け付け app/api/gate/request/route.ts と同じ見分け方）。
+ * 中の処理が自分で返した応答（Set-Cookie を付けたものなど）は、429 でもそのまま返す。
+ *
+ * callbackPath は、入り直すボタンの戻り先（開始のルートが、開こうとしていたページを渡す）。
+ * ボタンには rel="noreferrer" を付ける（Google からの戻りの URL には、まだ使っていない認可コードが
+ * 載っている。同じサイトへのリンクでも、Referer に載せない）
  */
-export function toGateRateLimitedPage(response: Response): Response {
-  if (response.status !== 429) return response;
+export function toGateRateLimitedPage(
+  response: Response,
+  options: { callbackPath?: string } = {}
+): Response {
+  if (
+    response.status !== 429 ||
+    !(response.headers.get('content-type') ?? '').includes('application/json')
+  ) {
+    return response;
+  }
   const { status, html } = renderGatePage({
     status: 429,
     title: 'しばらくお待ちください',
     lines: ['アクセスの回数が多すぎます。', '時間をおいて入り直してください。'],
-    bodyHtml: gateStartLink(RETRY),
+    bodyHtml: gateStartLink(RETRY, false, {
+      callbackPath: options.callbackPath,
+      noReferrer: true,
+    }),
   });
   const headers = new Headers({
     'Content-Type': 'text/html; charset=utf-8',

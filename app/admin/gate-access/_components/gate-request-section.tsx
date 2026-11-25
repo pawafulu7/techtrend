@@ -59,7 +59,11 @@ export function GateRequestSection() {
   const authFailed = isGateAccessRequestsAuthFailure(error);
   useEffect(() => {
     if (authFailed) {
-      void queryClient.invalidateQueries({ queryKey: gateAllowlistQueryKey });
+      // 許可・却下のあとの取り直しがすでに走っていれば、中断せずにそれに相乗りする
+      void queryClient.invalidateQueries(
+        { queryKey: gateAllowlistQueryKey },
+        { cancelRefetch: false }
+      );
     }
   }, [authFailed, queryClient]);
 
