@@ -1,6 +1,7 @@
 import {
   renderGateErrorPage,
   renderGateRequestFormPage,
+  toGateRateLimitedPage,
 } from '@/lib/auth/site-gate/error-page';
 
 describe('renderGateErrorPage', () => {
@@ -183,5 +184,55 @@ describe('renderGateErrorPage', () => {
     expect(html).toContain('@media (prefers-color-scheme:dark)');
     expect(html).toContain('--primary:#3A3FC0');
     expect(html).toContain('--primary:#A3ADFF');
+  });
+});
+
+describe('toGateRateLimitedPage', () => {
+  // 回数の制限（withRateLimit）が返す形
+  const limited = () =>
+    new Response(JSON.stringify({ error: 'rate_limited' }), {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': '42',
+        'X-RateLimit-Limit': '30',
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': '2026-11-25T00:01:00.000Z',
+      },
+    });
+
+  it('turns the JSON 429 into a page, keeping the status and the rate limit headers', async () => {
+    const response = toGateRateLimitedPage(limited());
+    expect(response.status).toBe(429);
+    expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('retry-after')).toBe('42');
+    expect(response.headers.get('x-ratelimit-limit')).toBe('30');
+    expect(response.headers.get('x-ratelimit-remaining')).toBe('0');
+    const html = await response.text();
+    expect(html).toContain('<h1>しばらくお待ちください</h1>');
+    expect(html).toContain('アクセスの回数が多すぎます。');
+    expect(html).toContain('>もう一度ログインする</a>');
+    expect(html).not.toContain('rate_limited');
+    expect(html).not.toContain('<script');
+  });
+
+  it('keeps the title within 12 and sentences within 18 characters', async () => {
+    const html = await toGateRateLimitedPage(limited()).text();
+    expect(html.match(/<h1>(.*?)<\/h1>/)![1].length).toBeLessThanOrEqual(12);
+    const lines = html
+      .match(/<div class="lines">(.*?)<\/div>/)![1]
+      .split('</p>')
+      .filter(Boolean)
+      .map((p) => p.replace('<p>', ''));
+    expect(lines).toHaveLength(2);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(18);
+  });
+
+  it('returns other responses as they are', () => {
+    for (const status of [200, 302, 403, 503]) {
+      const response = new Response('x', { status });
+      expect(toGateRateLimitedPage(response)).toBe(response);
+    }
   });
 });

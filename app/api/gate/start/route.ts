@@ -8,6 +8,7 @@ import type { SiteGateSettings } from '@/lib/auth/site-gate/config';
 import { z } from 'zod';
 import logger from '@/lib/logger';
 import { summarizeError } from '@/lib/utils/sanitize-error';
+import { toGateRateLimitedPage } from '@/lib/auth/site-gate/error-page';
 
 /**
  * サイトの入口のログインの開始（GET）。proxy.ts が、入口のログイン状態の無いブラウザの遷移をここへ移す。
@@ -118,5 +119,8 @@ export async function GET(request: NextRequest): Promise<Response> {
     return redirect;
   }
 
-  return rateLimitedStart(request, { settings: config.settings });
+  // 回数の制限に達したときは、JSON ではなくページで返す（開始は画面の遷移で開くため）
+  return toGateRateLimitedPage(
+    await rateLimitedStart(request, { settings: config.settings })
+  );
 }

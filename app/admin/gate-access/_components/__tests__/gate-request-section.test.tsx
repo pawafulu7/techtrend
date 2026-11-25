@@ -120,18 +120,33 @@ describe('利用の申請の一覧', () => {
     expect(screen.getByRole('heading', { name: '利用の申請' })).toBeInTheDocument();
   });
 
-  it.each([401, 403])('%d のときは何も出さない（案内は許可リストの側が出す）', async (status) => {
-    routeFetch({ requests: () => json(status) });
-    renderSection();
+  it.each([401, 403])(
+    '%d のときは、区画を黙って消さずに案内を出し、許可リストも取り直させる',
+    async (status) => {
+      // 申請の一覧は 1 分ごとに取り直すので、許可リストの側（定期的には取り直さない）より先に失効に気づく。
+      // 画面全体の案内は許可リストの側が理由に合わせて出すので、そちらを取り直させる
+      routeFetch({ requests: () => json(status) });
+      const { invalidate } = renderSection();
 
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
-    await waitFor(() =>
-      expect(screen.queryByRole('heading', { name: '利用の申請' })).not.toBeInTheDocument()
-    );
-    // 取り直しても同じなので再試行しない（再試行は 1 秒後。それを過ぎても取り直していない）
-    await new Promise((resolve) => setTimeout(resolve, 1300));
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-  });
+      expect(await screen.findByText('申請を表示できません')).toBeInTheDocument();
+      expect(
+        screen.getByText('ログインの状態が変わりました。このページを開き直してください。')
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('table')).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'gate-allowlist'] })
+      );
+      // 申請の一覧は、取り直しても同じなので再試行しない（再試行は 1 秒後。それを過ぎても取り直していない）
+      await new Promise((resolve) => setTimeout(resolve, 1300));
+      expect(callsTo('/api/admin/gate-requests')).toHaveLength(1);
+      // 許可リストの取り直しは 1 回だけ（失敗が続いても繰り返さない）
+      expect(
+        invalidate.mock.calls.filter(
+          ([filters]) => JSON.stringify(filters) === JSON.stringify({ queryKey: ['admin', 'gate-allowlist'] })
+        )
+      ).toHaveLength(1);
+    }
+  );
 
   it('メニューの件数が先に取得を始めても、一時的な失敗は 1 回再試行して一覧を出す', async () => {
     // 同じキーでは、先に取得を始めた側の再試行の設定が使われる。メニューと一覧で設定が食い違うと、
@@ -363,10 +378,9 @@ describe('利用の申請の一覧', () => {
         within(await screen.findByRole('dialog')).getByRole('button', { name: '却下する' })
       );
 
-      // 区画は出なくなる（案内は、同じ失敗になる許可リストの側が画面全体に出す）
-      await waitFor(() =>
-        expect(screen.queryByRole('heading', { name: '利用の申請' })).not.toBeInTheDocument()
-      );
+      // 一覧の代わりに案内を出す（画面全体の案内は、同じ失敗になる許可リストの側が出す）
+      expect(await screen.findByText('申請を表示できません')).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: '利用の申請' })).not.toBeInTheDocument();
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       expect(invalidate).toHaveBeenCalledWith({ queryKey: ['admin', 'gate-allowlist'] });
 

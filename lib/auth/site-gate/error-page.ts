@@ -193,3 +193,33 @@ export function renderGateErrorPage(
     bodyHtml: [gateStartLink(content.action), codeLine(code)].join('\n'),
   });
 }
+
+/**
+ * 回数の制限（withRateLimit）が返す JSON の 429 を、ページに直す。
+ *
+ * 入口のログインの開始・Google からの戻り・拒否のページは、どれも画面の遷移で開く。JSON のままだと、
+ * 利用者は JSON の文字列を見ることになる。429 のほかはそのまま返す。Retry-After などの見出しは残す
+ */
+export function toGateRateLimitedPage(response: Response): Response {
+  if (response.status !== 429) return response;
+  const { status, html } = renderGatePage({
+    status: 429,
+    title: 'しばらくお待ちください',
+    lines: ['アクセスの回数が多すぎます。', '時間をおいて入り直してください。'],
+    bodyHtml: gateStartLink(RETRY),
+  });
+  const headers = new Headers({
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-store',
+  });
+  for (const name of [
+    'Retry-After',
+    'X-RateLimit-Limit',
+    'X-RateLimit-Remaining',
+    'X-RateLimit-Reset',
+  ]) {
+    const value = response.headers.get(name);
+    if (value !== null) headers.set(name, value);
+  }
+  return new Response(html, { status, headers });
+}

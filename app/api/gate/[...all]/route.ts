@@ -10,6 +10,7 @@ import type { SiteGateSettings } from '@/lib/auth/site-gate/config';
 import { z } from 'zod';
 import {
   renderGateErrorPage,
+  toGateRateLimitedPage,
   type GateAccessRequestView,
 } from '@/lib/auth/site-gate/error-page';
 import {
@@ -177,7 +178,10 @@ export async function GET(request: NextRequest): Promise<Response> {
   if (!HANDLED_PATHS.has(url.pathname)) return notFound();
 
   if (url.pathname === GATE_CALLBACK_PATH) {
-    return rateLimitedCallback(request, { settings: config.settings });
+    // 回数の制限に達したときは、JSON ではなくページで返す（Google から画面の遷移で戻ってくるため）
+    return toGateRateLimitedPage(
+      await rateLimitedCallback(request, { settings: config.settings })
+    );
   }
 
   // 拒否・失敗のページ。ログインが拒否・失敗した直後（目印の Cookie があるとき）だけ出し、URL を直接
@@ -190,5 +194,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     return redirect;
   }
 
-  return rateLimitedErrorPage(request, { settings: config.settings });
+  return toGateRateLimitedPage(
+    await rateLimitedErrorPage(request, { settings: config.settings })
+  );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Table,
@@ -56,15 +56,32 @@ export function GateRequestSection() {
       ]),
   });
 
+  const authFailed = isGateAccessRequestsAuthFailure(error);
+  useEffect(() => {
+    if (authFailed) {
+      void queryClient.invalidateQueries({ queryKey: gateAllowlistQueryKey });
+    }
+  }, [authFailed, queryClient]);
+
   // セッションの失効や管理者でなくなったこと（401・403）が分かったら、却下の確認も閉じる
   // （閉じないと、あとで取得が戻ったときに確認のダイアログが勝手に開き直す）
-  if (rejecting && isGateAccessRequestsAuthFailure(error)) {
+  if (rejecting && authFailed) {
     setRejecting(null);
   }
 
-  // 401・403 の案内は、同じ画面の許可リストの側（gate-access-content.tsx）が画面全体に出す
-  // （許可・却下のあとは許可リストも取り直すので、そちらも同じ失敗になって案内が出る）
-  if (isGateAccessRequestsAuthFailure(error)) return null;
+  // 401・403 の案内は、同じ画面の許可リストの側（gate-access-content.tsx）が、理由に合わせて画面全体に出す。
+  // 申請の一覧は 1 分ごとに取り直すので、許可リストの側がまだ気づいていないことがある（そちらは定期的には
+  // 取り直さない）。許可リストも取り直させ、それが済むまで（または許可リストだけ読めるとき）は、
+  // 区画を黙って消さずにここで案内を出す
+  if (authFailed) {
+    return (
+      <ErrorState
+        title="申請を表示できません"
+        description="ログインの状態が変わりました。このページを開き直してください。"
+        size="compact"
+      />
+    );
+  }
 
   const requests = data?.requests ?? [];
 
@@ -172,7 +189,9 @@ export function GateRequestSection() {
                       <div className="font-medium break-all">{request.email}</div>
                       {request.note && (
                         // 申請者が書いた生の文字列。React のテキストとして出す（HTML として解釈させない）
-                        <p className="text-muted-foreground mt-1 text-sm break-words whitespace-pre-wrap">
+                        // 空白の無い長い文字列でも表の幅を広げない（break-words は最小幅の計算に効かず、
+                        // 操作のボタンが横スクロールの先に隠れる）
+                        <p className="text-muted-foreground mt-1 text-sm [overflow-wrap:anywhere] whitespace-pre-wrap">
                           {request.note}
                         </p>
                       )}

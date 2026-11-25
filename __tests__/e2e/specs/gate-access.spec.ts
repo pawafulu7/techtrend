@@ -113,11 +113,19 @@ test.describe('サイトに入れるアカウント', () => {
       await expect(approvedRow).toContainText('<b>紹介</b>で来ました。');
       // 申請しただけでは、許可リストに入らない
       await expect(page.getByTestId('gate-email-row').filter({ hasText: approved })).toHaveCount(0);
-      // メニューに対応待ちの件数が出る（ほかの spec の行があっても 2 件以上）
+      // メニューに対応待ちの件数が出る。件数そのものは決め打ちしない（Chromium と Firefox は同じ DB で
+      // 並列に走り、もう一方の申請と処理も件数に入る）。メニューの件数が、同じ画面の一覧の行数と同じこと
+      // （どちらも同じ取得の結果から出る）と、自分の 2 件が入っていることを確かめる
       const navCount = page.getByTestId('gate-request-nav-count');
+      const rows = section.getByTestId('gate-request-row');
+      const navMatchesList = async () => {
+        const listed = await rows.count();
+        const shown = (await navCount.count()) === 0 ? 0 : Number((await navCount.innerText()).trim());
+        return shown === listed ? 'same' : `menu ${shown} / list ${listed}`;
+      };
       await expect(navCount).toBeVisible();
-      const before = Number((await navCount.innerText()).trim());
-      expect(before).toBeGreaterThanOrEqual(2);
+      await expect.poll(navMatchesList, { timeout: TIMEOUTS.medium }).toBe('same');
+      expect(await rows.count()).toBeGreaterThanOrEqual(2);
 
       // 許可すると、申請の一覧から消えて許可リストに入る
       await approvedRow.getByRole('button', { name: `${approved} を許可` }).click();
@@ -135,12 +143,8 @@ test.describe('サイトに入れるアカウント', () => {
       await expect(rejectedRow).toHaveCount(0, { timeout: TIMEOUTS.medium });
       await expect(page.getByTestId('gate-email-row').filter({ hasText: rejected })).toHaveCount(0);
 
-      // メニューの件数も 2 件減る（0 件なら件数そのものを出さない）
-      if (before === 2) {
-        await expect(navCount).toHaveCount(0, { timeout: TIMEOUTS.medium });
-      } else {
-        await expect(navCount).toHaveText(String(before - 2), { timeout: TIMEOUTS.medium });
-      }
+      // メニューの件数も、処理のあとの一覧の行数に合う（0 件なら件数そのものを出さない）
+      await expect.poll(navMatchesList, { timeout: TIMEOUTS.medium }).toBe('same');
     } finally {
       await removeGateRows([approved, rejected]);
     }

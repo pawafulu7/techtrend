@@ -289,6 +289,27 @@ describe('GET /api/gate/[...all]', () => {
     expect(prismaMock.gateAccessRequest.findUnique).toHaveBeenCalledTimes(30);
   });
 
+  it.each([
+    ['the start', '/api/gate/start?callbackURL=%2F', undefined, '198.51.100.21'],
+    ['the callback', '/api/gate/callback/google?code=c&state=s', undefined, '198.51.100.22'],
+    ['the error page', '/api/gate/error?error=not_allowed', NOTICE, '198.51.100.23'],
+  ])('answers with a page, not JSON, when %s is rate limited (it is opened by navigation)', async (_label, path, cookie, ip) => {
+    mockHandler.mockImplementation(async () => new Response(null, { status: 302, headers: { location: '/' } }));
+    const open = () =>
+      path.startsWith('/api/gate/start')
+        ? startGET(request(path, { ip, cookie }))
+        : catchAll.GET(request(path, { ip, cookie }));
+    let last = await open();
+    for (let i = 0; i < 30; i++) last = await open();
+    expect(last.status).toBe(429);
+    expect(last.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(last.headers.get('cache-control')).toBe('no-store');
+    expect(last.headers.get('retry-after')).toBeTruthy();
+    const html = await last.text();
+    expect(html).toContain('<h1>しばらくお待ちください</h1>');
+    expect(html).not.toContain('rate_limited');
+  });
+
   it('does not show the error page when opened directly (no notice cookie) and starts sign-in instead', async () => {
     const response = await catchAll.GET(
       request('/api/gate/error?error=not_allowed', { cookie: 'other=1' })
