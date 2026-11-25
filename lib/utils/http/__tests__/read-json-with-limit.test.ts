@@ -1,4 +1,4 @@
-import { readJsonWithLimit } from '../read-json-with-limit';
+import { readJsonWithLimit, readRequestTextWithLimit } from '../read-json-with-limit';
 
 /** Content-Length を付けずに、本文をチャンクに分けて流す要求を作る */
 function streamingRequest(chunks: string[]): Request {
@@ -133,6 +133,50 @@ describe('readJsonWithLimit', () => {
     await expect(readJsonWithLimit(request, 1024)).resolves.toEqual({
       ok: false,
       reason: 'invalid_json',
+    });
+  });
+});
+
+describe('readRequestTextWithLimit', () => {
+  it('上限以内の本文を文字列で読む（JSON でなくてよい）', async () => {
+    const request = new Request('http://localhost/api/test', {
+      method: 'POST',
+      body: 'note=%E3%81%82&x=1',
+    });
+    await expect(readRequestTextWithLimit(request, 1024)).resolves.toEqual({
+      ok: true,
+      value: 'note=%E3%81%82&x=1',
+    });
+  });
+
+  it('チャンクに分かれた本文をつないで読み、上限を超えたら打ち切る', async () => {
+    await expect(readRequestTextWithLimit(streamingRequest(['ab', 'cd']), 4)).resolves.toEqual({
+      ok: true,
+      value: 'abcd',
+    });
+    await expect(readRequestTextWithLimit(streamingRequest(['ab', 'cde']), 4)).resolves.toEqual({
+      ok: false,
+      reason: 'too_large',
+    });
+  });
+
+  it('宣言された Content-Length が上限を超えていれば読まずに断る', async () => {
+    const request = new Request('http://localhost/api/test', {
+      method: 'POST',
+      body: 'x'.repeat(100),
+      headers: { 'content-length': '100' },
+    });
+    await expect(readRequestTextWithLimit(request, 99)).resolves.toEqual({
+      ok: false,
+      reason: 'too_large',
+    });
+  });
+
+  it('本文が無ければ読めなかった扱いにする', async () => {
+    const request = new Request('http://localhost/api/test', { method: 'POST' });
+    await expect(readRequestTextWithLimit(request, 1024)).resolves.toEqual({
+      ok: false,
+      reason: 'unreadable',
     });
   });
 });

@@ -3,24 +3,25 @@
  *
  * Better Auth の組み込みのページは英語で、ライブラリの説明サイトへのリンクと「Ask AI」のボタンを
  * 外せない（customizeDefaultErrorPage で変えられるのは色と飾りだけ）ので、自前の日本語のページを返す
- * （2026-11-21 のユーザーの決定）。
+ * （2026-11-21 のユーザーの決定）。外枠は page-shell.ts。
  *
- * 入口を通っていない人に見せるので、Next.js のページにはせず（サイトの共通の外枠とそこで読むデータを
- * 出さないため）、単独の HTML を Route Handler から返す。JS・Web フォント・外部の読み込みは使わない
- * （CSP は style-src 'unsafe-inline' を許している: lib/config/security-headers.ts）。
+ * 未登録のアカウント（not_allowed）で、誰が拒否されたかが分かるとき（request-account-cookie.ts）は、
+ * 利用の申請のフォームを出す。申請するアドレスの欄には拒否されたアカウントを入れておき、書き換えられる
+ * （2026-11-25 のユーザーの決定）。
  */
-import { GATE_START_PATH } from './constants';
+import { GATE_REQUEST_NOTE_MAX_LENGTH, GATE_REQUEST_PATH } from './constants';
+import { GATE_EMAIL_MAX_LENGTH } from './email';
 import { toDisplayedGateErrorCode } from './error-codes';
-import { WORDMARK_EM_HEIGHT, WORDMARK_PATH, WORDMARK_VIEWBOX } from './wordmark';
+import {
+  escapeHtml,
+  gateAccountBox,
+  gateStartLink,
+  renderGatePage,
+} from './page-shell';
 
 interface GateErrorContent {
   status: 400 | 403 | 503;
-  /** 12 文字前後（幅 390px の画面でも 1 行に収める） */
   title: string;
-  /**
-   * 1 文ずつ段落にし、1 文は 16〜18 文字までにする。面の中の文字の幅（約 23 文字）を少し超える文は
-   * 「長い行 + 短い行」に割れ、それが続くと端がジグザグに見えるため。どうすればよいかはボタンに持たせる
-   */
   lines: readonly string[];
   action: string;
 }
@@ -34,12 +35,16 @@ const RESTART: GateErrorContent = {
   action: RETRY,
 };
 
+const NOT_ALLOWED_CODE = 'not_allowed';
+const NOT_ALLOWED_TITLE = 'ログインできません';
+const NOT_ALLOWED_ACTION = '登録済みのアカウントで入る';
+
 const CONTENTS: Record<string, GateErrorContent> = {
-  not_allowed: {
+  [NOT_ALLOWED_CODE]: {
     status: 403,
-    title: 'ログインできません',
+    title: NOT_ALLOWED_TITLE,
     lines: ['このサイトに未登録のアカウントです。', '追加は、管理者に頼んでください。'],
-    action: '登録済みのアカウントで入る',
+    action: NOT_ALLOWED_ACTION,
   },
   email_not_verified: {
     status: 403,
@@ -75,80 +80,116 @@ const FALLBACK: GateErrorContent = {
   action: RETRY,
 };
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+function codeLine(code: string): string {
+  return `<p class="code">エラーのコード: ${escapeHtml(code)}</p>`;
 }
 
-// サイトのログイン画面（app/auth/login/_components/login-content.tsx）と同じ並べ方にする。
-// 上部の帯にロゴの印とサイト名（ヘッダーと同じ字形）、その下に幅 32rem の面、中央寄せの見出しと説明、
-// 幅いっぱいのボタン。色・角丸・見出しの大きさ・書体の順はサイトのトークン（app/generated-tokens.css）に合わせる
-const STYLE = `
-:root{color-scheme:light dark;--background:#FFFFFF;--canvas:#F0F2F8;--surface:#FFFFFF;--text:#111633;--muted:#525B78;--border:#D6DBE8;--primary:#3A3FC0;--on-primary:#FFFFFF;--heat:#B83A0B}
-@media (prefers-color-scheme:dark){:root{--background:#090E22;--canvas:#090E22;--surface:#10172F;--text:#E3E7F5;--muted:#98A1C2;--border:#222C4E;--primary:#A3ADFF;--on-primary:#090E22;--heat:#FFA25C}}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:var(--canvas);color:var(--text);font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI",Meiryo,"Noto Sans JP","Noto Sans CJK JP",system-ui,sans-serif;font-size:15px;line-height:1.7}
-.bar{display:flex;align-items:center;height:48px;padding:0 16px;background:var(--background);border-bottom:1px solid var(--border)}
-.brand{display:inline-flex;align-items:center;gap:8px;color:var(--text)}
-.mark{width:22px;height:22px;flex:none}
-.wordmark{height:${(18 * WORDMARK_EM_HEIGHT).toFixed(2)}px;width:auto;fill:currentColor}
-main{max-width:32rem;margin:40px auto;padding:0 16px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:32px 24px 24px;text-align:center}
-h1{margin:0 0 8px;font-size:clamp(1.5rem,1rem + 2vw,1.75rem);line-height:1.35;font-weight:700}
-p{margin:0}
-.lines{color:var(--muted)}
-.lines p+p{margin-top:2px}
-.action{display:flex;align-items:center;justify-content:center;height:40px;margin-top:24px;padding:0 16px;border-radius:6px;background:var(--primary);color:var(--on-primary);font-size:14px;font-weight:600;text-decoration:none}
-.action:hover{opacity:.9}
-.action:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-.code{margin-top:16px;font-size:13px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
-@media (min-width:1024px){.bar{padding:0 24px}}
-`.trim();
+/**
+ * 未登録と拒否されたアカウントの、利用の申請の扱い
+ * - form: 申請のフォームを出す。account は入力欄に入れておくアドレス（拒否の直後は Google で選んだアカウント。
+ *   出し直すときは送られてきた値）。accountError・noteError は、送信の内容に誤りがあって出し直すとき
+ * - pending: すでに申請が届いている（フォームは出さない）
+ */
+export type GateAccessRequestView =
+  | {
+      kind: 'form';
+      account: string;
+      note?: string;
+      /** アドレスの誤り（入力欄に付ける） */
+      accountError?: string;
+      /** 備考の誤り（入力欄に付ける） */
+      noteError?: string;
+    }
+  | { kind: 'pending'; account: string };
 
-// ロゴの印（components/icons/observatory-mark.tsx と同じ）
-const MARK_SVG =
-  '<svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-  '<circle cx="12" cy="12" r="10" stroke="var(--primary)" stroke-width="1.6" opacity="0.35"/>' +
-  '<circle cx="12" cy="12" r="6" stroke="var(--primary)" stroke-width="1.6" opacity="0.65"/>' +
-  '<circle cx="12" cy="12" r="2.2" fill="var(--heat)"/></svg>';
+/** 誤りのある入力欄に付ける属性。出し直すときは、最初の誤りの欄へフォーカスを移す（JS を使わないので autofocus） */
+function fieldState(id: string, invalid: boolean, focus: boolean): string {
+  return ` aria-describedby="${invalid ? `${id}-error ` : ''}${id}-hint"${invalid ? ' aria-invalid="true"' : ''}${focus ? ' autofocus' : ''}`;
+}
 
-const WORDMARK_SVG = `<svg class="wordmark" viewBox="${WORDMARK_VIEWBOX}" aria-hidden="true"><path d="${WORDMARK_PATH}"/></svg>`;
+function fieldError(id: string, message: string | undefined): string {
+  return message === undefined
+    ? ''
+    : `<p class="invalid" id="${id}-error">${escapeHtml(message)}</p>`;
+}
 
-/** 拒否・失敗のページの HTML と HTTP ステータス。コードは知っているものだけを出す */
-export function renderGateErrorPage(rawCode: string | null): {
+function requestForm(view: Extract<GateAccessRequestView, { kind: 'form' }>): string {
+  const accountInvalid = view.accountError !== undefined;
+  const noteInvalid = view.noteError !== undefined;
+  return [
+    `<form class="request" method="post" action="${GATE_REQUEST_PATH}">`,
+    // 申請するアドレス。Google で選んだアカウントを入れておき、別の Gmail アドレスに書き換えられる
+    // （2026-11-25 のユーザーの決定）。書き換えたアドレスは Google の確認を経ていない
+    '<div class="field"><label class="label" for="account">申請するアカウント（Gmail アドレス）</label>',
+    `<input id="account" name="account" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" required maxlength="${GATE_EMAIL_MAX_LENGTH}" value="${escapeHtml(view.account)}"`,
+    `${fieldState('account', accountInvalid, accountInvalid)}>`,
+    fieldError('account', view.accountError),
+    '<p class="hint" id="account-hint">Google で選んだアカウントを入れてあります。別の Gmail アドレスで申請するときは、書き換えてください。</p></div>',
+    `<div class="field"><label class="label" for="note">備考（任意・${GATE_REQUEST_NOTE_MAX_LENGTH} 文字まで）</label>`,
+    `<textarea id="note" name="note" rows="3" maxlength="${GATE_REQUEST_NOTE_MAX_LENGTH}"`,
+    `${fieldState('note', noteInvalid, noteInvalid && !accountInvalid)}>`,
+    // textarea は先頭の改行を 1 つ読み飛ばすので、値の前に改行を置く（値が改行で始まっても失わない）
+    `\n${escapeHtml(view.note ?? '')}</textarea>`,
+    fieldError('note', view.noteError),
+    '<p class="hint" id="note-hint">お名前など、誰からの申請か分かることを書いてください。</p></div>',
+    '<button class="action" type="submit">利用を申請する</button>',
+    '</form>',
+  ].join('');
+}
+
+/**
+ * 利用の申請のフォームを出したページ。GET（拒否の直後。403）と、送信の内容に誤りがあったときの
+ * 出し直し（app/api/gate/request/route.ts。400）の両方が使う
+ */
+export function renderGateRequestFormPage(
+  view: Extract<GateAccessRequestView, { kind: 'form' }>,
+  status: 400 | 403
+): { status: number; html: string } {
+  return renderGatePage({
+    status,
+    title: NOT_ALLOWED_TITLE,
+    lines: ['このサイトに未登録のアカウントです。', '利用の申請を管理者に送れます。'],
+    bodyHtml: [
+      requestForm(view),
+      gateStartLink(NOT_ALLOWED_ACTION, true),
+      codeLine(NOT_ALLOWED_CODE),
+    ].join('\n'),
+  });
+}
+
+/**
+ * 拒否・失敗のページの HTML と HTTP ステータス。コードは知っているものだけを出す。
+ * request は、未登録（not_allowed）で拒否されたアカウントが分かるときだけ渡す（ほかのコードでは使わない）
+ */
+export function renderGateErrorPage(
+  rawCode: string | null,
+  request?: GateAccessRequestView
+): {
   status: number;
   html: string;
 } {
   const code = toDisplayedGateErrorCode(rawCode ?? '');
-  const content = CONTENTS[code] ?? FALLBACK;
-  // 開始は Google のアカウントの選択を毎回出す（prompt=select_account）ので、別のアカウントで入り直せる
-  const retryHref = `${GATE_START_PATH}?callbackURL=${encodeURIComponent('/')}`;
+  if (code === NOT_ALLOWED_CODE && request?.kind === 'form') {
+    return renderGateRequestFormPage(request, 403);
+  }
+  if (code === NOT_ALLOWED_CODE && request?.kind === 'pending') {
+    return renderGatePage({
+      status: 403,
+      title: 'まだログインできません',
+      lines: ['このアカウントは申請済みです。', '管理者の確認をお待ちください。'],
+      bodyHtml: [
+        gateAccountBox(request.account),
+        gateStartLink('別のアカウントで入る'),
+        codeLine(code),
+      ].join('\n'),
+    });
+  }
 
-  const html = `<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
-<title>${escapeHtml(content.title)} | TechTrend</title>
-<style>${STYLE}</style>
-</head>
-<body>
-<header class="bar"><span class="brand" role="img" aria-label="TechTrend">${MARK_SVG}${WORDMARK_SVG}</span></header>
-<main>
-<section class="card">
-<h1>${escapeHtml(content.title)}</h1>
-<div class="lines">${content.lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}</div>
-<a class="action" href="${escapeHtml(retryHref)}">${escapeHtml(content.action)}</a>
-<p class="code">エラーのコード: ${escapeHtml(code)}</p>
-</section>
-</main>
-</body>
-</html>
-`;
-  return { status: content.status, html };
+  const content = CONTENTS[code] ?? FALLBACK;
+  return renderGatePage({
+    status: content.status,
+    title: content.title,
+    lines: content.lines,
+    bodyHtml: [gateStartLink(content.action), codeLine(code)].join('\n'),
+  });
 }

@@ -15,6 +15,10 @@ import {
   GATE_COOKIE_PREFIX,
 } from '../../lib/auth/site-gate/constants';
 import type { SiteGateSettings } from '../../lib/auth/site-gate/config';
+import {
+  captureRejectedGateAccount,
+  noteRejectedGateAccount,
+} from '../../lib/auth/site-gate/rejected-account-context';
 
 /**
  * 入口用の Better Auth（DB なし）を、アプリと同じ設定（createGateAuthOptions）で実際に動かす結合テスト。
@@ -103,7 +107,12 @@ const cookieHeader = (jar: Jar) =>
     .join('; ');
 
 async function createGate(
-  options: { allow?: string[]; isProduction?: boolean; checked?: string[] } = {}
+  options: {
+    allow?: string[];
+    isProduction?: boolean;
+    checked?: string[];
+    onNotListed?: (email: string) => void;
+  } = {}
 ) {
   const { betterAuth } = await import('better-auth');
   const settings: SiteGateSettings = {
@@ -124,6 +133,7 @@ async function createGate(
         },
         onRejected: () => {},
         onUnavailable: () => {},
+        onNotListed: options.onNotListed ?? (() => {}),
       }),
       logger: toGateAuthLogger(() => {}),
     })
@@ -237,6 +247,49 @@ test.describe('入口用の Better Auth（DB なし）', () => {
       expect(result.setCookies.some((c) => c.includes('session_token=') && !/max-age=0/i.test(c))).toBe(false);
     });
   }
+
+  test('未登録で拒否したアカウントは、戻りの処理を包んだ呼び出し元にだけ届く（利用の申請に使う）', async () => {
+    // アプリと同じつなぎ方（gate-auth.ts の onNotListed → rejected-account-context）。Better Auth の
+    // 戻りの処理のなかの非同期処理をまたいで、要求ごとの入れ物に届くことを本物で確かめる
+    const gate = await createGate({ onNotListed: noteRejectedGateAccount });
+    const callback = async (claims: IdTokenClaims) => {
+      currentClaims = claims;
+      const started = await start(gate);
+      const state = started.authorizeUrl.searchParams.get('state')!;
+      return captureRejectedGateAccount(() =>
+        gate.handler(
+          new Request(
+            `${BASE}${GATE_CALLBACK_PATH}?code=fake-code&state=${encodeURIComponent(state)}`,
+            { headers: { cookie: cookieHeader(started.jar) } }
+          )
+        )
+      );
+    };
+
+    const rejected = await callback({ email: 'new.person@gmail.com', email_verified: true });
+    expect(new URL(rejected.result.headers.get('location')!, BASE).searchParams.get('error')).toBe(
+      'not_allowed'
+    );
+    // Google が返した形（ドット付き）のまま届く。保存するときに正規化する
+    expect(rejected.email).toBe('new.person@gmail.com');
+
+    // 同時に進む別の戻りとは混ざらない
+    const [first, second] = await Promise.all([
+      callback({ email: 'first.one@gmail.com', email_verified: true }),
+      captureRejectedGateAccount(async () => 'no callback here'),
+    ]);
+    expect(first.email).toBe('first.one@gmail.com');
+    expect(second.email).toBeNull();
+
+    // 許可されたアカウント・申請できないアカウント（未確認・Gmail 以外）では届かない
+    for (const claims of [
+      { email: 'allowed@gmail.com', email_verified: true },
+      { email: 'new.person@gmail.com', email_verified: false },
+      { email: 'someone@example.com', email_verified: true },
+    ]) {
+      expect((await callback(claims)).email).toBeNull();
+    }
+  });
 
   test('state の Cookie が無い戻りはエラーページへ移る', async () => {
     const gate = await createGate();
