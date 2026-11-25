@@ -23,16 +23,26 @@ jest.mock('@/lib/auth/site-gate/gate-auth', () => ({
 }));
 
 // eslint-disable-next-line import/first
+import { prisma } from '@/lib/prisma';
+// eslint-disable-next-line import/first
+import { noteRejectedGateAccount } from '@/lib/auth/site-gate/rejected-account-context';
+// eslint-disable-next-line import/first
+import {
+  buildGateRequestAccountCookie,
+  readGateRequestAccount,
+} from '@/lib/auth/site-gate/request-account-cookie';
+// eslint-disable-next-line import/first
 import { GET as startGET } from '@/app/api/gate/start/route';
 // eslint-disable-next-line import/first
 import * as catchAll from '@/app/api/gate/[...all]/route';
 
+const ENABLED_SECRET = 'g'.repeat(40);
 const ENABLED: SiteGateConfig = {
   kind: 'enabled',
   settings: {
     clientId: 'client-id',
     clientSecret: 'client-secret',
-    secret: 'g'.repeat(40),
+    secret: ENABLED_SECRET,
     fixedEmails: ['owner@gmail.com'],
     baseOrigin: 'http://localhost:3000',
     isProduction: false,
@@ -43,6 +53,13 @@ const STATE_COOKIE = 'tt-gate.oauth_state=enc; Max-Age=600; Path=/; HttpOnly; Sa
 
 let ipCounter = 0;
 const NOTICE = 'tt-gate.error_notice=1';
+
+const prismaMock = prisma as any;
+
+/** 未登録と拒否されたアカウントの、利用の申請用の Cookie（名前=値） */
+function requestAccountCookie(email: string, secret = ENABLED_SECRET): string {
+  return buildGateRequestAccountCookie({ email, secret, isProduction: false })!.split(';')[0];
+}
 
 function request(
   path: string,
@@ -75,6 +92,8 @@ beforeEach(() => {
     headers: new Headers([['set-cookie', STATE_COOKIE]]),
     response: { url: GOOGLE_URL, redirect: true },
   });
+  prismaMock.gateAccessRequest.findUnique.mockReset();
+  prismaMock.gateAccessRequest.findUnique.mockResolvedValue(null);
   mockHandler.mockReset();
   mockHandler.mockResolvedValue(
     new Response('<html>error</html>', {
@@ -153,11 +172,27 @@ describe('GET /api/gate/start', () => {
     expect(mockSignInSocial).not.toHaveBeenCalled();
   });
 
-  it('returns 503 when Better Auth fails, without leaking the error', async () => {
+  it('returns a 503 page when Better Auth fails, without leaking the error', async () => {
     mockSignInSocial.mockRejectedValue(new Error('internal detail'));
+    const response = await startGET(request('/api/gate/start?callbackURL=%2Fdigest'));
+    expect(response.status).toBe(503);
+    // 開始は画面の遷移で開くので、素の文字列ではなくページで返す。入り直すと、開こうとしていたページへ戻る
+    expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    const html = await response.text();
+    expect(html).toContain('<h1>いまはログインできません</h1>');
+    expect(html).toContain('href="/api/gate/start?callbackURL=%2Fdigest"');
+    expect(html).not.toContain('internal detail');
+  });
+
+  it('returns the same 503 page when Better Auth returns no URL', async () => {
+    mockSignInSocial.mockResolvedValue({
+      headers: new Headers(),
+      response: { url: undefined, redirect: false },
+    });
     const response = await startGET(request('/api/gate/start'));
     expect(response.status).toBe(503);
-    expect(await response.text()).not.toContain('internal detail');
+    expect(await response.text()).toContain('<h1>いまはログインできません</h1>');
   });
 
   it('limits starts to 30 per minute per IP', async () => {
@@ -256,6 +291,51 @@ describe('GET /api/gate/[...all]', () => {
     expect(mockHandler).toHaveBeenCalledTimes(30);
   });
 
+  it('limits the error page to 30 per minute per IP (it reads the DB for the access request)', async () => {
+    const cookie = `${NOTICE}; ${requestAccountCookie('friend@gmail.com')}`;
+    const statuses: number[] = [];
+    for (let i = 0; i < 31; i++) {
+      const response = await catchAll.GET(
+        request('/api/gate/error?error=not_allowed', { ip: '198.51.100.10', cookie })
+      );
+      statuses.push(response.status);
+    }
+    expect(statuses.slice(0, 30).every((s) => s === 403)).toBe(true);
+    expect(statuses[30]).toBe(429);
+    expect(prismaMock.gateAccessRequest.findUnique).toHaveBeenCalledTimes(30);
+  });
+
+  it.each([
+    ['the start', '/api/gate/start?callbackURL=%2F', undefined, '198.51.100.21'],
+    ['the callback', '/api/gate/callback/google?code=c&state=s', undefined, '198.51.100.22'],
+    ['the error page', '/api/gate/error?error=not_allowed', NOTICE, '198.51.100.23'],
+  ])('answers with a page, not JSON, when %s is rate limited (it is opened by navigation)', async (_label, path, cookie, ip) => {
+    mockHandler.mockImplementation(async () => new Response(null, { status: 302, headers: { location: '/' } }));
+    const open = () =>
+      path.startsWith('/api/gate/start')
+        ? startGET(request(path, { ip, cookie }))
+        : catchAll.GET(request(path, { ip, cookie }));
+    let last = await open();
+    for (let i = 0; i < 30; i++) last = await open();
+    expect(last.status).toBe(429);
+    expect(last.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(last.headers.get('cache-control')).toBe('no-store');
+    expect(last.headers.get('retry-after')).toBeTruthy();
+    const html = await last.text();
+    expect(html).toContain('<h1>しばらくお待ちください</h1>');
+    expect(html).not.toContain('rate_limited');
+    expect(html).toContain('rel="noreferrer"');
+  });
+
+  it('keeps the page the visitor was opening on the rate limited page of the start', async () => {
+    let last = await startGET(request('/api/gate/start?callbackURL=%2Fdigest%3Fx%3D1', { ip: '198.51.100.24' }));
+    for (let i = 0; i < 30; i++) {
+      last = await startGET(request('/api/gate/start?callbackURL=%2Fdigest%3Fx%3D1', { ip: '198.51.100.24' }));
+    }
+    expect(last.status).toBe(429);
+    expect(await last.text()).toContain('href="/api/gate/start?callbackURL=%2Fdigest%3Fx%3D1"');
+  });
+
   it('does not show the error page when opened directly (no notice cookie) and starts sign-in instead', async () => {
     const response = await catchAll.GET(
       request('/api/gate/error?error=not_allowed', { cookie: 'other=1' })
@@ -286,6 +366,132 @@ describe('GET /api/gate/[...all]', () => {
     );
     const allowed = await catchAll.GET(request('/api/gate/callback/google?code=c&state=s'));
     expect(setCookiesOf(allowed).join('\n')).not.toContain('error_notice');
+  });
+
+  describe('利用の申請（未登録で拒否されたアカウント）', () => {
+    const ERROR_LOCATION = 'http://localhost:3000/api/gate/error?error=not_allowed';
+    const requestCookieOf = (response: Response) =>
+      setCookiesOf(response).find((c) => c.startsWith('tt-gate.request_account='));
+
+    it('hands the rejected account to the error page in a signed cookie', async () => {
+      // ログイン時の確認（gate-auth.ts の onNotListed）が、戻りの処理のなかで拒否したアカウントを控える
+      mockHandler.mockImplementationOnce(async () => {
+        await Promise.resolve();
+        noteRejectedGateAccount('Taro.Suzuki@gmail.com');
+        return new Response(null, { status: 302, headers: { location: ERROR_LOCATION } });
+      });
+      const response = await catchAll.GET(request('/api/gate/callback/google?code=c&state=s'));
+      const cookie = requestCookieOf(response)!;
+      expect(cookie).toContain('Path=/api/gate;');
+      expect(cookie).toContain('Max-Age=1800');
+      expect(cookie).toContain('HttpOnly');
+      const value = cookie.split(';')[0].slice('tt-gate.request_account='.length);
+      expect(readGateRequestAccount(value, ENABLED_SECRET)).toBe('taro.suzuki@gmail.com');
+      expect(value).not.toContain('@');
+    });
+
+    it.each([
+      ['a successful sign-in', '/digest'],
+      ['a cancelled sign-in', 'http://localhost:3000/api/gate/error?error=access_denied'],
+      ['a rejection without a known account', ERROR_LOCATION],
+    ])('clears the cookie after %s (no request for a previously rejected account)', async (_label, location) => {
+      mockHandler.mockResolvedValueOnce(
+        new Response(null, { status: 302, headers: { location } })
+      );
+      const response = await catchAll.GET(request('/api/gate/callback/google?code=c&state=s'));
+      expect(requestCookieOf(response)).toBe(
+        'tt-gate.request_account=; Path=/api/gate; Max-Age=0; HttpOnly; SameSite=Lax'
+      );
+    });
+
+    it('does not mix accounts between concurrent callbacks', async () => {
+      mockHandler.mockImplementation(async (req: Request) => {
+        const who = new URL(req.url).searchParams.get('code')!;
+        await new Promise((resolve) => setTimeout(resolve, who === 'first' ? 10 : 1));
+        if (who !== 'none') noteRejectedGateAccount(`${who}@gmail.com`);
+        return new Response(null, { status: 302, headers: { location: ERROR_LOCATION } });
+      });
+      const responses = await Promise.all(
+        ['first', 'second', 'none'].map((code) =>
+          catchAll.GET(request(`/api/gate/callback/google?code=${code}&state=s`))
+        )
+      );
+      const accounts = responses.map((response) => {
+        const value = requestCookieOf(response)!.split(';')[0].slice('tt-gate.request_account='.length);
+        return readGateRequestAccount(value, ENABLED_SECRET);
+      });
+      expect(accounts).toEqual(['first@gmail.com', 'second@gmail.com', null]);
+    });
+
+    it('shows the request form for the account in the cookie', async () => {
+      const response = await catchAll.GET(
+        request('/api/gate/error?error=not_allowed', {
+          cookie: `${NOTICE}; ${requestAccountCookie('taro.suzuki@gmail.com')}`,
+        })
+      );
+      expect(response.status).toBe(403);
+      const html = await response.text();
+      expect(html).toContain('action="/api/gate/request"');
+      // アドレスの欄には、拒否されたアカウントを入れておく（書き換えられる）
+      expect(html).toContain('name="account" type="email"');
+      expect(html).toContain('value="taro.suzuki@gmail.com"');
+      // 申請の有無は、正規化したアドレスで引く
+      expect(prismaMock.gateAccessRequest.findUnique).toHaveBeenCalledWith({
+        where: { email: 'tarosuzuki@gmail.com' },
+        select: { id: true },
+      });
+    });
+
+    it('shows that the request is pending instead of the form', async () => {
+      prismaMock.gateAccessRequest.findUnique.mockResolvedValue({ id: 'r1' });
+      const response = await catchAll.GET(
+        request('/api/gate/error?error=not_allowed', {
+          cookie: `${NOTICE}; ${requestAccountCookie('friend@gmail.com')}`,
+        })
+      );
+      const html = await response.text();
+      expect(html).toContain('<h1>まだログインできません</h1>');
+      expect(html).not.toContain('<form');
+    });
+
+    it('still shows the form when the pending check fails', async () => {
+      prismaMock.gateAccessRequest.findUnique.mockRejectedValue(new Error('db down at 10.0.0.1'));
+      const response = await catchAll.GET(
+        request('/api/gate/error?error=not_allowed', {
+          cookie: `${NOTICE}; ${requestAccountCookie('friend@gmail.com')}`,
+        })
+      );
+      expect(response.status).toBe(403);
+      const html = await response.text();
+      expect(html).toContain('<form');
+      expect(html).not.toContain('10.0.0.1');
+    });
+
+    it.each([
+      ['no cookie', NOTICE],
+      ['a cookie signed with another secret', `${NOTICE}; ${requestAccountCookie('friend@gmail.com', 'x'.repeat(40))}`],
+      ['a forged value', `${NOTICE}; tt-gate.request_account=9999999999.ZnJpZW5kQGdtYWlsLmNvbQ.AAAA`],
+    ])('shows no form with %s', async (_label, cookie) => {
+      const response = await catchAll.GET(
+        request('/api/gate/error?error=not_allowed', { cookie })
+      );
+      const html = await response.text();
+      expect(html).not.toContain('<form');
+      expect(html).toContain('追加は、管理者に頼んでください。');
+      expect(prismaMock.gateAccessRequest.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('does not offer the request for other errors, even with the cookie', async () => {
+      const response = await catchAll.GET(
+        request('/api/gate/error?error=access_denied', {
+          cookie: `${NOTICE}; ${requestAccountCookie('friend@gmail.com')}`,
+        })
+      );
+      const html = await response.text();
+      expect(html).not.toContain('<form');
+      expect(html).not.toContain('friend@gmail.com');
+      expect(prismaMock.gateAccessRequest.findUnique).not.toHaveBeenCalled();
+    });
   });
 
   it('ignores error_description (does not show text from the URL)', async () => {

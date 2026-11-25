@@ -21,6 +21,12 @@ export const GATE_CALLBACK_PATH = `${GATE_BASE_PATH}/callback/google`;
 /** 拒否・失敗のときのページ（自前の HTML。lib/auth/site-gate/error-page.ts） */
 export const GATE_ERROR_PATH = `${GATE_BASE_PATH}/error`;
 
+/**
+ * 利用の申請の受け付け（拒否のページのフォームの送り先。自前の Route Handler。POST だけを入口の外から通す）。
+ * lib/auth/site-gate/evaluate.ts の isGatePublicRequest
+ */
+export const GATE_REQUEST_PATH = `${GATE_BASE_PATH}/request`;
+
 /** 入口を通さずに届けてよい経路（GET・HEAD だけ）。ここ以外の /api/gate/* は Route Handler が 404 にする */
 export const GATE_PUBLIC_PATHS: readonly string[] = [
   GATE_START_PATH,
@@ -51,6 +57,18 @@ export const GATE_ALLOWLIST_MAX_ENTRIES = 100;
  * 一覧に出して画面から消せるように。超えた行も入口の照合では許可される）
  */
 export const GATE_ALLOWLIST_LIST_LIMIT = 1000;
+
+/** 利用の申請の備考の上限（DB の列は VARCHAR(500)。JS の length は PostgreSQL の文字数以上になる） */
+export const GATE_REQUEST_NOTE_MAX_LENGTH = 500;
+
+/**
+ * 対応待ちの申請を置ける件数（1 つのアドレスにつき 1 件）。申請を送れるのは Google のログインを通って
+ * 拒否された人だけで、IP ごとに 10 回/時まで（lib/config/rate-limits.ts の write:gate-request）
+ */
+export const GATE_REQUEST_MAX_PENDING = 100;
+
+/** 管理画面の申請の一覧に返す件数の上限（置ける件数より大きくし、超えた行も画面から消せるようにする） */
+export const GATE_REQUEST_LIST_LIMIT = 200;
 
 /**
  * 入口が API の要求を拒んだときの JSON の code。画面がアプリ内のログイン切れや権限の不足と見分けるために使う

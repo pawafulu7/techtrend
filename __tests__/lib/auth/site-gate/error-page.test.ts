@@ -1,4 +1,9 @@
-import { renderGateErrorPage } from '@/lib/auth/site-gate/error-page';
+import {
+  renderGateErrorPage,
+  renderGateRequestFormPage,
+  renderGateStartFailedPage,
+  toGateRateLimitedPage,
+} from '@/lib/auth/site-gate/error-page';
 
 describe('renderGateErrorPage', () => {
   it.each([
@@ -54,10 +59,227 @@ describe('renderGateErrorPage', () => {
     expect(renderGateErrorPage('Call_this_number_now').html).not.toContain('Call_this_number_now');
   });
 
+  describe('利用の申請（未登録で拒否されたアカウントが分かるとき）', () => {
+    const FORM = { kind: 'form', account: 'taro.suzuki@gmail.com' } as const;
+
+    it('shows a form with the rejected account filled in an editable address field, and the note', () => {
+      const { status, html } = renderGateErrorPage('not_allowed', FORM);
+      expect(status).toBe(403);
+      expect(html).toContain('<h1>ログインできません</h1>');
+      expect(html).toContain('<form class="request" method="post" action="/api/gate/request">');
+      // Google で選んだアカウントを入れておき、別の Gmail アドレスに書き換えられる（readonly・hidden にしない）
+      expect([...html.matchAll(/<input[^>]*>/g)].map((m) => m[0])).toEqual([
+        '<input id="account" name="account" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" required maxlength="254" value="taro.suzuki@gmail.com" aria-describedby="account-hint">',
+      ]);
+      expect(html).toContain('<label class="label" for="account">申請するアカウント（Gmail アドレス）</label>');
+      expect(html).toContain('別の Gmail アドレスで申請するときは、書き換えてください。');
+      expect(html.match(/<textarea[^>]*>/)![0]).toBe(
+        '<textarea id="note" name="note" rows="3" maxlength="500" aria-describedby="note-hint">'
+      );
+      expect(html).toContain('<button class="action" type="submit">利用を申請する</button>');
+      expect([...html.matchAll(/ name="([^"]*)"/g)].map((m) => m[1])).toEqual([
+        'viewport',
+        'robots',
+        'account',
+        'note',
+      ]);
+      // 入り直しのリンクは残す（主のボタンは申請なので、副のボタンにする）
+      expect(html).toContain(
+        '<a class="action secondary" href="/api/gate/start?callbackURL=%2F">登録済みのアカウントで入る</a>'
+      );
+      expect(html).toContain('エラーのコード: not_allowed');
+      expect(html).not.toContain('<script');
+    });
+
+    it('keeps the sentences within 18 characters', () => {
+      const { html } = renderGateErrorPage('not_allowed', FORM);
+      const lines = html
+        .match(/<div class="lines">(.*?)<\/div>/)![1]
+        .split('</p>')
+        .filter(Boolean)
+        .map((p) => p.replace('<p>', ''));
+      expect(lines).toEqual(['このサイトに未登録のアカウントです。', '利用の申請を管理者に送れます。']);
+      for (const line of lines) expect(line.length).toBeLessThanOrEqual(18);
+    });
+
+    it('escapes the account, the note and the errors', () => {
+      const { status, html } = renderGateRequestFormPage(
+        {
+          kind: 'form',
+          account: '"><img src=x>',
+          note: '</textarea><script>alert(1)</script>',
+          accountError: '<u>Gmail ではありません</u>',
+          noteError: '<b>長すぎます</b>',
+        },
+        400
+      );
+      expect(status).toBe(400);
+      expect(html).not.toContain('<img');
+      expect(html).not.toContain('<script');
+      expect(html).not.toContain('<b>');
+      expect(html).not.toContain('<u>');
+      expect(html).toContain('value="&quot;&gt;&lt;img src=x&gt;"');
+      expect(html).toContain('&lt;/textarea&gt;&lt;script&gt;alert(1)&lt;/script&gt;</textarea>');
+      expect(html).toContain(
+        '<p class="invalid" id="account-error">&lt;u&gt;Gmail ではありません&lt;/u&gt;</p>'
+      );
+      expect(html).toContain('<p class="invalid" id="note-error">&lt;b&gt;長すぎます&lt;/b&gt;</p>');
+    });
+
+    it('marks the invalid fields and moves the focus to the first one (no JS: autofocus)', () => {
+      const both = renderGateRequestFormPage(
+        { kind: 'form', account: 'someone@example.com', accountError: 'x', noteError: 'y' },
+        400
+      ).html;
+      expect(both.match(/<input[^>]*>/)![0]).toContain(
+        'aria-describedby="account-error account-hint" aria-invalid="true" autofocus>'
+      );
+      // 両方に誤りがあるときは、上の欄（アドレス）だけにフォーカスを移す
+      expect(both.match(/<textarea[^>]*>/)![0]).toContain(
+        'aria-describedby="note-error note-hint" aria-invalid="true">'
+      );
+
+      const noteOnly = renderGateRequestFormPage(
+        { kind: 'form', account: 'friend@gmail.com', noteError: 'y' },
+        400
+      ).html;
+      expect(noteOnly.match(/<input[^>]*>/)![0]).toContain('aria-describedby="account-hint">');
+      expect(noteOnly.match(/<textarea[^>]*>/)![0]).toContain(
+        'aria-describedby="note-error note-hint" aria-invalid="true" autofocus>'
+      );
+    });
+
+    it('keeps a note that starts with a line break (a textarea drops the first one)', () => {
+      const { html } = renderGateRequestFormPage(
+        { kind: 'form', account: 'friend@gmail.com', note: '\n二行目から' },
+        400
+      );
+      expect(html).toContain('>\n\n二行目から</textarea>');
+    });
+
+    it('shows no form when the account has already requested', () => {
+      const { status, html } = renderGateErrorPage('not_allowed', {
+        kind: 'pending',
+        account: 'taro.suzuki@gmail.com',
+      });
+      expect(status).toBe(403);
+      expect(html).toContain('<h1>まだログインできません</h1>');
+      expect(html).toContain('<p class="account">taro.suzuki@gmail.com</p>');
+      expect(html).toContain('>別のアカウントで入る</a>');
+      expect(html).not.toContain('<form');
+    });
+
+    it.each(['email_not_verified', 'access_denied', 'temporarily_unavailable', null])(
+      'does not offer the request for other errors (%p)',
+      (code) => {
+        const { html } = renderGateErrorPage(code, FORM);
+        expect(html).not.toContain('<form');
+        expect(html).not.toContain('taro.suzuki@gmail.com');
+        expect(html).toBe(renderGateErrorPage(code).html);
+      }
+    );
+  });
+
   it('follows the dark color scheme of the site', () => {
     const { html } = renderGateErrorPage('not_allowed');
     expect(html).toContain('@media (prefers-color-scheme:dark)');
     expect(html).toContain('--primary:#3A3FC0');
     expect(html).toContain('--primary:#A3ADFF');
+  });
+});
+
+describe('toGateRateLimitedPage', () => {
+  // 回数の制限（withRateLimit）が返す形
+  const limited = () =>
+    new Response(JSON.stringify({ error: 'rate_limited' }), {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': '42',
+        'X-RateLimit-Limit': '30',
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': '2026-11-25T00:01:00.000Z',
+      },
+    });
+
+  it('turns the JSON 429 into a page, keeping the status and the rate limit headers', async () => {
+    const response = toGateRateLimitedPage(limited());
+    expect(response.status).toBe(429);
+    expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('retry-after')).toBe('42');
+    expect(response.headers.get('x-ratelimit-limit')).toBe('30');
+    expect(response.headers.get('x-ratelimit-remaining')).toBe('0');
+    expect(response.headers.get('x-ratelimit-reset')).toBe('2026-11-25T00:01:00.000Z');
+    const html = await response.text();
+    expect(html).toContain('<h1>しばらくお待ちください</h1>');
+    expect(html).toContain('アクセスの回数が多すぎます。');
+    // Google からの戻りの URL には、まだ使っていない認可コードが載っている。リンク先に Referer を送らない
+    expect(html).toContain(
+      '<a class="action" href="/api/gate/start?callbackURL=%2F" rel="noreferrer">もう一度ログインする</a>'
+    );
+    expect(html).not.toContain('rate_limited');
+    expect(html).not.toContain('<script');
+  });
+
+  it('keeps the title within 12 and sentences within 18 characters', async () => {
+    const html = await toGateRateLimitedPage(limited()).text();
+    expect(html.match(/<h1>(.*?)<\/h1>/)![1].length).toBeLessThanOrEqual(12);
+    const lines = html
+      .match(/<div class="lines">(.*?)<\/div>/)![1]
+      .split('</p>')
+      .filter(Boolean)
+      .map((p) => p.replace('<p>', ''));
+    expect(lines).toHaveLength(2);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(18);
+  });
+
+  it('sends the retry button back to the page the visitor was opening', async () => {
+    const html = await toGateRateLimitedPage(limited(), {
+      callbackPath: '/digest?x=1&y="2"',
+    }).text();
+    expect(html).toContain('href="/api/gate/start?callbackURL=%2Fdigest%3Fx%3D1%26y%3D%222%22"');
+  });
+
+  it('returns other responses as they are', () => {
+    for (const status of [200, 302, 403, 503]) {
+      const response = new Response('x', { status });
+      expect(toGateRateLimitedPage(response)).toBe(response);
+    }
+  });
+
+  it('does not replace a 429 that is not the JSON of the rate limiter (it may carry cookies)', () => {
+    // 中の処理（Better Auth など）が自分で返した 429 は、付いている Set-Cookie ごとそのまま返す
+    const response = new Response('<html>too many</html>', {
+      status: 429,
+      headers: { 'Content-Type': 'text/html', 'Set-Cookie': 'tt-gate.oauth_state=; Max-Age=0' },
+    });
+    expect(toGateRateLimitedPage(response)).toBe(response);
+    expect(toGateRateLimitedPage(new Response(null, { status: 429 })).status).toBe(429);
+  });
+});
+
+describe('renderGateStartFailedPage', () => {
+  it('is a 503 page that sends the visitor back to the page they were opening', () => {
+    const { status, html } = renderGateStartFailedPage('/digest?x=1');
+    expect(status).toBe(503);
+    expect(html).toContain('<h1>いまはログインできません</h1>');
+    expect(html).toContain(
+      '<a class="action" href="/api/gate/start?callbackURL=%2Fdigest%3Fx%3D1">もう一度ログインする</a>'
+    );
+    expect(html).toContain('<meta name="robots" content="noindex">');
+    expect(html).not.toContain('<script');
+  });
+
+  it('keeps the title within 12 and sentences within 18 characters', () => {
+    const { html } = renderGateStartFailedPage('/');
+    expect(html.match(/<h1>(.*?)<\/h1>/)![1].length).toBeLessThanOrEqual(12);
+    const lines = html
+      .match(/<div class="lines">(.*?)<\/div>/)![1]
+      .split('</p>')
+      .filter(Boolean)
+      .map((p) => p.replace('<p>', ''));
+    expect(lines).toHaveLength(2);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(18);
   });
 });

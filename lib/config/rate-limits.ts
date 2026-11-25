@@ -69,6 +69,42 @@ export const RATE_LIMIT_POLICIES = {
     telemetryEvent: 'ratelimit.auth.gate_callback',
   },
 
+  // サイトの入口の拒否・失敗のページ（app/api/gate/[...all]/route.ts）。未登録で拒否されたアカウントの
+  // 利用の申請が届いているかを DB で引く（1 回の拒否につき 1〜2 回開くだけ）。ページを出してよい目印の
+  // Cookie は署名が無く、申請用の Cookie は 30 分使い回せるので、IP ごとに回数を絞る
+  'auth:gate-error': {
+    points: 30,
+    duration: 60,
+    keyStrategy: 'ip',
+    notes: 'Throttle the error page of the site-wide Google gate',
+    telemetryEvent: 'ratelimit.auth.gate_error',
+  },
+
+  // サイトの入口の拒否のページからの利用の申請（app/api/gate/request/route.ts）。入口の外から届くので
+  // IP ごとに数える。送れるのは Google のログインを通って拒否された人だけ（署名付きの Cookie）だが、
+  // 申請するアドレスは書き換えられるので、1 人が別々のアドレスの申請を置ける。その連投をここで絞る
+  // （対応待ちの全体の上限は lib/auth/site-gate/constants.ts の GATE_REQUEST_MAX_PENDING）
+  'write:gate-request': {
+    points: 10,
+    duration: 3600,
+    blockDuration: 0,
+    keyStrategy: 'ip',
+    notes: 'Access requests from the gate error page per IP (10 per hour)',
+    telemetryEvent: 'ratelimit.write.gate_request',
+  },
+
+  // 申請するアドレスを書き換えた利用の申請を、Google で選んだアカウントごとに数える
+  // （app/api/gate/request/route.ts が checkRateLimit で直接使う）。IP を替えても、1 つのアカウントで
+  // 別々のアドレスの申請を置き続けて対応待ちの枠を埋められないようにする
+  'write:gate-request-edited': {
+    points: 3,
+    duration: 86400,
+    blockDuration: 0,
+    keyStrategy: 'anonymous',
+    notes: 'Access requests for an edited address per signed-in Google account (3 per day)',
+    telemetryEvent: 'ratelimit.write.gate_request_edited',
+  },
+
   // RAG (Existing Policies) - No block, soft throttle only
   'rag:agent': {
     points: 5,

@@ -10,24 +10,29 @@ export type ReadJsonResult =
   | { ok: true; value: unknown }
   | { ok: false; reason: 'too_large' | 'invalid_json' };
 
-export async function readJsonWithLimit(
+export type ReadTextResult =
+  | { ok: true; value: string }
+  | { ok: false; reason: 'too_large' | 'unreadable' };
+
+/** 本文を上限のバイト数までだけ読み、UTF-8 の文字列として返す（JSON でない本文。フォームの送信など） */
+export async function readRequestTextWithLimit(
   request: Request,
   maxBytes: number
-): Promise<ReadJsonResult> {
+): Promise<ReadTextResult> {
   const declared = request.headers.get('content-length');
   if (declared !== null && Number(declared) > maxBytes) {
     return { ok: false, reason: 'too_large' };
   }
 
   if (!request.body) {
-    return { ok: false, reason: 'invalid_json' };
+    return { ok: false, reason: 'unreadable' };
   }
 
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
 
-  // 読み取りの途中で接続が切れたなどの失敗も、JSON として読めなかった扱いにする
+  // 読み取りの途中で接続が切れたなどの失敗も、読めなかった扱いにする
   try {
     for (;;) {
       const { done, value } = await reader.read();
@@ -41,7 +46,7 @@ export async function readJsonWithLimit(
       chunks.push(value);
     }
   } catch {
-    return { ok: false, reason: 'invalid_json' };
+    return { ok: false, reason: 'unreadable' };
   }
 
   const bytes = new Uint8Array(total);
@@ -50,9 +55,22 @@ export async function readJsonWithLimit(
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
+  return { ok: true, value: new TextDecoder().decode(bytes) };
+}
 
+export async function readJsonWithLimit(
+  request: Request,
+  maxBytes: number
+): Promise<ReadJsonResult> {
+  const text = await readRequestTextWithLimit(request, maxBytes);
+  if (!text.ok) {
+    return {
+      ok: false,
+      reason: text.reason === 'too_large' ? 'too_large' : 'invalid_json',
+    };
+  }
   try {
-    return { ok: true, value: JSON.parse(new TextDecoder().decode(bytes)) };
+    return { ok: true, value: JSON.parse(text.value) };
   } catch {
     return { ok: false, reason: 'invalid_json' };
   }

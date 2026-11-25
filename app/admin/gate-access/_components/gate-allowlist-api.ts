@@ -41,6 +41,7 @@ const CODE_MESSAGES = {
   ALREADY_LISTED: 'このアドレスはすでに一覧にあります',
   LIST_FULL: `これ以上追加できません（${GATE_ALLOWLIST_MAX_ENTRIES} 件まで）`,
   ENTRY_NOT_FOUND: 'このアドレスはすでに一覧から削除されています',
+  REQUEST_NOT_FOUND: 'この申請はすでに対応済みです',
   CANNOT_REMOVE_CURRENT_ACCOUNT: '今使っているアカウントは削除できません',
 } satisfies Record<GateAllowlistErrorCode, string>;
 
@@ -51,7 +52,8 @@ const isGateAllowlistErrorCode = (code: unknown): code is GateAllowlistErrorCode
 export const ADD_FAILED_MESSAGE = '追加できませんでした。時間をおいて再試行してください';
 export const REMOVE_FAILED_MESSAGE = '削除できませんでした。時間をおいて再試行してください';
 
-async function toActionError(
+/** 失敗の応答を、画面に出せる日本語の失敗に直す（利用の申請の API も同じ形で返す。gate-requests-api.ts） */
+export async function toActionError(
   res: Response,
   fallback: string
 ): Promise<GateAllowlistActionError> {

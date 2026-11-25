@@ -8,6 +8,10 @@ import type { SiteGateSettings } from '@/lib/auth/site-gate/config';
 import { z } from 'zod';
 import logger from '@/lib/logger';
 import { summarizeError } from '@/lib/utils/sanitize-error';
+import {
+  renderGateStartFailedPage,
+  toGateRateLimitedPage,
+} from '@/lib/auth/site-gate/error-page';
 
 /**
  * サイトの入口のログインの開始（GET）。proxy.ts が、入口のログイン状態の無いブラウザの遷移をここへ移す。
@@ -30,6 +34,18 @@ function notFound(): NextResponse {
   return new NextResponse('Not Found', {
     status: 404,
     headers: { 'Cache-Control': 'no-store' },
+  });
+}
+
+/** ログインを始められなかった。開始は画面の遷移で開くので、素の文字列ではなくページで返す */
+function startFailed(callbackURL: string): Response {
+  const { status, html } = renderGateStartFailedPage(callbackURL);
+  return new Response(html, {
+    status,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+    },
   });
 }
 
@@ -56,19 +72,13 @@ async function startSignIn(
       { errorSummary: summarizeError(error) },
       '[site-gate] ログインを開始できませんでした'
     );
-    return new NextResponse('Service Unavailable', {
-      status: 503,
-      headers: { 'Cache-Control': 'no-store' },
-    });
+    return startFailed(callbackURL);
   }
   if (!result.url) {
     logger.error(
       '[site-gate] ログインの開始で Google の URL が返りませんでした'
     );
-    return new NextResponse('Service Unavailable', {
-      status: 503,
-      headers: { 'Cache-Control': 'no-store' },
-    });
+    return startFailed(callbackURL);
   }
 
   const response = NextResponse.redirect(result.url, 302);
@@ -118,5 +128,14 @@ export async function GET(request: NextRequest): Promise<Response> {
     return redirect;
   }
 
-  return rateLimitedStart(request, { settings: config.settings });
+  // 回数の制限に達したときは、JSON ではなくページで返す（開始は画面の遷移で開くため）。
+  // 入り直すボタンは、開こうとしていたページへ戻す
+  return toGateRateLimitedPage(
+    await rateLimitedStart(request, { settings: config.settings }),
+    {
+      callbackPath: callbackURLSchema.parse(
+        request.nextUrl.searchParams.get('callbackURL')
+      ),
+    }
+  );
 }

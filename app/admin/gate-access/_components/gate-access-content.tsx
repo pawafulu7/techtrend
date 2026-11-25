@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useQuery, type Query } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui-v2/error-state';
@@ -19,6 +19,7 @@ import {
 import { GateEmailAddForm } from './gate-email-add-form';
 import { GateEmailDeleteDialog } from './gate-email-delete-dialog';
 import { GateEmailTable } from './gate-email-table';
+import { GateRequestSection } from './gate-request-section';
 
 interface GateAccessContentProps {
   /** このページを開いた管理者（Server で判定）。ほかのアカウントに替わったらデータを出さない */
@@ -61,6 +62,7 @@ function canRefetchAutomatically(query: Query<GateAllowlistResponse>): boolean {
 }
 
 function GateAccessManager() {
+  const allowlistHeadingId = useId();
   const [deleting, setDeleting] = useState<GateAllowlistEntry | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   // 一覧・空・失敗のどれを出していても残る外枠。ダイアログを閉じた後のフォーカスの戻し先にする
@@ -108,7 +110,7 @@ function GateAccessManager() {
   const hasFixed = data?.entries.some((row) => row.isFixed) ?? false;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {data && !data.gateEnabled && (
         <p
           className="rounded-md border border-(--tt-color-info-border) bg-(--tt-color-info-bg) px-3 py-2 text-sm text-(--tt-color-info)"
@@ -119,50 +121,60 @@ function GateAccessManager() {
         </p>
       )}
 
-      <GateEmailAddForm disabled={unavailable} />
+      {/* 対応待ちの申請を先に置く（許可すると、下の一覧に入る） */}
+      <GateRequestSection />
 
-      <div
-        ref={regionRef}
-        tabIndex={-1}
-        className="space-y-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-(--tt-color-primary)"
-        data-testid="gate-allowlist-region"
-      >
-        {error && (
-          // 手元にデータがあるとき（裏での取り直しの失敗）は、一覧を隠さずに上に出す
-          <ErrorState
-            title="一覧を読み込めませんでした"
-            description="時間をおいてもう一度読み込んでください。"
-            onRetry={() => void refetch()}
-            size="compact"
-          />
-        )}
-        {isLoading ? (
-          <div
-            className="space-y-2"
-            aria-busy="true"
-            aria-label="一覧を読み込んでいます"
-          >
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
-          </div>
-        ) : data ? (
-          <>
-            <GateEmailTable
-              rows={data.entries}
-              onRequestDelete={(row, opener) => {
-                openerRef.current = opener;
-                setDeleting(row);
-              }}
+      <section aria-labelledby={allowlistHeadingId} className="space-y-4">
+        <h2 id={allowlistHeadingId} className="text-h3">
+          許可しているアカウント
+        </h2>
+        <GateEmailAddForm disabled={unavailable} />
+
+        <div
+          ref={regionRef}
+          tabIndex={-1}
+          className="space-y-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-(--tt-color-primary)"
+          data-testid="gate-allowlist-region"
+        >
+          {error && (
+            // 手元にデータがあるとき（裏での取り直しの失敗）は、一覧を隠さずに上に出す
+            <ErrorState
+              title="一覧を読み込めませんでした"
+              description="時間をおいてもう一度読み込んでください。"
+              onRetry={() => void refetch()}
+              size="compact"
             />
-            {hasFixed && (
-              <p className="text-muted-foreground text-sm">
-                {'「設定で固定」のアドレスは Vercel の環境変数（GATE_ALWAYS_ALLOWED_EMAILS）で指定しているため、ここでは削除できません。'}
-              </p>
-            )}
-          </>
-        ) : null}
-      </div>
+          )}
+          {isLoading ? (
+            <div
+              className="space-y-2"
+              aria-busy="true"
+              aria-label="一覧を読み込んでいます"
+            >
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : data ? (
+            <>
+              <GateEmailTable
+                rows={data.entries}
+                onRequestDelete={(row, opener) => {
+                  openerRef.current = opener;
+                  setDeleting(row);
+                }}
+              />
+              {hasFixed && (
+                <p className="text-muted-foreground text-sm">
+                  {
+                    '「設定で固定」のアドレスは Vercel の環境変数（GATE_ALWAYS_ALLOWED_EMAILS）で指定しているため、ここでは削除できません。'
+                  }
+                </p>
+              )}
+            </>
+          ) : null}
+        </div>
+      </section>
 
       <GateEmailDeleteDialog
         entry={deleting}

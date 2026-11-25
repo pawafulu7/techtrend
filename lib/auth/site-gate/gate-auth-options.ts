@@ -39,6 +39,12 @@ export interface GateUserInfoHooks {
   onRejected: (reason: string, maskedEmail: string) => void;
   /** 照合が失敗したとき（例外を要約してログに出す。接続先を出さない） */
   onUnavailable: (error: unknown) => void;
+  /**
+   * Google が確認済みの Gmail なのに許可リストに無くて拒否したとき（Google が返したアドレスを渡す）。
+   * 拒否のページで、このアカウントの利用の申請を受け付けるために使う（request-account-cookie.ts）。
+   * 省略できる形にしない（つなぎを消しても型チェックが通ると、申請のフォームが黙って出なくなる）
+   */
+  onNotListed: (email: string) => void;
 }
 
 /**
@@ -77,6 +83,8 @@ export function createValidateGateUserInfo(
     }
     if (access !== 'allowed') {
       hooks.onRejected('not_allowed', maskGateEmail(email));
+      // email が null でないので user.email は文字列（normalizeGateEmail が Gmail の形と確かめた）
+      hooks.onNotListed(String(user.email));
       return { error: GATE_LOGIN_ERROR_CODES.notAllowed };
     }
     return undefined;

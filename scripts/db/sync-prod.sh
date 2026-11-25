@@ -12,12 +12,14 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
 # 除外テーブル（ユーザー関連、Prisma PascalCase）
 # SocialPostAuditLog は、操作したユーザーの ID・IP アドレス・User-Agent を持つ
-# GateAllowedEmail は、サイトの入口に入れる人の Gmail アドレスを持つ
+# GateAllowedEmail は、サイトの入口に入れる人の Gmail アドレスを持つ。GateAccessRequest は、利用を申請した人の
+# Gmail アドレスと備考を持つ
 EXCLUDE_TABLES=(
   '"User"' '"Account"' '"Session"' '"Verification"'
   '"Favorite"' '"ArticleView"' '"UserDeletionLog"'
   '"UserCategoryPreference"' '"Comment"' '"UserSourcePreset"'
   '"Inquiry"' '"SocialPostAuditLog"' '"GateAllowedEmail"'
+  '"GateAccessRequest"'
 )
 
 # 環境変数 -> .env.local -> .env の順で PROD_DATABASE_URL を読み込む

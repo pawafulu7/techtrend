@@ -11,11 +11,16 @@ import {
   GATE_ERROR_CODES,
   GATE_ERROR_PATH,
   GATE_PUBLIC_PATHS,
+  GATE_REQUEST_PATH,
   GATE_START_PATH,
 } from './constants';
 import { normalizeGateEmail } from './email';
 import { buildGateErrorNoticeCookie } from './error-notice';
 import type { GateAccess } from './gate-auth-options';
+import {
+  buildGateRequestAccountClearCookie,
+  buildGateRequestAccountCookie,
+} from './request-account-cookie';
 
 export interface GateSessionInfo {
   email: string;
@@ -68,6 +73,11 @@ const APP_SIGN_OUT_PATH = '/api/auth/sign-out';
 
 function isGatePublicRequest(request: NextRequest): boolean {
   if (request.method === 'POST' && request.nextUrl.pathname === APP_SIGN_OUT_PATH) {
+    return true;
+  }
+  // 拒否のページのフォームからの利用の申請。入口を通れない人が送るので、入口の外から通す。
+  // 誰の申請かは Route Handler が署名付きの Cookie で確かめる（app/api/gate/request/route.ts）
+  if (request.method === 'POST' && request.nextUrl.pathname === GATE_REQUEST_PATH) {
     return true;
   }
   if (request.method !== 'GET' && request.method !== 'HEAD') return false;
@@ -141,11 +151,15 @@ function requireSignIn(request: NextRequest, baseOrigin: string): NextResponse {
   );
 }
 
-/** 入口のログイン状態はあるが、許可リストから外された。入口の Cookie を消す */
+/**
+ * 入口のログイン状態はあるが、許可リストから外された。入口の Cookie を消す。
+ * requestAccount は、拒否のページで利用の申請を受け付けるアカウント（確認済みの Gmail のときだけ）
+ */
 function rejectRevoked(
   request: NextRequest,
   settings: SiteGateSettings,
-  clearCookies: string[]
+  clearCookies: string[],
+  requestAccount: string | null
 ): NextResponse {
   let response: NextResponse;
   if (isBrowserNavigation(request)) {
@@ -154,6 +168,18 @@ function rejectRevoked(
     response = noStore(NextResponse.redirect(error, 302));
     // 拒否のページは、この目印があるときだけ出す（lib/auth/site-gate/error-notice.ts）
     response.headers.append('Set-Cookie', buildGateErrorNoticeCookie(settings.isProduction));
+    // 拒否のページのフォームで、このアカウントの利用の申請を受け付ける（Google からの戻りの拒否と同じ）。
+    // 申請できないアカウントのときは消す（前に拒否された別のアカウントの申請を、このページで受け付けない）
+    response.headers.append(
+      'Set-Cookie',
+      (requestAccount === null
+        ? null
+        : buildGateRequestAccountCookie({
+            email: requestAccount,
+            secret: settings.secret,
+            isProduction: settings.isProduction,
+          })) ?? buildGateRequestAccountClearCookie(settings.isProduction)
+    );
   } else {
     response = gateJson(
       403,
@@ -218,7 +244,12 @@ export async function evaluateSiteGate(
     }
     return {
       kind: 'deny',
-      response: rejectRevoked(request, config.settings, clearCookies),
+      response: rejectRevoked(
+        request,
+        config.settings,
+        clearCookies,
+        email !== null && session.emailVerified === true ? session.email : null
+      ),
     };
   } catch (error) {
     return { kind: 'unavailable', error };

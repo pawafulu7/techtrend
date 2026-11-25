@@ -30,8 +30,14 @@ function hooks(access: GateAccess | Error = 'allowed') {
     if (access instanceof Error) throw access;
     return access;
   });
-  const value: GateUserInfoHooks = { checkAccess, onRejected, onUnavailable };
-  return { value, checkAccess, onRejected, onUnavailable };
+  const onNotListed = jest.fn();
+  const value: GateUserInfoHooks = {
+    checkAccess,
+    onRejected,
+    onUnavailable,
+    onNotListed,
+  };
+  return { value, checkAccess, onRejected, onUnavailable, onNotListed };
 }
 
 async function validate(
@@ -59,6 +65,34 @@ describe('createValidateGateUserInfo', () => {
       validate(h.value, { email: 'friend@gmail.com', emailVerified: true })
     ).resolves.toEqual({ error: 'not_allowed' });
     expect(h.onRejected).toHaveBeenCalledWith('not_allowed', 'f***@gmail.com');
+  });
+
+  it('reports a verified Gmail account that is not listed, with the address as Google returned it', async () => {
+    const h = hooks('not_allowed');
+    await validate(h.value, { email: 'F.riend@Gmail.com', emailVerified: true });
+    expect(h.onNotListed).toHaveBeenCalledTimes(1);
+    expect(h.onNotListed).toHaveBeenCalledWith('F.riend@Gmail.com');
+  });
+
+  it('does not report accounts that cannot request access', async () => {
+    // 許可された・メールが未確認・Gmail でない・Google でない・照合の失敗
+    const allowed = hooks('allowed');
+    await validate(allowed.value, { email: 'friend@gmail.com', emailVerified: true });
+    const unverified = hooks('not_allowed');
+    await validate(unverified.value, { email: 'friend@gmail.com', emailVerified: false });
+    const notGmail = hooks('not_allowed');
+    await validate(notGmail.value, { email: 'friend@example.com', emailVerified: true });
+    const otherProvider = hooks('not_allowed');
+    await validate(
+      otherProvider.value,
+      { email: 'friend@gmail.com', emailVerified: true },
+      { method: 'oauth', action: 'sign-in', oauth: { providerId: 'github' } }
+    );
+    const failed = hooks(new Error('db down'));
+    await validate(failed.value, { email: 'friend@gmail.com', emailVerified: true });
+    for (const h of [allowed, unverified, notGmail, otherProvider, failed]) {
+      expect(h.onNotListed).not.toHaveBeenCalled();
+    }
   });
 
   it('rejects an unverified email before checking the allowlist', async () => {

@@ -10,6 +10,7 @@ import {
   type SiteGateDeps,
 } from '@/lib/auth/site-gate/evaluate';
 import type { GateAccess } from '@/lib/auth/site-gate/gate-auth-options';
+import { readGateRequestAccount } from '@/lib/auth/site-gate/request-account-cookie';
 
 const SETTINGS: SiteGateSettings = {
   clientId: 'client-id',
@@ -142,6 +143,34 @@ describe('evaluateSiteGate', () => {
       )
     );
     expect(response.status).toBe(401);
+  });
+
+  it('lets the access request POST through without a gate session (it is sent by people who cannot enter)', async () => {
+    const d = deps();
+    await expect(
+      evaluateSiteGate(
+        request('/api/gate/request', { cookie: null, method: 'POST' }),
+        ENABLED,
+        d.loadDeps
+      )
+    ).resolves.toEqual({ kind: 'public' });
+    expect(d.loadDeps).not.toHaveBeenCalled();
+    // 送信のほかは通さない（GET は Route Handler も持たない）
+    for (const [path, method] of [
+      ['/api/gate/request', 'GET'],
+      ['/api/gate/request', 'PUT'],
+      ['/api/gate/request/', 'POST'],
+      ['/api/gate/requests', 'POST'],
+    ]) {
+      const response = await deny(
+        evaluateSiteGate(
+          request(path, { cookie: null, method, mode: 'cors' }),
+          ENABLED,
+          d.loadDeps
+        )
+      );
+      expect(response.status).toBe(401);
+    }
   });
 
   it('lets the app sign-out through without a gate session (so signing out always works)', async () => {
@@ -328,10 +357,49 @@ describe('evaluateSiteGate', () => {
       expect(location.pathname).toBe('/api/gate/error');
       expect(location.searchParams.get('error')).toBe('not_allowed');
       expect(setCookiesOf(response)).toEqual(expect.arrayContaining(DELETE_COOKIES));
-      expect(setCookiesOf(response)).toHaveLength(DELETE_COOKIES.length + 1);
+      expect(setCookiesOf(response)).toHaveLength(DELETE_COOKIES.length + 2);
       // 拒否のページを出してよい目印（ログインが拒否・失敗した直後だけ出す）
       expect(setCookiesOf(response).join('\n')).toContain('tt-gate.error_notice=1');
       expect(setCookiesOf(response)).not.toContain(REFRESH_COOKIE);
+    });
+
+    it('lets a revoked account request access again from the error page (signed cookie with its address)', async () => {
+      const d = deps({
+        access: 'not_allowed',
+        session: { ...SESSION, email: 'F.riend@gmail.com' },
+      });
+      const response = await deny(
+        evaluateSiteGate(request('/digest'), ENABLED, d.loadDeps)
+      );
+      const cookie = setCookiesOf(response).find((c) =>
+        c.startsWith('tt-gate.request_account=')
+      );
+      expect(cookie).toContain('Path=/api/gate');
+      const value = cookie!.split(';')[0].slice('tt-gate.request_account='.length);
+      expect(readGateRequestAccount(value, SETTINGS.secret)).toBe('f.riend@gmail.com');
+    });
+
+    it.each([
+      ['an unverified email', { ...SESSION, emailVerified: false }],
+      ['an address that is not Gmail', { ...SESSION, email: 'friend@example.com' }],
+    ])('does not offer the request to %s, and clears a cookie left by another account', async (_label, session) => {
+      const d = deps({ session });
+      const response = await deny(
+        evaluateSiteGate(request('/digest'), ENABLED, d.loadDeps)
+      );
+      expect(response.status).toBe(302);
+      expect(
+        setCookiesOf(response).filter((c) => c.startsWith('tt-gate.request_account='))
+      ).toEqual(['tt-gate.request_account=; Path=/api/gate; Max-Age=0; HttpOnly; SameSite=Lax']);
+    });
+
+    it('does not set the request cookie on API rejections (no page is shown)', async () => {
+      const d = deps({ access: 'not_allowed' });
+      const response = await deny(
+        evaluateSiteGate(request('/api/stats', { mode: 'cors' }), ENABLED, d.loadDeps)
+      );
+      expect(response.status).toBe(403);
+      expect(setCookiesOf(response).join('\n')).not.toContain('tt-gate.request_account');
     });
 
     it('does not delete the state cookie of a sign-in in progress in another tab', async () => {

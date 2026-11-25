@@ -192,6 +192,25 @@ const ROUTES: Array<{
       DELETE: csrf(rateLimit('admin:write', adminAuth(HANDLER))),
     },
   },
+  // 利用の申請（入口で未登録と拒否された人から届く）の一覧・許可・却下
+  {
+    modulePath: '@/app/api/admin/gate-requests/route',
+    methods: {
+      GET: adminAuth(rateLimit('admin:read', HANDLER)),
+    },
+  },
+  {
+    modulePath: '@/app/api/admin/gate-requests/[id]/route',
+    methods: {
+      DELETE: csrf(rateLimit('admin:write', adminAuth(HANDLER))),
+    },
+  },
+  {
+    modulePath: '@/app/api/admin/gate-requests/[id]/approve/route',
+    methods: {
+      POST: csrf(rateLimit('admin:write', adminAuth(HANDLER))),
+    },
+  },
 ];
 
 const ROWS = ROUTES.flatMap((route) =>
@@ -207,9 +226,9 @@ const ROWS = ROUTES.flatMap((route) =>
 );
 
 describe('Auth middleware composition (issues #659, #662)', () => {
-  it('covers all 24 HTTP methods of the 18 routes', () => {
-    expect(ROUTES).toHaveLength(18);
-    expect(ROWS).toHaveLength(24);
+  it('covers all 27 HTTP methods of the 21 routes', () => {
+    expect(ROUTES).toHaveLength(21);
+    expect(ROWS).toHaveLength(27);
   });
 
   it.each(ROUTES.map((route) => [route.modulePath, route] as const))(

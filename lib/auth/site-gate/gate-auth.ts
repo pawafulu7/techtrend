@@ -16,6 +16,7 @@ import {
   createValidateGateUserInfo,
   toGateAuthLogger,
 } from './gate-auth-options';
+import { noteRejectedGateAccount } from './rejected-account-context';
 
 function buildGateAuth(settings: SiteGateSettings) {
   return betterAuth(
@@ -35,6 +36,8 @@ function buildGateAuth(settings: SiteGateSettings) {
             '[site-gate] ログイン時に許可リストを照合できませんでした'
           );
         },
+        // 戻りの Route Handler（app/api/gate/[...all]/route.ts）が、利用の申請用の Cookie に載せる
+        onNotListed: noteRejectedGateAccount,
       }),
       logger: toGateAuthLogger((level, message) => {
         logger[level]({ source: 'better-auth:site-gate' }, message);

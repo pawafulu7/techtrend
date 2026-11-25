@@ -769,3 +769,19 @@ model GateAllowedEmail {
 
   @@index([createdById], map: "idx_gate_allowed_email_created_by")
 }
+
+// サイトの入口（Google ログイン）で「未登録」と拒否された人からの、利用の申請。
+// 拒否のページ（/api/gate/error）のフォームから届き、管理画面で許可（GateAllowedEmail に足して行を消す）か
+// 却下（行を消す）する。行があるあいだが「対応待ち」で、状態の列は持たない
+model GateAccessRequest {
+  id        String   @id @default(cuid())
+  // 入れるようにしてほしい Gmail アドレス。フォームには拒否された Google アカウントが入っているが、申請者が
+  // 書き換えられるので、Google の確認を経ているとは限らない。GateAllowedEmail と同じ正規化した形（CHECK 制約
+  // chk_gate_access_request_email_normalized。SQL で管理）。1 つのアドレスにつき 1 件
+  email     String   @unique @db.VarChar(254)
+  /// 申請者が書いた生の文字列（HTML タグを含みうる）。React のテキスト描画以外へ出すときはエスケープする
+  note      String?  @db.VarChar(500)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  // 同じアカウントが送り直したとき（備考の書き直し）に変わる
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+}

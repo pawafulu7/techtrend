@@ -13,6 +13,8 @@ export const GATE_ALLOWLIST_ERROR_CODES = {
   LIST_FULL: 'LIST_FULL',
   /** 一覧に無い（すでに削除された） */
   ENTRY_NOT_FOUND: 'ENTRY_NOT_FOUND',
+  /** 利用の申請が無い（別の管理者が先に許可・却下した） */
+  REQUEST_NOT_FOUND: 'REQUEST_NOT_FOUND',
   /** 管理者が今サイトに入るのに使っているアカウントは削除できない */
   CANNOT_REMOVE_CURRENT_ACCOUNT: 'CANNOT_REMOVE_CURRENT_ACCOUNT',
 } as const;

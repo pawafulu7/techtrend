@@ -132,6 +132,8 @@ beforeEach(() => {
   prismaMock.gateAllowedEmail.create.mockReset();
   prismaMock.gateAllowedEmail.delete.mockReset();
   prismaMock.gateAllowedEmail.count.mockResolvedValue(0);
+  prismaMock.gateAccessRequest.deleteMany.mockReset();
+  prismaMock.gateAccessRequest.deleteMany.mockResolvedValue({ count: 0 });
 });
 
 describe('GET /api/admin/gate-allowlist', () => {
@@ -319,6 +321,12 @@ describe('POST /api/admin/gate-allowlist', () => {
           return row(ID_1, 'friend@gmail.com', '2026-11-21T03:00:00Z');
         }),
       },
+      gateAccessRequest: {
+        deleteMany: jest.fn(async () => {
+          steps.push('remove-request');
+          return { count: 1 };
+        }),
+      },
     };
     prismaMock.$transaction.mockImplementationOnce(
       async (fn: (client: typeof tx) => Promise<unknown>) => fn(tx)
@@ -330,7 +338,12 @@ describe('POST /api/admin/gate-allowlist', () => {
       'lock:SELECT pg_advisory_xact_lock(?)',
       'count',
       'create',
+      // 同じアカウントから届いていた利用の申請は、対応済みとして消す
+      'remove-request',
     ]);
+    expect(tx.gateAccessRequest.deleteMany).toHaveBeenCalledWith({
+      where: { email: 'friend@gmail.com' },
+    });
     // 鍵は bigint で渡す（pg_advisory_xact_lock(bigint) の 64 ビットの鍵の空間）
     expect(typeof tx.$executeRaw.mock.calls[0][1]).toBe('bigint');
     expect(prismaMock.$transaction.mock.calls[0][1]).toMatchObject({
