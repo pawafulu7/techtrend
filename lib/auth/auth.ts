@@ -5,49 +5,11 @@ import { after } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/config/env';
 import logger from '@/lib/logger';
+import { buildEmailHtml } from '@/lib/email/layout';
+import { sendEmail, type SendEmailResult } from '@/lib/email/mailer';
+import { summarizeError } from '@/lib/utils/sanitize-error';
 import { betterAuthRateLimitStorage } from './rate-limit-storage';
 import { PASSWORD_CHANGE_PATHS, UNUSED_ADMIN_PLUGIN_PATHS } from './disabled-paths';
-
-let resend: any = null;
-if (env.RESEND_API_KEY) {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { Resend } = require('resend');
-    resend = new Resend(env.RESEND_API_KEY);
-  } catch (_error) {
-    logger.warn('Resend module not installed.');
-  }
-}
-
-function createNodemailerTransporter() {
-  let nodemailer: any;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    nodemailer = require('nodemailer');
-  } catch (_error) {
-    return null;
-  }
-  if (env.GMAIL_USER && env.GMAIL_APP_PASSWORD) {
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
-    });
-  }
-  if (env.SMTP_HOST) {
-    return nodemailer.createTransport({
-      host: env.SMTP_HOST,
-      port: env.SMTP_PORT,
-      secure: env.SMTP_SECURE === 'true',
-      auth: env.SMTP_USER
-        ? { user: env.SMTP_USER, pass: env.SMTP_PASSWORD }
-        : undefined,
-    });
-  }
-  return null;
-}
-
-// Cache transporter at module level to reuse connection pool
-const nodemailerTransporter = createNodemailerTransporter();
 
 const isProduction = env.NODE_ENV === 'production';
 
@@ -94,56 +56,23 @@ export const auth = betterAuth({
       },
       _request?: Request
     ) => {
-      if (process.env.NODE_ENV === 'test' || env.SKIP_EMAIL_SEND === 'true') {
-        return;
-      }
-
       const { host } = new URL(data.url);
-      const from = env.EMAIL_FROM || 'noreply@techtrend.example.com';
-      const subject = 'TechTrend - メールアドレスの確認';
-      const htmlContent = buildVerificationEmailHtml(data.url, host);
-      const textContent = buildVerificationEmailText(data.url, host);
-
-      if (nodemailerTransporter) {
-        try {
-          await nodemailerTransporter.sendMail({
-            from,
-            to: data.user.email,
-            subject,
-            html: htmlContent,
-            text: textContent,
-          });
-        } catch (error) {
-          logger.error(
-            { err: error },
-            'Failed to send verification email via nodemailer'
-          );
-          throw error;
-        }
-        return;
+      let result: SendEmailResult;
+      try {
+        result = await sendEmail({
+          to: data.user.email,
+          subject: 'TechTrend - メールアドレスの確認',
+          html: buildVerificationEmailHtml(data.url, host),
+          text: buildVerificationEmailText(data.url, host),
+        });
+      } catch (error) {
+        // SMTP のエラーの文には宛先や接続先が入るので、種類とコードだけを出す。投げ直す例外も同じ形にする
+        // （Better Auth は、バックグラウンドに回した処理の例外をそのままログに出す）
+        const errorSummary = summarizeError(error);
+        logger.error({ errorSummary }, 'Failed to send verification email');
+        throw new Error(`Failed to send verification email: ${errorSummary}`);
       }
-      if (resend) {
-        try {
-          const { error: sendError } = await resend.emails.send({
-            from,
-            to: data.user.email,
-            subject,
-            html: htmlContent,
-            text: textContent,
-          });
-          // Resend は送信の失敗を例外にせず、戻り値の error で返す
-          if (sendError) {
-            throw new Error(`Resend error: ${sendError.name}`);
-          }
-        } catch (error) {
-          logger.error(
-            { err: error },
-            'Failed to send verification email via resend'
-          );
-          throw error;
-        }
-        return;
-      }
+      if (result !== 'no_provider') return;
       if (env.NODE_ENV === 'development') {
         logger.warn('No email provider configured');
         return;
@@ -226,28 +155,14 @@ export const auth = betterAuth({
 
 function buildVerificationEmailHtml(url: string, host: string): string {
   const escapedHost = host.replace(/\./g, '&#8203;.');
-  return `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:20px 0;"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-  <tr><td style="padding:40px 30px;text-align:center;">
-    <h1 style="color:#333333;margin:0 0 20px 0;font-size:24px;">TechTrend メールアドレスの確認</h1>
-    <p style="color:#666666;margin:0 0 30px 0;font-size:16px;line-height:1.5;">
-      <strong>${escapedHost}</strong> へのサインインを完了するには、<br>以下のボタンをクリックしてください。
-    </p>
-    <table cellpadding="0" cellspacing="0" style="margin:0 auto;"><tr>
-      <td style="background-color:#0070f3;border-radius:6px;">
-        <a href="${url}" target="_blank" style="display:inline-block;padding:14px 30px;color:#ffffff;text-decoration:none;font-size:16px;font-weight:500;">メールアドレスを確認する</a>
-      </td>
-    </tr></table>
-    <p style="color:#999999;margin:30px 0 0 0;font-size:14px;">このメールに心当たりがない場合は、無視してください。<br>リンクは24時間有効です。</p>
-  </td></tr>
-  <tr><td style="padding:20px 30px;background-color:#f8f8f8;border-top:1px solid #e0e0e0;text-align:center;border-radius:0 0 8px 8px;">
-    <p style="color:#999999;margin:0;font-size:12px;">このメールは自動送信されています。返信はできません。</p>
-  </td></tr>
-</table>
-</td></tr></table></body></html>`;
+  return buildEmailHtml({
+    headingHtml: 'TechTrend メールアドレスの確認',
+    messageHtml: `<strong>${escapedHost}</strong> へのサインインを完了するには、<br>以下のボタンをクリックしてください。`,
+    buttonUrl: url,
+    buttonLabelHtml: 'メールアドレスを確認する',
+    noteHtml:
+      'このメールに心当たりがない場合は、無視してください。<br>リンクは24時間有効です。',
+  });
 }
 
 function buildVerificationEmailText(url: string, host: string): string {

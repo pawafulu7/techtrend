@@ -3,10 +3,12 @@
  *
  * 認証（withAdminAuth）・CSRF・レート制限は素通しにする（包み方は __tests__/api/auth-middleware-composition.test.ts、
  * 認証そのものは __tests__/lib/middleware/with-admin-auth.test.ts で確かめる）。
- * 本物の DB での許可（ロック・件数・削除）は __tests__/lib/auth/site-gate/allowlist-store.db.test.ts
+ * 本物の DB での許可（ロック・件数・削除）は __tests__/lib/auth/site-gate/allowlist-store.db.test.ts、
+ * 通知メールの中身と失敗の扱いは __tests__/lib/auth/site-gate/approval-email.test.ts
  */
 import { NextRequest } from 'next/server';
 import type { SiteGateConfig } from '@/lib/auth/site-gate/config';
+import type { GateApprovalNotification } from '@/lib/auth/site-gate/admin-types';
 
 jest.mock('@/lib/logger', () => {
   const log = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
@@ -36,6 +38,12 @@ jest.mock('@/lib/prisma');
 const mockGetSiteGateConfig = jest.fn<SiteGateConfig, []>();
 jest.mock('@/lib/auth/site-gate/server-config', () => ({
   getSiteGateConfig: () => mockGetSiteGateConfig(),
+}));
+
+const mockSendGateApprovalEmail = jest.fn<Promise<GateApprovalNotification>, [string, string]>();
+jest.mock('@/lib/auth/site-gate/approval-email', () => ({
+  sendGateApprovalEmail: (email: string, siteOrigin: string) =>
+    mockSendGateApprovalEmail(email, siteOrigin),
 }));
 
 // eslint-disable-next-line import/first
@@ -87,6 +95,7 @@ function reject(id: string) {
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetSiteGateConfig.mockReturnValue(ENABLED);
+  mockSendGateApprovalEmail.mockResolvedValue('sent');
   for (const method of ['findMany', 'findUnique', 'deleteMany']) {
     prismaMock.gateAccessRequest[method].mockReset();
   }
@@ -136,7 +145,11 @@ describe('POST /api/admin/gate-requests/[id]/approve', () => {
     prismaMock.gateAccessRequest.findUnique.mockResolvedValue({ email: 'friend@gmail.com' });
     const response = await approve(ID_1);
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ status: 'approved', email: 'friend@gmail.com' });
+    expect(await response.json()).toEqual({
+      status: 'approved',
+      email: 'friend@gmail.com',
+      notification: 'sent',
+    });
     expect(prismaMock.gateAllowedEmail.create).toHaveBeenCalledWith({
       data: { email: 'friend@gmail.com', createdById: 'admin-1' },
       select: { id: true },
@@ -148,6 +161,55 @@ describe('POST /api/admin/gate-requests/[id]/approve', () => {
       { adminId: 'admin-1', requestId: ID_1, email: 'f***@gmail.com', status: 'approved' },
       expect.any(String)
     );
+  });
+
+  it('notifies the approved address once, after the allowlist change is committed', async () => {
+    const steps: string[] = [];
+    prismaMock.gateAccessRequest.findUnique.mockResolvedValue({ email: 'friend@gmail.com' });
+    prismaMock.$transaction.mockImplementationOnce(
+      async (fn: (client: typeof prismaMock) => Promise<unknown>) => {
+        const result = await fn(prismaMock);
+        steps.push('committed');
+        return result;
+      }
+    );
+    mockSendGateApprovalEmail.mockImplementation(async () => {
+      steps.push('email');
+      return 'sent';
+    });
+    await approve(ID_1);
+    expect(steps).toEqual(['committed', 'email']);
+    expect(mockSendGateApprovalEmail).toHaveBeenCalledTimes(1);
+    // 宛先は許可したアドレス、リンク先は入口の設定の origin
+    expect(mockSendGateApprovalEmail).toHaveBeenCalledWith(
+      'friend@gmail.com',
+      'http://localhost:3000'
+    );
+  });
+
+  it('still succeeds when the notice could not be sent, and says so', async () => {
+    prismaMock.gateAccessRequest.findUnique.mockResolvedValue({ email: 'friend@gmail.com' });
+    mockSendGateApprovalEmail.mockResolvedValue('failed');
+    const response = await approve(ID_1);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      status: 'approved',
+      email: 'friend@gmail.com',
+      notification: 'failed',
+    });
+    expect(prismaMock.gateAllowedEmail.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('still succeeds when sending the notice throws (the approval is already committed)', async () => {
+    prismaMock.gateAccessRequest.findUnique.mockResolvedValue({ email: 'friend@gmail.com' });
+    mockSendGateApprovalEmail.mockRejectedValue(new Error('unexpected at 10.0.0.1'));
+    const response = await approve(ID_1);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      status: 'approved',
+      email: 'friend@gmail.com',
+      notification: 'failed',
+    });
   });
 
   it('runs the lock, the checks, the add and the removal in one transaction', async () => {
@@ -212,9 +274,15 @@ describe('POST /api/admin/gate-requests/[id]/approve', () => {
     prismaMock.gateAllowedEmail.findUnique.mockResolvedValue(listed);
     const response = await approve(ID_1);
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ status: 'already_allowed', email });
+    expect(await response.json()).toEqual({
+      status: 'already_allowed',
+      email,
+      notification: 'none',
+    });
     expect(prismaMock.gateAllowedEmail.create).not.toHaveBeenCalled();
     expect(prismaMock.gateAccessRequest.deleteMany).toHaveBeenCalledWith({ where: { email } });
+    // 本人はすでに入れる。申請は他人がアドレスを入力して置いたものでありうるので、メールは送らない
+    expect(mockSendGateApprovalEmail).not.toHaveBeenCalled();
   });
 
   it('keeps the request when the allowlist is full', async () => {
@@ -225,6 +293,7 @@ describe('POST /api/admin/gate-requests/[id]/approve', () => {
     expect(await response.json()).toMatchObject({ code: 'LIST_FULL' });
     expect(prismaMock.gateAllowedEmail.create).not.toHaveBeenCalled();
     expect(prismaMock.gateAccessRequest.deleteMany).not.toHaveBeenCalled();
+    expect(mockSendGateApprovalEmail).not.toHaveBeenCalled();
   });
 
   it('is 404 when the request was already handled', async () => {
@@ -233,6 +302,8 @@ describe('POST /api/admin/gate-requests/[id]/approve', () => {
     expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({ code: 'REQUEST_NOT_FOUND' });
     expect(prismaMock.gateAllowedEmail.create).not.toHaveBeenCalled();
+    // 2 回押しても、2 回目は申請が無いのでメールは出ない
+    expect(mockSendGateApprovalEmail).not.toHaveBeenCalled();
   });
 
   it.each(['a'.repeat(129)])('is 404 for an id that cannot exist (%p)', async (id) => {
@@ -245,8 +316,14 @@ describe('POST /api/admin/gate-requests/[id]/approve', () => {
     mockGetSiteGateConfig.mockReturnValue({ kind: 'disabled' });
     prismaMock.gateAccessRequest.findUnique.mockResolvedValue({ email: 'owner@gmail.com' });
     const response = await approve(ID_1);
-    expect(await response.json()).toEqual({ status: 'approved', email: 'owner@gmail.com' });
+    // 入口が無効なら誰でも入れるので、メールは送らない
+    expect(await response.json()).toEqual({
+      status: 'approved',
+      email: 'owner@gmail.com',
+      notification: 'none',
+    });
     expect(prismaMock.gateAllowedEmail.count).toHaveBeenCalledWith({ where: undefined });
+    expect(mockSendGateApprovalEmail).not.toHaveBeenCalled();
   });
 
   it('returns 500 without leaking the DB error', async () => {
@@ -255,6 +332,7 @@ describe('POST /api/admin/gate-requests/[id]/approve', () => {
     expect(response.status).toBe(500);
     expect(JSON.stringify(await response.json())).not.toContain('10.0.0.1');
     expect(JSON.stringify(mockLogger.error.mock.calls)).not.toContain('10.0.0.1');
+    expect(mockSendGateApprovalEmail).not.toHaveBeenCalled();
   });
 });
 

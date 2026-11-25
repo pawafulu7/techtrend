@@ -5,6 +5,7 @@
  * 出さないため）、単独の HTML を Route Handler から返す。JS・Web フォント・外部の読み込みは使わない
  * （CSP は style-src 'unsafe-inline' と form-action 'self' を許している: lib/config/security-headers.ts）。
  */
+import { escapeHtml } from '../../utils/escape-html';
 import { GATE_START_PATH } from './constants';
 import { WORDMARK_EM_HEIGHT, WORDMARK_PATH, WORDMARK_VIEWBOX } from './wordmark';
 
@@ -21,14 +22,7 @@ export interface GatePageContent {
   bodyHtml: string;
 }
 
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+export { escapeHtml };
 
 // サイトのログイン画面（app/auth/login/_components/login-content.tsx）と同じ並べ方にする。
 // 上部の帯にロゴの印とサイト名（ヘッダーと同じ字形）、その下に幅 32rem の面、中央寄せの見出しと説明、

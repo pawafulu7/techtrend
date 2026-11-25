@@ -64,7 +64,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 |-----|-----------|
 | `/admin` | 記事総数・有効なソース数・ユーザー数・本日の記事数 |
 | `/admin/users` | ユーザー一覧、ロール（user / admin）の変更、無効化 |
-| `/admin/gate-access` | サイトの入口（Google ログイン）に入れる Gmail アドレスの一覧・追加・削除。設定（`GATE_ALWAYS_ALLOWED_EMAILS`）で固定したアドレスと、管理者が今使っているアカウントは削除できない。入口で未登録と拒否された人からの利用の申請（申請者が入力した Gmail アドレスと備考）も並び、管理者が許可（許可リストに入る）か却下する（自動では許可しない）。対応待ちの件数は管理画面のメニューに出る |
+| `/admin/gate-access` | サイトの入口（Google ログイン）に入れる Gmail アドレスの一覧・追加・削除。設定（`GATE_ALWAYS_ALLOWED_EMAILS`）で固定したアドレスと、管理者が今使っているアカウントは削除できない。入口で未登録と拒否された人からの利用の申請（申請者が入力した Gmail アドレスと備考）も並び、管理者が許可（許可リストに入る）か却下する（自動では許可しない）。許可すると、申請のアドレスに通知メールを送る（`lib/auth/site-gate/approval-email.ts`。送るのは申請の一覧で許可して許可リストに新しく足したときだけで、アドレスを入力して追加したとき・すでに許可されていたときは送らない。送れなくても許可は済み、画面にその旨を出す）。対応待ちの件数は管理画面のメニューに出る |
 | `/admin/articles` | 記事の一覧と詳細、非表示（`isHidden`）の切り替え、要約の再生成 |
 | `/admin/inquiries` | 問い合わせの一覧と状態の変更 |
 | `/admin/social-posts` | X に投稿する文面の下書きを AI で作る（記事から・意見・汎用）、編集、一括操作、件数の集計。X への投稿そのものはしない |
@@ -173,7 +173,7 @@ TechTrend が今もっている機能を、画面・API・定期実行・CLI・�
 |------|------|-----------------|
 | Gemini | 要約・タグ・翻訳・抽出・トレンドレポート・X 投稿の下書き。既定のモデルは `lib/di/config.ts` と `lib/constants/index.ts`（トレンドレポートは別のモデル） | `GEMINI_API_KEY`、`GEMINI_MODEL`、`GEMINI_BASE_URL`、`GEMINI_SUMMARY_SERVICE_TIER` |
 | OpenAI | 埋め込み（`text-embedding-3-small`）と AI 検索・Q&A のエージェント | `OPENAI_API_KEY`、`EMBEDDING_MODEL`、`AGENT_MODEL`、`RAG_ENABLED` |
-| メール | Better Auth のメールアドレスの確認だけ。nodemailer（Gmail か SMTP）があればそれを、無ければ Resend を使う（`lib/auth/auth.ts`） | `EMAIL_FROM`、`GMAIL_USER`・`GMAIL_APP_PASSWORD`、`SMTP_*`、`RESEND_API_KEY` |
+| メール | Better Auth のメールアドレスの確認と、サイトの入口の利用の申請を許可した知らせの 2 つ。nodemailer（Gmail か SMTP）があればそれを、無ければ Resend を使う（`lib/email/mailer.ts`） | `EMAIL_FROM`、`GMAIL_USER`・`GMAIL_APP_PASSWORD`、`SMTP_*`、`RESEND_API_KEY` |
 | OAuth | Google と GitHub。設定があるときだけ有効 | `GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET`、`GITHUB_CLIENT_ID`・`GITHUB_CLIENT_SECRET` |
 | Slack | 定期実行の失敗と、新しい要約の通知（`lib/notification/`） | `SLACK_WEBHOOK_URL`、`SLACK_NOTIFICATION_ENABLED` |
 | PostgreSQL・Redis | データとキャッシュ・レート制限 | `DATABASE_URL`、`REDIS_URL` |
