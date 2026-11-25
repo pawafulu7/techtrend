@@ -123,8 +123,10 @@ async function main() {
     prisma.tag.deleteMany(),
     prisma.source.deleteMany(),
     // User を消しても onDelete: SetNull で問い合わせと入口の許可リストは残るので、先に消す
+    // （利用の申請 GateAccessRequest は User を参照しない。テストの行を残さないために消す）
     prisma.inquiry.deleteMany(),
     prisma.gateAllowedEmail.deleteMany(),
+    prisma.gateAccessRequest.deleteMany(),
     prisma.user.deleteMany(),
   ]);
 
