@@ -31,12 +31,13 @@ npx prisma migrate dev --name add_user_profile_fields
 
 ### 本番に適用する
 
-本番には Vercel のデプロイ時に `vercel-build`（`prisma generate && prisma migrate deploy && next build --webpack`）が自動で適用する。手で確かめる・適用するときは次を使う（接続先は `.env.local` の `PROD_DATABASE_URL`。接続先が出ないよう、決まった形の行と成否だけを表示する）。
+本番には Vercel のデプロイ時に `vercel-build` が自動で適用する（管理者のロールの `MIGRATION_DATABASE_URL` で流す。[deployment.md](../operations/deployment.md)）。手元には管理者の接続情報を置かないので、手元から適用はできない。適用状況は次で確かめる（接続先は `.env.local` の `PROD_DATABASE_URL` の読み取り用のロール。接続先が出ないよう、決まった形の行と成否だけを表示する）。
 
 ```bash
-npm run migrate:production:check   # 適用状況の確認（prisma migrate status）
-npm run migrate:production         # 未適用のマイグレーションを適用（scripts/db/deploy-migrations.sh）
+npm run migrate:production:check   # 適用状況の確認（scripts/db/check-prod-migrations.ts。読み取り用のロールでは prisma migrate status が権限で止まるため）
 ```
+
+表を足すときは、`scripts/db/prod-table-access.json` の `personal`（個人情報を持つ表）か `content`（それ以外）に表の名前を入れる。`content` の表は、手元の読み取り用のロールで読めるようになり、本番からの同期（`npm run db:sync:prod`）でも持ってくる。どちらにも入れないとテスト（`__tests__/scripts/db/prod-table-access.db.test.ts`）が落ちる。
 
 ## うまくいかないとき
 

@@ -2,6 +2,8 @@
 set -euo pipefail
 
 # 本番DB (Neon) の接続URLを環境変数に入れてコマンドを実行する。URL は表示しない。
+# 手元の PROD_DATABASE_URL は読み取り用のロール（記事系の表を読むだけ。個人情報の表は読めず、書き込めない）。
+# 本番に書き込む作業は GitHub Actions の Maintenance - Run Script で行う（docs/operations/deployment.md の「DB のロール」）
 # コマンドの生の出力も表示しない（接続エラーには接続先が入る）。画面に出るのは prod_db_filter_output
 # （scripts/db/prod-db-env.sh）が通す行と成否だけで、生の出力は .workflow/tmp/prod-db/ に保存する。
 # 件数や成否を見たいときは、コマンド側で `名前=数値` の行を出力する（例: console.log(`articles=${n}`)）。

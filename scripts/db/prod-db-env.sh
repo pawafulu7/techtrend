@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # 本番DB (Neon) の接続URL PROD_DATABASE_URL を読み込む共通処理。source して使う。
+# 手元の PROD_DATABASE_URL は読み取り用のロール（docs/operations/deployment.md の「DB のロール」）。
+# GitHub Actions（scheduler-setup・maintenance-run.yml）でも prod_db_run で出力を絞るのに使う
 # 優先順位: 既に設定済みの環境変数 > .env.local > .env
 # URL にはパスワードが含まれるため、値は出力しない。
 # URL にポートが無ければ 5432 を補う。Ubuntu の psql / pg_dump（postgresql-common のラッパー）は、

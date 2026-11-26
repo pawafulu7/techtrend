@@ -34,7 +34,6 @@ jobs:
         uses: ./.github/actions/scheduler-setup
         with:
           database_url: ${{ secrets.DATABASE_URL }}
-          skip_migrate: 'true'
       - name: Refresh interest categories and scores
         env:
           NODE_ENV: production

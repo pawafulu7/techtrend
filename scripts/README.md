@@ -27,7 +27,7 @@ npx tsx scripts/<ディレクトリ>/<名前>.ts            # DATABASE_URL な�
 npx dotenv run -- tsx scripts/<ディレクトリ>/<名前>.ts  # .env を読み込んで動かす
 ```
 
-よく使うものは `package.json` にコマンドがある（`npm run scripts:collect`・`npm run quality:check`・`npm run backfill:embeddings` など）。本番の DB に向けるときは `bash scripts/db/with-prod-db.sh --as-database-url <コマンド>`（接続先と生の出力は表示しない）。
+よく使うものは `package.json` にコマンドがある（`npm run scripts:collect`・`npm run quality:check`・`npm run backfill:embeddings` など）。本番の DB を読むときは `bash scripts/db/with-prod-db.sh --as-database-url <コマンド>`（手元の接続は記事系の表を読むだけのロール。接続先と生の出力は表示しない）。本番に書き込むスクリプトは、GitHub Actions の `Maintenance - Run Script`（`.github/workflows/maintenance-run.yml`）を手動で実行する。
 
 ## 主なスクリプト
 
@@ -60,8 +60,9 @@ npx dotenv run -- tsx scripts/<ディレクトリ>/<名前>.ts  # .env を読み
 
 ### db/
 
-- `with-prod-db.sh` — 本番の DB に向けてコマンドを流す
-- `deploy-migrations.sh` — 本番にマイグレーションを適用する（`npm run migrate:production`）
+- `with-prod-db.sh` — 本番の DB を読むコマンドを流す（読み取り用のロール）
+- `create-prod-roles.ts`・`prod-db-roles.ts`・`apply-readonly-grants.ts`・`prod-table-access.json` — 本番の DB のロールを用途で分ける（[docs/operations/deployment.md](../docs/operations/deployment.md) の「DB のロール」）
+- `check-prod-migrations.ts`・`migration-status.ts` — 本番のマイグレーションの適用状況を読み取り用のロールで確かめる（`npm run migrate:production:check`）
 - `sync-prod.sh`・`backup-dev.sh`・`backup-test.sh`・`clear-local-cache.sh` — `npm run db:*` から使う
 
 ## 追加するとき
