@@ -3,7 +3,6 @@
  */
 import {
   localMigrationNames,
-  readonlyGrantDecision,
   summarizeMigrations,
   type MigrationRecord,
 } from '@/scripts/db/migration-status';
@@ -47,28 +46,6 @@ describe('summarizeMigrations', () => {
     const status = summarizeMigrations(['20260101000000_a'], [record('20260101000000_a', true, true)]);
     expect(status.pending).toEqual(['20260101000000_a']);
     expect(status.failed).toEqual([]);
-  });
-});
-
-describe('readonlyGrantDecision', () => {
-  const status = { local: 2, applied: 2, pending: [], failed: [], unknown: [] };
-
-  it('applies when the DB has nothing this build does not know', () => {
-    expect(readonlyGrantDecision(status)).toBe('apply');
-    expect(readonlyGrantDecision({ ...status, pending: ['20260103000000_c'] })).toBe('apply');
-  });
-
-  it('skips an older build, and stops when the histories have diverged', () => {
-    expect(readonlyGrantDecision({ ...status, unknown: ['20260104000000_d'] })).toBe(
-      'skip_older_build'
-    );
-    expect(
-      readonlyGrantDecision({
-        ...status,
-        unknown: ['20260104000000_d'],
-        pending: ['20260103000000_c'],
-      })
-    ).toBe('diverged');
   });
 });
 

@@ -1,23 +1,20 @@
 /**
- * 本番 DB のロール分け（scripts/db/prod-db-roles.ts・readonly-grants.ts）を、テスト DB で確かめる。
- * テスト DB は、TCP の接続をパスワードで認証する（postgres の公式イメージの既定。docker-compose.test.yml・CI のサービス）
- * ことを前提に、作ったロールのパスワードでログインできるかも確かめる
+ * 本番 DB のロール分け（prisma/migrations の techtrend_readonly、scripts/db/prod-db-roles.ts・readonly-grants.ts）を、
+ * マイグレーション済みのテスト DB で確かめる。テスト DB は、TCP の接続をパスワードで認証する（postgres の公式イメージの
+ * 既定。docker-compose.test.yml・CI のサービス）ことを前提に、作ったロールのパスワードでログインできるかも確かめる
  */
 import { randomBytes } from 'node:crypto';
 import { Client } from 'pg';
 import {
-  applyReadonlyGrants,
   assertReadonlyCandidate,
+  beginRoleTransaction,
   createProdRoles,
   generateRolePassword,
   hasAppDefaultPrivileges,
   inspectReadonlyPrivileges,
   loadTableAccess,
-  markedReadonlyRoles,
-  PERSONAL_RECORD_PREFIX,
-  READONLY_ROLE_MARK,
+  READONLY_GROUP_ROLE,
   readonlyPrivilegesMatch,
-  recordedPersonalTables,
 } from '@/scripts/db/prod-db-roles';
 import {
   connectAs,
@@ -28,46 +25,99 @@ import {
   testDatabaseUrl,
 } from '@/__tests__/helpers/prod-db-roles';
 
-describeTestDb('prod-table-access.json against the migrated test DB', () => {
-  it('classifies every public table and view, and lists none that does not exist', async () => {
-    const admin = new Client({ connectionString: testDatabaseUrl });
+const access = loadTableAccess();
+
+describeTestDb('prod-table-access.json and techtrend_readonly against the migrated test DB', () => {
+  let admin: Client;
+
+  beforeAll(async () => {
+    admin = new Client({ connectionString: testDatabaseUrl });
     await admin.connect();
-    try {
-      const access = loadTableAccess();
-      const listed = [...access.personal, ...access.content, ...access.metadata];
-      const { rows } = await admin.query<{ relname: string }>(
-        `SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-         WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f') ORDER BY 1`
-      );
-      const tables = rows.map((r) => r.relname);
-      // 表を足したら、scripts/db/prod-table-access.json の personal（個人情報）か content に入れる
-      expect(tables.filter((t) => !listed.includes(t))).toEqual([]);
-      expect(listed.filter((t) => !tables.includes(t))).toEqual([]);
-    } finally {
-      await admin.end();
+  });
+
+  afterAll(async () => {
+    await admin.end();
+  });
+
+  it('classifies every public table and view, and lists none that does not exist', async () => {
+    const listed = [...access.personal, ...access.content, ...access.metadata];
+    const { rows } = await admin.query<{ relname: string }>(
+      `SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f') ORDER BY 1`
+    );
+    const tables = rows.map((r) => r.relname);
+    // 表を足したら、scripts/db/prod-table-access.json の personal（個人情報）か content に入れる
+    expect(tables.filter((t) => !listed.includes(t))).toEqual([]);
+    expect(listed.filter((t) => !tables.includes(t))).toEqual([]);
+  });
+
+  it('gives techtrend_readonly exactly the content tables and the migration status, through migrations', async () => {
+    const { rows } = await admin.query<{ login: boolean; privileged: boolean }>(
+      `SELECT rolcanlogin AS login,
+              (rolsuper OR rolcreaterole OR rolcreatedb OR rolbypassrls OR rolreplication) AS privileged
+       FROM pg_roles WHERE rolname = $1`,
+      [READONLY_GROUP_ROLE]
+    );
+    expect(rows).toEqual([{ login: false, privileged: false }]);
+    const privileges = await privilegesOf(admin, READONLY_GROUP_ROLE);
+    const content = new Set(access.content);
+    // content の表を足したマイグレーションでは GRANT SELECT ... TO techtrend_readonly を書き、personal に移すときは REVOKE する
+    for (const [table, p] of privileges) {
+      expect({ table, ...p }).toMatchObject({
+        table,
+        can_select: content.has(table),
+        can_select_any_column: content.has(table) || table === '_prisma_migrations',
+        can_insert: false,
+        can_update: false,
+        can_delete: false,
+        can_truncate: false,
+      });
+    }
+    const inspected = await inspectReadonlyPrivileges(admin, READONLY_GROUP_ROLE, access);
+    expect(inspected).toMatchObject({
+      canReadMigrationColumns: true,
+      canReadMigrationLogs: false,
+      canCreateObjects: false,
+      unexpectedReadable: 0,
+      writable: 0,
+    });
+    expect(readonlyPrivilegesMatch(inspected, true)).toBe(true);
+  });
+
+  it('detects extra reads, writes, creating objects, and missing migration columns', async () => {
+    const group = admin.escapeIdentifier(READONLY_GROUP_ROLE);
+    const { rows } = await admin.query<{ db: string }>('SELECT current_database() AS db');
+    for (const grant of [
+      `GRANT SELECT ON public."User" TO ${group}`,
+      `GRANT SELECT ON public."User" TO PUBLIC`,
+      `GRANT TRIGGER ON public."Article" TO ${group}`,
+      `GRANT CREATE ON SCHEMA public TO PUBLIC`,
+      `GRANT CREATE ON DATABASE ${admin.escapeIdentifier(rows[0].db)} TO PUBLIC`,
+      `GRANT SELECT (logs) ON public."_prisma_migrations" TO ${group}`,
+      `REVOKE SELECT (finished_at) ON public."_prisma_migrations" FROM ${group}`,
+      `REVOKE SELECT ON public."Tag" FROM ${group}`,
+    ]) {
+      await inRolledBackTransaction(admin, async () => {
+        await admin.query(grant);
+        const inspected = await inspectReadonlyPrivileges(admin, READONLY_GROUP_ROLE, access);
+        expect({ grant, ok: readonlyPrivilegesMatch(inspected, true) }).toEqual({ grant, ok: false });
+      });
     }
   });
 });
 
-describeTestDb('createProdRoles and applyReadonlyGrants (real test DB)', () => {
-  const access = loadTableAccess();
+describeTestDb('createProdRoles (real test DB)', () => {
   const suffix = randomBytes(4).toString('hex');
   const appRole = `test_app_${suffix}`;
   const readonlyRole = `test_readonly_${suffix}`;
   const appPassword = generateRolePassword();
   const readonlyPassword = generateRolePassword();
   let admin: Client;
-  const ro = () => admin.escapeIdentifier(readonlyRole);
-  /** 新しい一覧で Tag を personal に移したビルドが、DB に記録を残した後の状態にする */
-  const recordTagAsPersonal = async () => {
-    const record = `${PERSONAL_RECORD_PREFIX}${JSON.stringify([...access.personal, 'Tag'].sort())}`;
-    await admin.query(`COMMENT ON DATABASE techtrend_test IS ${admin.escapeLiteral(record)}`);
-  };
 
   beforeAll(async () => {
     admin = new Client({ connectionString: testDatabaseUrl });
     await admin.connect();
-    await admin.query('BEGIN');
+    await beginRoleTransaction(admin);
     const result = await createProdRoles(admin, {
       appRole,
       appPassword,
@@ -76,19 +126,12 @@ describeTestDb('createProdRoles and applyReadonlyGrants (real test DB)', () => {
       access,
     });
     await admin.query('COMMIT');
-    expect(result.readonly).toEqual({
-      granted: access.content.length + 1,
-      missing: 0,
-      unclassified: 0,
-      hasMigrationsTable: true,
-    });
+    expect(result.readonlyTables).toBe(access.content.length);
   });
 
   afterAll(async () => {
     try {
       await dropRoles(admin, [appRole, readonlyRole]);
-      // 記録は DB に残るので、ほかの実行（personal から content に戻した一覧など）の邪魔にならないよう消す
-      await admin.query('COMMENT ON DATABASE techtrend_test IS NULL');
     } finally {
       await admin.end();
     }
@@ -111,7 +154,8 @@ describeTestDb('createProdRoles and applyReadonlyGrants (real test DB)', () => {
       privileged: boolean;
       owns_tables: boolean;
     }>(
-      `SELECT has_schema_privilege($1::name, 'public', 'CREATE') AS can_create,
+      `SELECT (has_schema_privilege($1::name, 'public', 'CREATE')
+                OR has_database_privilege($1::name, current_database(), 'CREATE')) AS can_create,
               (rolsuper OR rolcreaterole OR rolcreatedb OR rolbypassrls OR rolreplication) AS privileged,
               EXISTS (SELECT 1 FROM pg_tables WHERE tableowner = $1::name) AS owns_tables
        FROM pg_roles WHERE rolname = $1::name`,
@@ -152,34 +196,15 @@ describeTestDb('createProdRoles and applyReadonlyGrants (real test DB)', () => {
     }
   });
 
-  it('lets the readonly role read only the content tables and the migration status, and marks and records it', async () => {
-    const privileges = await privilegesOf(admin, readonlyRole);
-    const content = new Set(access.content);
-    for (const [table, p] of privileges) {
-      expect({ table, ...p }).toMatchObject({
-        table,
-        can_select: content.has(table),
-        can_select_any_column: content.has(table) || table === '_prisma_migrations',
-        can_insert: false,
-        can_update: false,
-        can_delete: false,
-        can_truncate: false,
-      });
-    }
+  it('makes the readonly role a member of techtrend_readonly only, with nothing of its own', async () => {
+    await expect(assertReadonlyCandidate(admin, readonlyRole)).resolves.toBeUndefined();
     const inspected = await inspectReadonlyPrivileges(admin, readonlyRole, access);
-    expect(inspected).toMatchObject({
-      canReadMigrationColumns: true,
-      canReadMigrationLogs: false,
-      canCreateObjects: false,
-    });
     expect(readonlyPrivilegesMatch(inspected, true)).toBe(true);
-    await expect(recordedPersonalTables(admin)).resolves.toEqual([...access.personal].sort());
-    await expect(markedReadonlyRoles(admin)).resolves.toContain(readonlyRole);
-    const { rows } = await admin.query<{ comment: string }>(
-      `SELECT shobj_description(oid, 'pg_authid') AS comment FROM pg_roles WHERE rolname = $1::name`,
+    const { rows } = await admin.query<{ direct: number }>(
+      `SELECT count(*)::int AS direct FROM information_schema.role_table_grants WHERE grantee = $1`,
       [readonlyRole]
     );
-    expect(rows[0].comment).toBe(READONLY_ROLE_MARK);
+    expect(rows[0].direct).toBe(0);
   });
 
   it('gives the app role, but not the readonly role, tables created later by the owner', async () => {
@@ -235,89 +260,9 @@ describeTestDb('createProdRoles and applyReadonlyGrants (real test DB)', () => {
     await expect(connectAs(appRole, 'wrong-password')).rejects.toMatchObject({ code: '28P01' });
   });
 
-  it('revokes readonly grants that the list no longer allows', async () => {
-    await inRolledBackTransaction(admin, async () => {
-      await admin.query(`GRANT SELECT ON public."User" TO ${ro()}`);
-      await admin.query(`GRANT SELECT (logs) ON public."_prisma_migrations" TO ${ro()}`);
-      const result = await applyReadonlyGrants(admin, readonlyRole, {
-        ...access,
-        content: access.content.filter((t) => t !== 'Tag'),
-      });
-      expect(result.unclassified).toBe(1);
-      const privileges = await privilegesOf(admin, readonlyRole);
-      expect(privileges.get('User')?.can_select_any_column).toBe(false);
-      expect(privileges.get('Tag')?.can_select_any_column).toBe(false);
-      expect(privileges.get('Article')?.can_select).toBe(true);
-      const inspected = await inspectReadonlyPrivileges(admin, readonlyRole, access);
-      expect(inspected.canReadMigrationLogs).toBe(false);
-    });
-  });
-
-  it('keeps every table already in the record when it writes the record back', async () => {
-    await inRolledBackTransaction(admin, async () => {
-      // 表ごと消した後も、記録には残す（一覧から消えても、同じ名前の表を content で作り直したときに止めるため）
-      const record = `${PERSONAL_RECORD_PREFIX}${JSON.stringify([...access.personal, 'DroppedTable'].sort())}`;
-      await admin.query(`COMMENT ON DATABASE techtrend_test IS ${admin.escapeLiteral(record)}`);
-      await applyReadonlyGrants(admin, readonlyRole, access);
-      await expect(recordedPersonalTables(admin)).resolves.toContain('DroppedTable');
-    });
-  });
-
-  it('only revokes before migrations: it takes away personal tables but makes nothing newly readable', async () => {
-    await inRolledBackTransaction(admin, async () => {
-      await admin.query(`GRANT SELECT ON public."User" TO ${ro()}`);
-      await admin.query(`REVOKE SELECT ON public."Tag" FROM ${ro()}`);
-      const result = await applyReadonlyGrants(admin, readonlyRole, access, 'revoke');
-      expect(result.granted).toBe(0);
-      const privileges = await privilegesOf(admin, readonlyRole);
-      expect(privileges.get('User')?.can_select_any_column).toBe(false);
-      expect(privileges.get('Tag')?.can_select).toBe(false);
-      expect(privileges.get('Article')?.can_select).toBe(true);
-    });
-  });
-
-  it('refuses an older list that puts a recorded personal table back into content, even for a re-created role', async () => {
-    const newRole = `test_readonly4_${suffix}`;
-    await inRolledBackTransaction(admin, async () => {
-      await recordTagAsPersonal();
-      await admin.query(`REVOKE SELECT ON public."Tag" FROM ${ro()}`);
-      // Tag を content に置いたままの古い一覧。権限は変えずに止まる
-      await expect(applyReadonlyGrants(admin, readonlyRole, access)).rejects.toMatchObject({
-        reason: 'content_table_recorded_as_personal',
-      });
-      expect((await privilegesOf(admin, readonlyRole)).get('Tag')?.can_select_any_column).toBe(false);
-      // 古い作業環境でロールを作り直しても、記録は DB にあるので止まる
-      await admin.query(`CREATE ROLE ${admin.escapeIdentifier(newRole)} LOGIN`);
-      await expect(applyReadonlyGrants(admin, newRole, access)).rejects.toMatchObject({
-        reason: 'content_table_recorded_as_personal',
-      });
-    });
-  });
-
-  it('fails when a personal table stays readable through PUBLIC, or objects can be created', async () => {
-    for (const grant of [
-      `GRANT SELECT ON public."User" TO PUBLIC`,
-      `GRANT CREATE ON SCHEMA public TO PUBLIC`,
-      `GRANT CREATE ON DATABASE techtrend_test TO PUBLIC`,
-    ]) {
-      await inRolledBackTransaction(admin, async () => {
-        await admin.query(grant);
-        await expect(applyReadonlyGrants(admin, readonlyRole, access)).rejects.toMatchObject({
-          reason: 'readonly_privileges_mismatch',
-        });
-      });
-    }
-    await inRolledBackTransaction(admin, async () => {
-      await admin.query(`REVOKE SELECT (finished_at) ON public."_prisma_migrations" FROM ${ro()}`);
-      const inspected = await inspectReadonlyPrivileges(admin, readonlyRole, access);
-      expect(inspected.canReadMigrationColumns).toBe(false);
-      expect(readonlyPrivilegesMatch(inspected, true)).toBe(false);
-    });
-  });
-
-  it('refuses roles that are not plain, unprivileged login roles as the readonly role', async () => {
+  it('refuses roles that are not plain members of techtrend_readonly as the readonly role', async () => {
     await expect(assertReadonlyCandidate(admin, appRole)).rejects.toMatchObject({
-      reason: 'role_can_write',
+      reason: 'role_not_only_in_readonly_group',
     });
     const { rows } = await admin.query<{ me: string }>('SELECT current_user AS me');
     await expect(assertReadonlyCandidate(admin, rows[0].me)).rejects.toMatchObject({
@@ -329,17 +274,21 @@ describeTestDb('createProdRoles and applyReadonlyGrants (real test DB)', () => {
     await inRolledBackTransaction(admin, async () => {
       const name = (kind: string) => `test_${kind}_${suffix}`;
       const ident = (kind: string) => admin.escapeIdentifier(name(kind));
+      const group = admin.escapeIdentifier(READONLY_GROUP_ROLE);
       const table = `public.${admin.escapeIdentifier(`tmp_owned_${suffix}`)}`;
-      await admin.query(`CREATE ROLE ${ident('nologin')} NOLOGIN`);
-      await admin.query(`CREATE ROLE ${ident('member')} LOGIN`);
+      await admin.query(`CREATE ROLE ${ident('nologin')} NOLOGIN IN ROLE ${group}`);
+      await admin.query(`CREATE ROLE ${ident('member')} LOGIN IN ROLE ${group}`);
       await admin.query(`GRANT pg_read_all_data TO ${ident('member')}`);
-      await admin.query(`CREATE ROLE ${ident('owner')} LOGIN`);
+      await admin.query(`CREATE ROLE ${ident('owner')} LOGIN IN ROLE ${group}`);
       await admin.query(`CREATE TABLE ${table} (id int)`);
       await admin.query(`ALTER TABLE ${table} OWNER TO ${ident('owner')}`);
+      await admin.query(`CREATE ROLE ${ident('writer')} LOGIN IN ROLE ${group}`);
+      await admin.query(`GRANT INSERT ON public."Article" TO ${ident('writer')}`);
       for (const [kind, reason] of [
         ['nologin', 'role_cannot_login'],
-        ['member', 'role_is_member_of_other_roles'],
+        ['member', 'role_not_only_in_readonly_group'],
         ['owner', 'role_owns_tables'],
+        ['writer', 'role_can_write'],
       ]) {
         await expect(assertReadonlyCandidate(admin, name(kind))).rejects.toMatchObject({ reason });
       }
@@ -366,7 +315,8 @@ describeTestDb('createProdRoles and applyReadonlyGrants (real test DB)', () => {
       });
     });
     await inRolledBackTransaction(admin, async () => {
-      await admin.query(`GRANT CREATE ON DATABASE techtrend_test TO PUBLIC`);
+      const { rows } = await admin.query<{ db: string }>('SELECT current_database() AS db');
+      await admin.query(`GRANT CREATE ON DATABASE ${admin.escapeIdentifier(rows[0].db)} TO PUBLIC`);
       await expect(createProdRoles(admin, input)).rejects.toMatchObject({
         reason: 'app_can_create_objects',
       });

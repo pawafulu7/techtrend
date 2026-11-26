@@ -10,10 +10,7 @@ import {
   generateRoleName,
   generateRolePassword,
   loadTableAccess,
-  parsePersonalRecord,
-  PERSONAL_RECORD_PREFIX,
   readonlyPrivilegesMatch,
-  readonlyPrivilegesSafe,
   RoleSetupError,
 } from '@/scripts/db/prod-db-roles';
 import { migrationDatabaseUrl } from '@/scripts/db/migration-database-url';
@@ -79,6 +76,9 @@ describe('errorReason', () => {
     expect(errorReason(new Error('Query read timeout'))).toBe('query_timeout');
     expect(errorReason(new Error('timeout expired'))).toBe('connect_timeout');
     expect(errorReason(new Error('Connection terminated unexpectedly'))).toBe('connection_terminated');
+    // 継承のプロパティの名前の文を、理由として拾わない
+    expect(errorReason(new Error('constructor'))).toBe('unknown');
+    expect(errorReason(new Error('__proto__'))).toBe('unknown');
   });
 });
 
@@ -106,43 +106,18 @@ describe('readonlyPrivilegesMatch', () => {
     expect(readonlyPrivilegesMatch({ ...ok, canReadMigrationColumns: false }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, canReadMigrationColumns: false }, false)).toBe(true);
   });
-
-  it('treats unreadable content tables as safe (before migrations), but nothing else', () => {
-    expect(readonlyPrivilegesSafe({ ...ok, unreadableContent: 3 }, true)).toBe(true);
-    expect(readonlyPrivilegesMatch({ ...ok, unreadableContent: 3 }, true)).toBe(false);
-    expect(readonlyPrivilegesSafe({ ...ok, unexpectedReadable: 1 }, true)).toBe(false);
-    expect(readonlyPrivilegesSafe({ ...ok, canCreateObjects: true }, true)).toBe(false);
-  });
-});
-
-describe('parsePersonalRecord', () => {
-  it('reads the record and refuses anything it cannot parse', () => {
-    expect(parsePersonalRecord(`${PERSONAL_RECORD_PREFIX}["User", "Session"]`)).toEqual([
-      'User',
-      'Session',
-    ]);
-    for (const comment of [
-      `${PERSONAL_RECORD_PREFIX}not json`,
-      `${PERSONAL_RECORD_PREFIX}{"a":1}`,
-      `${PERSONAL_RECORD_PREFIX}[1]`,
-      'someone else wrote this comment',
-    ]) {
-      expect(() => parsePersonalRecord(comment)).toThrow(RoleSetupError);
-    }
-  });
 });
 
 describe('vercel-build', () => {
-  it('revokes before migrations, migrates as the admin, then grants, before building the app', () => {
+  it('migrates as the admin before building the app, and grants nothing else at build time', () => {
     const pkg = JSON.parse(
       readFileSync(path.join(process.cwd(), 'package.json'), 'utf8')
     ) as { scripts: Record<string, string> };
     const steps = pkg.scripts['vercel-build'].split('&&').map((s) => s.trim());
+    // 手元用ロールの権限はマイグレーションで付け外しする（prisma/migrations の techtrend_readonly）
     expect(steps).toEqual([
       'prisma generate',
-      'tsx scripts/db/apply-readonly-grants.ts --before-migrations',
       'USE_MIGRATION_DATABASE_URL=1 prisma migrate deploy',
-      'tsx scripts/db/apply-readonly-grants.ts',
       'next build --webpack',
     ]);
   });

@@ -1,5 +1,5 @@
 {
-  "$comment": "本番 DB の public スキーマの表（ビュー・マテビューも同じ）を、手元（ローカル・AI）の読み取り用ロールが読めるかで分ける。personal は個人情報を持つ表で、読み取り用ロールには読ませず、本番からの同期（sync-prod.sh）でも持ってこない。メールアドレス・IP・User-Agent・利用者が書いた文に加え、利用者ごとの操作の記録（閲覧・お気に入り・設定・操作した管理者の ID）も personal に入れる。content は読ませる表。metadata は Prisma のマイグレーションの記録で、読み取り用ロールは失敗のログ（logs 列。値を含みうる）を読めない。表を足したら、どれかに入れる（入れないと __tests__/scripts/db/prod-table-access.db.test.ts が落ちる。入れ忘れた表は読み取り用ロールに読ませない）",
+  "$comment": "本番 DB の public スキーマの表（ビュー・マテビューも同じ）を、手元（ローカル・AI）の読み取り用ロールが読めるかで分ける。personal は個人情報を持つ表で、読み取り用ロールには読ませず、本番からの同期（sync-prod.sh）でも持ってこない。メールアドレス・IP・User-Agent・利用者が書いた文に加え、利用者ごとの操作の記録（閲覧・お気に入り・設定・操作した管理者の ID）も personal に入れる。content は読ませる表。metadata は Prisma のマイグレーションの記録で、読み取り用ロールは失敗のログ（logs 列。値を含みうる）を読めない。表を足したら、どれかに入れる。content の表は、表を足すマイグレーションで GRANT SELECT ON TABLE \"<表>\" TO techtrend_readonly; を書く（どちらかを忘れると __tests__/scripts/db/prod-table-access.db.test.ts が落ちる。GRANT を書かなかった表は読み取り用ロールに読ませない）。表を personal に移すときは、REVOKE するマイグレーションを書く",
   "personal": [
     "Account",
     "ArticleView",

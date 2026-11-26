@@ -37,7 +37,13 @@ npx prisma migrate dev --name add_user_profile_fields
 npm run migrate:production:check   # 適用状況の確認（scripts/db/check-prod-migrations.ts。読み取り用のロールでは prisma migrate status が権限で止まるため）
 ```
 
-表を足すときは、`scripts/db/prod-table-access.json` の `personal`（個人情報を持つ表）か `content`（それ以外）に表の名前を入れる。`content` の表は、手元の読み取り用のロールで読めるようになり、本番からの同期（`npm run db:sync:prod`）でも持ってくる。どちらにも入れないとテスト（`__tests__/scripts/db/prod-table-access.db.test.ts`）が落ちる。
+表を足すときは、`scripts/db/prod-table-access.json` の `personal`（個人情報を持つ表）か `content`（それ以外）に表の名前を入れる。`content` の表は、その表を作るマイグレーションに次の 1 行を書く（手元の読み取り用のロールで読めるようになり、本番からの同期（`npm run db:sync:prod`）でも持ってくる）。`personal` の表は何も書かない（読み取り用のロールは読めない）。
+
+```sql
+GRANT SELECT ON TABLE "<表>" TO techtrend_readonly;
+```
+
+表を `personal` に移すときは、一覧を直し、`REVOKE ALL ON TABLE "<表>" FROM techtrend_readonly;` のマイグレーションを書く。どちらかを忘れると、テスト（`__tests__/scripts/db/prod-table-access.db.test.ts`）が落ちる。詳しくは [deployment.md](../operations/deployment.md) の「DB のロール」。
 
 ## うまくいかないとき
 

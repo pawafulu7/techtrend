@@ -1,6 +1,7 @@
 /**
  * 本番 DB に、アプリ用（表の読み書きだけ）と手元用（記事系の表の読み取りだけ）のログインロールを作る。
- * 管理者（DB と表の所有者）の接続で流す。パスワードを変えるときも、これで新しいロールを作って差し替え、古いロールを消す
+ * 管理者（DB と表の所有者）の接続で、マイグレーションを流した後に流す（手元用はマイグレーションで作るグループのロール
+ * techtrend_readonly のメンバーにするため）。パスワードを変えるときも、これで新しいロールを作って差し替え、古いロールを消す
  * （docs/operations/deployment.md の「DB のロール」）。
  *
  *   bash scripts/db/with-prod-db.sh npx tsx scripts/db/create-prod-roles.ts
@@ -14,6 +15,7 @@
 import { closeSync, fsyncSync, mkdirSync, openSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
+  beginRoleTransaction,
   buildRoleUrl,
   createProdRoles,
   createScriptClient,
@@ -21,7 +23,7 @@ import {
   generateRoleName,
   generateRolePassword,
   loadTableAccess,
-  setLocalTimeouts,
+  READONLY_GROUP_ROLE,
 } from './prod-db-roles';
 
 const OUTPUT =
@@ -89,6 +91,7 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     return;
   }
+  let closed = false;
   try {
     writeFileSync(
       fd,
@@ -100,17 +103,26 @@ async function main(): Promise<void> {
         '',
       ].join('\n')
     );
-    // ロールを作る前に、パスワードの控えをディスクに書き切る
+    // ロールを作る前に、パスワードの控えをディスクに書き切る（ファイルと、ファイルを置いたディレクトリの項目）
     fsyncSync(fd);
     closeSync(fd);
+    closed = true;
+    const dir = openSync(path.dirname(OUTPUT), 'r');
+    try {
+      fsyncSync(dir);
+    } finally {
+      closeSync(dir);
+    }
   } catch (error) {
     // 先に理由を出す（後始末が失敗しても、元の理由を残すため）
     console.log(`failure_reason_${errorReason(error)}=true`);
     process.exitCode = 1;
-    try {
-      closeSync(fd);
-    } catch {
-      // 閉じ済み
+    if (!closed) {
+      try {
+        closeSync(fd);
+      } catch {
+        // 閉じられないときも、ファイルは消しにいく
+      }
     }
     removeOutput();
     return;
@@ -120,8 +132,7 @@ async function main(): Promise<void> {
   let commitSent = false;
   try {
     await admin.connect();
-    await admin.query('BEGIN');
-    await setLocalTimeouts(admin);
+    await beginRoleTransaction(admin);
     const result = await createProdRoles(admin, {
       appRole,
       appPassword,
@@ -133,9 +144,7 @@ async function main(): Promise<void> {
     await admin.query('COMMIT');
     console.log('created_roles=2');
     console.log(`app_writable_tables=${result.appTables}`);
-    console.log(`readonly_readable_tables=${result.readonly.granted}`);
-    console.log(`readonly_missing_tables=${result.readonly.missing}`);
-    console.log(`unclassified_tables=${result.readonly.unclassified}`);
+    console.log(`readonly_readable_tables=${result.readonlyTables}`);
   } catch (error) {
     if (commitSent) {
       // COMMIT の結果が分からない。ロールができているかもしれないので、パスワードの控えを残す
@@ -196,8 +205,9 @@ async function main(): Promise<void> {
      UNION ALL SELECT 'readonly_can_create_objects', (has_schema_privilege('public', 'CREATE')
        OR has_database_privilege(current_database(), 'CREATE'))::text
      UNION ALL SELECT 'readonly_default_read_only',
-       (current_setting('default_transaction_read_only') = 'on')::text`,
-    [access.personal],
+       (current_setting('default_transaction_read_only') = 'on')::text
+     UNION ALL SELECT 'readonly_in_group', pg_has_role(current_user, $2, 'USAGE')::text`,
+    [access.personal, READONLY_GROUP_ROLE],
     {
       readonly_can_read_article: 'true',
       readonly_can_write_article: 'false',
@@ -206,6 +216,7 @@ async function main(): Promise<void> {
       readonly_readable_personal_tables: '0',
       readonly_can_create_objects: 'false',
       readonly_default_read_only: 'true',
+      readonly_in_group: 'true',
     }
   );
   const ok = appOk && readonlyOk;

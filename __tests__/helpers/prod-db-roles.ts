@@ -57,7 +57,8 @@ export async function inRolledBackTransaction(
   try {
     await fn();
   } finally {
-    await client.query('ROLLBACK');
+    // 戻しの失敗で、元のアサーションの失敗を隠さない
+    await client.query('ROLLBACK').catch(() => undefined);
   }
 }
 

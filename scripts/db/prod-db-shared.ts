@@ -22,29 +22,30 @@ export interface RoleQueryable {
   escapeLiteral(value: string): string;
 }
 
+/** 手元用のログインのロールが読み取り用として持ってよい理由（SQL の CASE が返す値。readonly-grants.ts） */
+export const READONLY_CANDIDATE_REASONS = [
+  'role_missing',
+  'role_cannot_login',
+  'role_privileged',
+  'role_is_current_user',
+  'role_not_only_in_readonly_group',
+  'role_owns_tables',
+  'role_can_write',
+] as const;
+
 /**
- * 失敗の理由。決まった文字列だけにする（ビルドのログや画面に出すので、ロールの名前などを入れられないよう型で止める）。
+ * 失敗の理由。決まった文字列だけにする（画面に出すので、ロールの名前などを入れられないよう型で止める）。
  * 英小文字と _ だけなので、`名前=値` の出力の絞り込みを通る形で出せる
  */
 export type RoleSetupReason =
-  | 'role_missing'
-  | 'role_cannot_login'
-  | 'role_privileged'
-  | 'role_is_current_user'
-  | 'role_is_member_of_other_roles'
-  | 'role_owns_tables'
-  | 'role_can_write'
-  | 'unknown_metadata_table'
-  | 'content_table_recorded_as_personal'
-  | 'personal_record_unreadable'
+  | (typeof READONLY_CANDIDATE_REASONS)[number]
+  | 'readonly_group_missing'
   | 'readonly_privileges_mismatch'
-  | 'readonly_privileges_unsafe_after_commit'
   | 'not_db_owner'
   | 'role_exists'
   | 'app_can_create_objects'
   | 'app_missing_table_privileges'
-  | 'app_default_privileges_missing'
-  | 'migration_history_diverged';
+  | 'app_default_privileges_missing';
 
 export class RoleSetupError extends Error {
   constructor(readonly reason: RoleSetupReason) {
@@ -53,13 +54,13 @@ export class RoleSetupError extends Error {
   }
 }
 
-/** pg が code を付けないエラーのうち、決まった文のもの（接続先を含まないので、理由として出せる） */
-const PG_MESSAGE_REASONS: Record<string, string> = {
-  'Query read timeout': 'query_timeout',
-  'timeout expired': 'connect_timeout',
-  'Connection terminated unexpectedly': 'connection_terminated',
-  'Connection terminated due to connection timeout': 'connect_timeout',
-};
+/** pg の Client が code を付けないエラーのうち、決まった文のもの（接続先を含まないので、理由として出せる） */
+const PG_MESSAGE_REASONS = new Map<string, string>([
+  ['Query read timeout', 'query_timeout'],
+  ['timeout expired', 'connect_timeout'],
+  ['Connection terminated unexpectedly', 'connection_terminated'],
+  ['Connection terminated', 'connection_terminated'],
+]);
 
 /**
  * 出力してよい失敗の理由。RoleSetupError の理由、PostgreSQL・Node のエラーコード、pg の決まった文のどれか。
@@ -71,7 +72,7 @@ export function errorReason(error: unknown): string {
   const code = 'code' in error ? error.code : undefined;
   if (typeof code === 'string' && /^[A-Za-z0-9_]+$/.test(code)) return `code_${code}`;
   const message = 'message' in error ? error.message : undefined;
-  return (typeof message === 'string' && PG_MESSAGE_REASONS[message]) || 'unknown';
+  return (typeof message === 'string' && PG_MESSAGE_REASONS.get(message)) || 'unknown';
 }
 
 /**
@@ -89,10 +90,18 @@ export function createScriptClient(connectionString: string): Client {
   return client;
 }
 
-/** トランザクションの中で、ロックと文の待ち時間に上限を付ける（マイグレーションやアプリの問い合わせを長く止めない） */
-export async function setLocalTimeouts(client: RoleQueryable): Promise<void> {
+/** prisma migrate が DB を排他する advisory lock の鍵（Prisma の schema engine の pg_advisory_lock(72707369)） */
+export const PRISMA_MIGRATE_LOCK_KEY = 72707369;
+
+/**
+ * トランザクションの中で、ロックと文の待ち時間に上限を付け、prisma migrate と同じ鍵を取る（デプロイのマイグレーションと
+ * 重ならないようにする。GRANT は public の表の pg_class の行を書き換えるので、並行する ALTER TABLE と衝突しうる）
+ */
+export async function beginRoleTransaction(client: RoleQueryable): Promise<void> {
+  await client.query('BEGIN');
   await client.query(`SET LOCAL lock_timeout = '10s'`);
   await client.query(`SET LOCAL statement_timeout = '60s'`);
+  await client.query('SELECT pg_advisory_xact_lock($1)', [PRISMA_MIGRATE_LOCK_KEY]);
 }
 
 export function loadTableAccess(): TableAccess {
@@ -145,13 +154,3 @@ export function buildRoleUrl(adminUrl: string, role: string, password: string): 
 export const PUBLIC_RELATIONS = `SELECT c.oid, c.relname, c.relowner, c.relkind
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'v', 'm', 'f')`;
-
-/** 引用符付きの識別子で並べる（public."Article", ...） */
-export function qualified(client: RoleQueryable, tables: string[]): string {
-  return tables.map((t) => `public.${client.escapeIdentifier(t)}`).join(', ');
-}
-
-export async function publicRelations(client: RoleQueryable): Promise<Set<string>> {
-  const { rows } = await client.query<{ relname: string }>(PUBLIC_RELATIONS);
-  return new Set(rows.map((r) => r.relname));
-}

@@ -7,18 +7,14 @@
 Vercel のビルドコマンドは `npm run vercel-build`（Settings → General → Build & Output Settings）。
 
 ```json
-"vercel-build": "prisma generate && tsx scripts/db/apply-readonly-grants.ts --before-migrations && USE_MIGRATION_DATABASE_URL=1 prisma migrate deploy && tsx scripts/db/apply-readonly-grants.ts && next build --webpack"
+"vercel-build": "prisma generate && USE_MIGRATION_DATABASE_URL=1 prisma migrate deploy && next build --webpack"
 ```
 
 ビルドの途中で `prisma migrate deploy` が未適用のマイグレーションを本番の DB に適用する。マイグレーションの作り方は [database-migrations.md](../development/database-migrations.md)。
 
-マイグレーションは管理者のロール（`MIGRATION_DATABASE_URL`）で流し、アプリは表の読み書きだけのロール（`DATABASE_URL`）で動く。`prisma.config.ts` が、`USE_MIGRATION_DATABASE_URL=1` を付けた本番のビルドの `prisma migrate deploy` でだけ `MIGRATION_DATABASE_URL` を使う（`scripts/db/migration-database-url.ts`。無ければ DB に繋ぐ前に止まる）。
+マイグレーションは管理者のロール（`MIGRATION_DATABASE_URL`）で流し、アプリは表の読み書きだけのロール（`DATABASE_URL`）で動く。`prisma.config.ts` が、`USE_MIGRATION_DATABASE_URL=1` を付けた本番のビルドの `prisma migrate deploy` でだけ `MIGRATION_DATABASE_URL` を使う（`scripts/db/migration-database-url.ts`。無ければ DB に繋ぐ前に止まる）。`MIGRATION_DATABASE_URL` は、Neon の接続プール（`-pooler`）を通さない直接の接続にする（Prisma のマイグレーションはセッション単位の advisory lock で排他するため）。
 
-`apply-readonly-grants.ts` は、手元用の読み取り用ロールの権限を `scripts/db/prod-table-access.json` どおりに付け直し、付け直した後の権限を確かめる。マイグレーションの前と後に流す。前の 1 回（`--before-migrations`）は、`personal` に移した表を読めなくするだけで、新しく読めるようにはしない。後の 1 回で、マイグレーションで足した `content` の表を読めるようにする（途中まで作られた表を読ませないため、読めるようにするのはマイグレーションが成功した後だけ）。どちらかが失敗するとビルドが止まる（前の 1 回で止まれば、マイグレーションも流れない）。理由はログに `[readonly-grants]` で出る。対象は `PROD_READONLY_ROLE` と、印（ロールのコメント `techtrend:readonly-role`）の付いたすべての読み取り用ロール。
-
-一度でも `personal` に分類した表は、DB のコメントに記録する（ロールを消しても残る）。記録にある表を `content` に入れた一覧のビルド（古い commit の Redeploy など）は、権限を変えずに止まる（`content_table_recorded_as_personal`）。DB にこのビルドより新しいマイグレーションが適用済みのときは、古い一覧で戻さないよう、付け直さずに進む。このビルドにしか無い未適用のマイグレーションもあるときは、履歴が分かれているので止まる（`migration_history_diverged`）。ロールの分け方は「DB のロール」の節。
-
-1. `npx prisma migrate dev --name <変更内容>` でマイグレーションを作り、`prisma/migrations/` を commit する。表を足したら `scripts/db/prod-table-access.json` にも入れる
+1. `npx prisma migrate dev --name <変更内容>` でマイグレーションを作り、`prisma/migrations/` を commit する。表を足したら `scripts/db/prod-table-access.json` にも入れ、`content` の表ならマイグレーションに手元用の GRANT を書く（「DB のロール」の節）
 2. PR を main に merge する
 3. Vercel のビルドで適用される（デプロイのログの Building で確かめられる）
 
@@ -30,7 +26,6 @@ Vercel の Settings → Environment Variables（Production）に設定する。�
 |------|------|------------|
 | `DATABASE_URL` | PostgreSQL の接続先（アプリ用のロール。Production だけ・Secret） | DB に接続できない |
 | `MIGRATION_DATABASE_URL` | マイグレーションを流す管理者のロールの接続先（Production だけ・Secret） | ビルドが DB に繋ぐ前に止まる |
-| `PROD_READONLY_ROLE` | 手元用の読み取り用ロールの名前（Production だけ・Secret） | 読み取り用ロールの権限を付け直せず、デプロイが止まる |
 | `AUTH_SECRET`（または `NEXTAUTH_SECRET`） | 認証のセッションの署名 | 環境変数の検証で起動に失敗する |
 | `CURSOR_SECRET` | 記事一覧のページ送りのトークン（カーソル）の HMAC 署名 | 本番では `CURSOR_SECRET is required in production` で記事一覧（`/api/articles/list` など）が動かない |
 
@@ -47,7 +42,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ### マイグレーションが適用されない
 
-1. `MIGRATION_DATABASE_URL` と `PROD_READONLY_ROLE` が Production の環境に設定されているか（無いとビルドが DB に繋ぐ前に止まる。ログに `[readonly-grants]` か `MIGRATION_DATABASE_URL is required` が出る）
+1. `MIGRATION_DATABASE_URL` が Production の環境に設定されているか（無いとビルドが `MIGRATION_DATABASE_URL is required` で、DB に繋ぐ前に止まる）
 2. ビルドコマンドが `npm run vercel-build` になっているか
 3. デプロイのログ（Deployments → 該当のデプロイ → Building）のエラー
 
@@ -90,15 +85,23 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
 
 ## DB のロール
 
-本番の DB は、用途ごとにロールを分けている。ロールの名前は接続先の情報なので、リポジトリには書かない（作り方は `scripts/db/create-prod-roles.ts`）。
+本番の DB は、用途ごとにロールを分けている。ログインのロールの名前は接続先の情報なので、リポジトリには書かない（作り方は `scripts/db/create-prod-roles.ts`）。
 
 | ロール | 使う場所 | できること |
 |------|------|------|
 | 管理者（DB と表の所有者） | Vercel の Production の `MIGRATION_DATABASE_URL`、Neon のコンソール | すべて（マイグレーション・ロールの管理） |
 | アプリ用 | Vercel の Production の `DATABASE_URL`、GitHub Actions の secret `DATABASE_URL` | 表の読み書きだけ。表の作成・変更・削除、ロールの作成、マイグレーションの記録の読み書きはできない |
-| 手元用（読み取り用） | `.env.local` の `PROD_DATABASE_URL` | `scripts/db/prod-table-access.json` の `content` の表と、マイグレーションの記録の一部の列（失敗のログ以外）を読むだけ。`personal`（個人情報）の表と、分類していない表は読めない。書き込めず、文とトランザクションに 60 秒の上限がある |
+| 手元用（読み取り用） | `.env.local` の `PROD_DATABASE_URL` | グループのロール `techtrend_readonly`（ログインできない）のメンバー。`scripts/db/prod-table-access.json` の `content` の表と、マイグレーションの記録の状態の列（失敗のログ以外）を読むだけ。`personal`（個人情報）の表は読めない。書き込めず、文とトランザクションに 60 秒の上限がある |
 
-表を足すマイグレーションを作ったら、`scripts/db/prod-table-access.json` のどれかに表を入れる（入れないとテストが落ちる）。アプリ用ロールは、管理者が作った表を既定の権限で読み書きできる（マイグレーションは必ず管理者で流す。ほかのロールで作った表には既定の権限が効かない）。`ops_backup` などの public 以外のスキーマは、アプリ用も読み取り用も読めない。そこから戻すときは SQL Editor で行う。
+アプリ用ロールは、管理者が作った表を既定の権限で読み書きできる（マイグレーションは必ず管理者で流す。ほかのロールで作った表には既定の権限が効かない）。`ops_backup` などの public 以外のスキーマは、アプリ用も読み取り用も読めない。そこから戻すときは SQL Editor で行う。
+
+### 手元用の権限はマイグレーションで付け外しする
+
+`techtrend_readonly` の権限は、マイグレーションでだけ付け外しする（作ったのは `prisma/migrations/20261127000000_add_readonly_content_role`）。マイグレーションは Prisma が順に 1 回だけ流すので、古い commit を再デプロイしても権限は戻らない。
+
+- 表を足すとき: `scripts/db/prod-table-access.json` の `personal`（個人情報を持つ表）か `content`（それ以外）に入れる。`content` なら、その表を作るマイグレーションに `GRANT SELECT ON TABLE "<表>" TO techtrend_readonly;` を書く。`personal` なら何も書かない（読み取り用には既定の権限が無いので、読めない）
+- 表を `personal` に移すとき: 一覧を直し、`REVOKE ALL ON TABLE "<表>" FROM techtrend_readonly;` のマイグレーションを書く
+- 書き忘れ・書き違いは、マイグレーション済みのテスト DB で `__tests__/scripts/db/prod-table-access.db.test.ts` が落とす
 
 本番に書き込む作業（保守スクリプト・データの直し）は、GitHub Actions の `Maintenance - Run Script`（`.github/workflows/maintenance-run.yml`）を main から手動で実行する。アプリ用のロールで動くので、表を作るスクリプトは流せない（表を作るならマイグレーションにする）。ログは公開されるので、出力は `名前=数値` の行だけが出る。スクリプトは結果と失敗の件数をその形で出し、失敗したら 0 以外で終える。引数には個人情報や秘密を入れない。
 
@@ -109,16 +112,19 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
 
 ### ロールを作り直す・パスワードを変える
 
+ロールは、マイグレーションを流した後の DB で作る（手元用は、マイグレーションで作る `techtrend_readonly` のメンバーにするため）。
+
 1. Neon のコンソールで管理者の接続文字列を表示し、手元の端末で、画面に出さずに環境変数へ入れてから流す。`.env.local` の `PROD_DATABASE_URL` は読み取り用なので、管理者の URL は `PROD_ADMIN_DATABASE_URL` で渡す。サブシェルで流すので、終わると変数は消え、終了コードはスクリプトのものになる（0 以外なら先に進まない）
 
    ```bash
    ( read -rs PROD_ADMIN_DATABASE_URL && export PROD_ADMIN_DATABASE_URL && bash scripts/db/with-prod-db.sh npx tsx scripts/db/create-prod-roles.ts )
    ```
 
-2. `.workflow/tmp/prod-db/new-roles.env` の値を、Vercel の `DATABASE_URL`・`PROD_READONLY_ROLE`、GitHub の secret `DATABASE_URL`、`.env.local` の `PROD_DATABASE_URL` に入れ、本番を再デプロイする。入れ終えたら、このファイルを消す（書き込めるアプリ用の接続情報を手元に残さない）
-3. 古いロールを、Neon のコンソールの SQL Editor で消す。権限と既定の権限が残っていると `DROP ROLE` が失敗するので、先に外す
+2. `.workflow/tmp/prod-db/new-roles.env` の値を、Vercel の `DATABASE_URL`、GitHub の secret `DATABASE_URL`、`.env.local` の `PROD_DATABASE_URL` に入れ、本番を再デプロイする。入れ終えたら、このファイルを消す（書き込めるアプリ用の接続情報を手元に残さない）
+3. 古いロールを、Neon のコンソールの SQL Editor で消す。権限と既定の権限が残っていると `DROP ROLE` が失敗するので、先に外す（手元用のロールは、`techtrend_readonly` から外すだけでよい）
 
    ```sql
+   -- アプリ用
    REVOKE ALL ON ALL TABLES IN SCHEMA public FROM <old_role>;
    REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM <old_role>;
    REVOKE ALL ON SCHEMA public FROM <old_role>;
@@ -126,30 +132,13 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
    ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM <old_role>;
    REVOKE CONNECT ON DATABASE <database> FROM <old_role>;
    DROP ROLE <old_role>;
+   -- 手元用
+   REVOKE techtrend_readonly FROM <old_role>;
+   REVOKE CONNECT ON DATABASE <database> FROM <old_role>;
+   DROP ROLE <old_role>;
    ```
 
 管理者のパスワードは、SQL Editor の `ALTER ROLE <admin_role> WITH PASSWORD '<new_password>'`（60 ビット以上のエントロピー）か、コンソールの Reset password で変え、Vercel の `MIGRATION_DATABASE_URL` を差し替える。
-
-`personal` に分類したことのある表の記録は DB のコメントにあるので、ロールを作り直しても引き継がれる。古い読み取り用ロールも、消すまではビルドが付け直す（印が付いているため）。
-
-### 表を personal から content に戻す
-
-記録にある表は、一覧を直しただけでは読めるようにならない（ビルドが `content_table_recorded_as_personal` で止まる）。
-
-1. 個人情報を消すマイグレーションが要るなら、先に別のデプロイで済ませる（読めるようにするのはマイグレーションの後なので、同じデプロイでも漏れはしないが、失敗したときの戻し方が分かりやすい）
-2. 個人情報を持たなくなったことを確かめてから、SQL Editor で DB のコメントからその表を外す（JSON を手で書くと打ち間違いで `personal_record_unreadable` になり、すべてのビルドが止まるので、次の SQL で 1 つだけ外す）
-3. 次のデプロイを、一覧を直した commit にする（先に古い一覧のビルドが走ると、その一覧の `personal` が記録に戻る）
-
-```sql
-DO $$
-DECLARE
-  prefix text := 'techtrend:personal-tables:';
-  current_record text := shobj_description((SELECT oid FROM pg_database WHERE datname = current_database()), 'pg_database');
-BEGIN
-  EXECUTE format('COMMENT ON DATABASE %I IS %L', current_database(),
-    prefix || ((substr(current_record, length(prefix) + 1))::jsonb - '<外す表>')::text);
-END $$;
-```
 
 ## 注意
 
