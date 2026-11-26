@@ -11,7 +11,7 @@
  * 値を Vercel・GitHub・.env.local に入れ終えたら、このファイルは消す（書き込めるアプリ用の接続情報を手元に残さないため）。
  * 画面には `名前=値` の行だけを出す（with-prod-db.sh がそれ以外を通さない）。作った後、それぞれのロールで繋いで権限を確かめる
  */
-import { closeSync, mkdirSync, openSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, fsyncSync, mkdirSync, openSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   buildRoleUrl,
@@ -27,6 +27,16 @@ import {
 const OUTPUT =
   process.env.PROD_ROLES_OUTPUT ??
   path.join(process.cwd(), '.workflow/tmp/prod-db/new-roles.env');
+
+/** 今回作った接続情報のファイルを消す。消せなければそう出す（残ったファイルは次の実行を output_exists で止める） */
+function removeOutput(): void {
+  try {
+    unlinkSync(OUTPUT);
+  } catch (error) {
+    console.log(`output_not_removed=true`);
+    console.log(`failure_reason_cleanup_${errorReason(error)}=true`);
+  }
+}
 
 /** 確かめる項目の名前と、期待する値（文字列） */
 type Expectation = Record<string, string>;
@@ -74,8 +84,8 @@ async function main(): Promise<void> {
   try {
     fd = openSync(OUTPUT, 'wx', 0o600);
   } catch (error) {
-    const exists = (error as { code?: unknown }).code === 'EEXIST';
-    console.log(`failure_reason_${exists ? 'output_exists' : errorReason(error)}=true`);
+    const reason = errorReason(error);
+    console.log(`failure_reason_${reason === 'code_EEXIST' ? 'output_exists' : reason}=true`);
     process.exitCode = 1;
     return;
   }
@@ -90,14 +100,21 @@ async function main(): Promise<void> {
         '',
       ].join('\n')
     );
-  } catch (error) {
+    // ロールを作る前に、パスワードの控えをディスクに書き切る
+    fsyncSync(fd);
     closeSync(fd);
-    unlinkSync(OUTPUT);
+  } catch (error) {
+    // 先に理由を出す（後始末が失敗しても、元の理由を残すため）
     console.log(`failure_reason_${errorReason(error)}=true`);
     process.exitCode = 1;
+    try {
+      closeSync(fd);
+    } catch {
+      // 閉じ済み
+    }
+    removeOutput();
     return;
   }
-  closeSync(fd);
 
   const admin = createScriptClient(adminUrl);
   let commitSent = false;
@@ -123,12 +140,13 @@ async function main(): Promise<void> {
     if (commitSent) {
       // COMMIT の結果が分からない。ロールができているかもしれないので、パスワードの控えを残す
       console.log('commit_result_unknown=true');
-    } else {
-      await admin.query('ROLLBACK').catch(() => undefined);
-      unlinkSync(OUTPUT);
     }
     console.log(`failure_reason_${errorReason(error)}=true`);
     process.exitCode = 1;
+    if (!commitSent) {
+      await admin.query('ROLLBACK').catch(() => undefined);
+      removeOutput();
+    }
     return;
   } finally {
     await admin.end().catch(() => undefined);
@@ -144,7 +162,8 @@ async function main(): Promise<void> {
      UNION ALL SELECT 'app_can_touch_migrations',
        (has_any_column_privilege('public."_prisma_migrations"', 'SELECT, INSERT, UPDATE')
          OR has_table_privilege('public."_prisma_migrations"', 'DELETE, TRUNCATE'))::text
-     UNION ALL SELECT 'app_can_create_in_public', has_schema_privilege('public', 'CREATE')::text
+     UNION ALL SELECT 'app_can_create_objects', (has_schema_privilege('public', 'CREATE')
+       OR has_database_privilege(current_database(), 'CREATE'))::text
      UNION ALL SELECT 'app_is_privileged', (rolsuper OR rolcreaterole OR rolcreatedb OR rolbypassrls)::text
        FROM pg_roles WHERE rolname = current_user
      UNION ALL SELECT 'app_can_select_article',
@@ -154,7 +173,7 @@ async function main(): Promise<void> {
       app_can_read_user: 'true',
       app_can_write_article: 'true',
       app_can_touch_migrations: 'false',
-      app_can_create_in_public: 'false',
+      app_can_create_objects: 'false',
       app_is_privileged: 'false',
       app_can_select_article: 'true',
     }

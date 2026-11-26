@@ -22,20 +22,56 @@ export interface RoleQueryable {
   escapeLiteral(value: string): string;
 }
 
-/** 失敗の理由（英小文字と _ の決まった文字列）。`名前=値` の出力の絞り込みを通る形で出せる */
+/**
+ * 失敗の理由。決まった文字列だけにする（ビルドのログや画面に出すので、ロールの名前などを入れられないよう型で止める）。
+ * 英小文字と _ だけなので、`名前=値` の出力の絞り込みを通る形で出せる
+ */
+export type RoleSetupReason =
+  | 'role_missing'
+  | 'role_cannot_login'
+  | 'role_privileged'
+  | 'role_is_current_user'
+  | 'role_is_member_of_other_roles'
+  | 'role_owns_tables'
+  | 'role_can_write'
+  | 'unknown_metadata_table'
+  | 'content_table_recorded_as_personal'
+  | 'personal_record_unreadable'
+  | 'readonly_privileges_mismatch'
+  | 'readonly_privileges_unsafe_after_commit'
+  | 'not_db_owner'
+  | 'role_exists'
+  | 'app_can_create_objects'
+  | 'app_missing_table_privileges'
+  | 'app_default_privileges_missing'
+  | 'migration_history_diverged';
+
 export class RoleSetupError extends Error {
-  constructor(readonly reason: string) {
+  constructor(readonly reason: RoleSetupReason) {
     super(reason);
     this.name = 'RoleSetupError';
   }
 }
 
-/** 出力してよい失敗の理由。RoleSetupError の理由か、PostgreSQL・Node のエラーコード。どちらでもなければ unknown */
+/** pg が code を付けないエラーのうち、決まった文のもの（接続先を含まないので、理由として出せる） */
+const PG_MESSAGE_REASONS: Record<string, string> = {
+  'Query read timeout': 'query_timeout',
+  'timeout expired': 'connect_timeout',
+  'Connection terminated unexpectedly': 'connection_terminated',
+  'Connection terminated due to connection timeout': 'connect_timeout',
+};
+
+/**
+ * 出力してよい失敗の理由。RoleSetupError の理由、PostgreSQL・Node のエラーコード、pg の決まった文のどれか。
+ * どれでもなければ unknown（メッセージには接続先やロールの名前が入りうるので、そのまま出さない）
+ */
 export function errorReason(error: unknown): string {
   if (error instanceof RoleSetupError) return error.reason;
-  const code =
-    typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined;
-  return typeof code === 'string' && /^[A-Za-z0-9_]+$/.test(code) ? `code_${code}` : 'unknown';
+  if (typeof error !== 'object' || error === null) return 'unknown';
+  const code = 'code' in error ? error.code : undefined;
+  if (typeof code === 'string' && /^[A-Za-z0-9_]+$/.test(code)) return `code_${code}`;
+  const message = 'message' in error ? error.message : undefined;
+  return (typeof message === 'string' && PG_MESSAGE_REASONS[message]) || 'unknown';
 }
 
 /**
@@ -65,7 +101,7 @@ export function loadTableAccess(): TableAccess {
 }
 
 /** 読み取り用ロールが読める、マイグレーションの記録の列（失敗のログ logs は DB のエラーの値を含みうるので読ませない） */
-export const READONLY_MIGRATION_COLUMNS = [
+export const READONLY_MIGRATION_COLUMNS: readonly string[] = [
   'id',
   'checksum',
   'finished_at',

@@ -57,3 +57,15 @@ export function summarizeMigrations(
     unknown: [...applied].filter((name) => !local.has(name)).sort(),
   };
 }
+
+/**
+ * ビルドで読み取り用の権限を付け直してよいか。DB に、このビルドに無いマイグレーションが適用済みなら、このビルドは古い
+ * （古い commit の Redeploy など）ので付け直さない（古い一覧で戻さないため）。ただし、このビルドにしか無い未適用の
+ * マイグレーションもあるなら、履歴が分かれている。付け直さないまま migrate deploy が流れると、権限が追いつかないので止める
+ */
+export function readonlyGrantDecision(
+  status: MigrationStatus
+): 'apply' | 'skip_older_build' | 'diverged' {
+  if (status.unknown.length === 0) return 'apply';
+  return status.pending.length > 0 ? 'diverged' : 'skip_older_build';
+}

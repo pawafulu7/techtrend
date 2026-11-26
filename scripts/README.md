@@ -61,7 +61,7 @@ npx dotenv run -- tsx scripts/<ディレクトリ>/<名前>.ts  # .env を読み
 ### db/
 
 - `with-prod-db.sh` — 本番の DB を読むコマンドを流す（読み取り用のロール）
-- `create-prod-roles.ts`・`prod-db-roles.ts`・`apply-readonly-grants.ts`・`prod-table-access.json` — 本番の DB のロールを用途で分ける（[docs/operations/deployment.md](../docs/operations/deployment.md) の「DB のロール」）
+- `create-prod-roles.ts`・`prod-db-roles.ts`・`readonly-grants.ts`・`prod-db-shared.ts`・`apply-readonly-grants.ts`・`prod-table-access.json` — 本番の DB のロールを用途で分ける（[docs/operations/deployment.md](../docs/operations/deployment.md) の「DB のロール」）
 - `check-prod-migrations.ts`・`migration-status.ts` — 本番のマイグレーションの適用状況を読み取り用のロールで確かめる（`npm run migrate:production:check`）
 - `sync-prod.sh`・`backup-dev.sh`・`backup-test.sh`・`clear-local-cache.sh` — `npm run db:*` から使う
 

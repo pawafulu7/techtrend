@@ -7,16 +7,16 @@
 Vercel のビルドコマンドは `npm run vercel-build`（Settings → General → Build & Output Settings）。
 
 ```json
-"vercel-build": "prisma generate && tsx scripts/db/apply-readonly-grants.ts && USE_MIGRATION_DATABASE_URL=1 prisma migrate deploy && tsx scripts/db/apply-readonly-grants.ts && next build --webpack"
+"vercel-build": "prisma generate && tsx scripts/db/apply-readonly-grants.ts --before-migrations && USE_MIGRATION_DATABASE_URL=1 prisma migrate deploy && tsx scripts/db/apply-readonly-grants.ts && next build --webpack"
 ```
 
 ビルドの途中で `prisma migrate deploy` が未適用のマイグレーションを本番の DB に適用する。マイグレーションの作り方は [database-migrations.md](../development/database-migrations.md)。
 
 マイグレーションは管理者のロール（`MIGRATION_DATABASE_URL`）で流し、アプリは表の読み書きだけのロール（`DATABASE_URL`）で動く。`prisma.config.ts` が、`USE_MIGRATION_DATABASE_URL=1` を付けた本番のビルドの `prisma migrate deploy` でだけ `MIGRATION_DATABASE_URL` を使う（`scripts/db/migration-database-url.ts`。無ければ DB に繋ぐ前に止まる）。
 
-`apply-readonly-grants.ts` は、手元用の読み取り用ロールの権限を `scripts/db/prod-table-access.json` どおりに付け直し、付け直した後の権限を確かめる。マイグレーションの前と後に流す。前の 1 回で `personal` に移した表を読めなくしてからマイグレーションを確定させ、後の 1 回でマイグレーションで足した `content` の表を読めるようにする。どちらかが失敗するとビルドが止まる（前の 1 回で止まれば、マイグレーションも流れない）。理由はログに `[readonly-grants]` で出る。
+`apply-readonly-grants.ts` は、手元用の読み取り用ロールの権限を `scripts/db/prod-table-access.json` どおりに付け直し、付け直した後の権限を確かめる。マイグレーションの前と後に流す。前の 1 回（`--before-migrations`）は、`personal` に移した表を読めなくするだけで、新しく読めるようにはしない。後の 1 回で、マイグレーションで足した `content` の表を読めるようにする（途中まで作られた表を読ませないため、読めるようにするのはマイグレーションが成功した後だけ）。どちらかが失敗するとビルドが止まる（前の 1 回で止まれば、マイグレーションも流れない）。理由はログに `[readonly-grants]` で出る。対象は `PROD_READONLY_ROLE` と、印（ロールのコメント `techtrend:readonly-role`）の付いたすべての読み取り用ロール。
 
-一度でも `personal` に分類した表は、読み取り用ロールのコメントに記録する。記録にある表を `content` に入れた一覧のビルド（古い commit の Redeploy など）は、権限を変えずに止まる（`content_table_recorded_as_personal`）。DB にこのビルドより新しいマイグレーションが適用済みのときも、古い一覧で戻さないよう、付け直さずに進む。ロールの分け方は「DB のロール」の節。
+一度でも `personal` に分類した表は、DB のコメントに記録する（ロールを消しても残る）。記録にある表を `content` に入れた一覧のビルド（古い commit の Redeploy など）は、権限を変えずに止まる（`content_table_recorded_as_personal`）。DB にこのビルドより新しいマイグレーションが適用済みのときは、古い一覧で戻さないよう、付け直さずに進む。このビルドにしか無い未適用のマイグレーションもあるときは、履歴が分かれているので止まる（`migration_history_diverged`）。ロールの分け方は「DB のロール」の節。
 
 1. `npx prisma migrate dev --name <変更内容>` でマイグレーションを作り、`prisma/migrations/` を commit する。表を足したら `scripts/db/prod-table-access.json` にも入れる
 2. PR を main に merge する
@@ -29,7 +29,7 @@ Vercel の Settings → Environment Variables（Production）に設定する。�
 | 変数 | 用途 | 設定しないと |
 |------|------|------------|
 | `DATABASE_URL` | PostgreSQL の接続先（アプリ用のロール。Production だけ・Secret） | DB に接続できない |
-| `MIGRATION_DATABASE_URL` | マイグレーションを流す管理者のロールの接続先（Production だけ・Secret） | マイグレーションが権限不足で失敗し、デプロイが止まる |
+| `MIGRATION_DATABASE_URL` | マイグレーションを流す管理者のロールの接続先（Production だけ・Secret） | ビルドが DB に繋ぐ前に止まる |
 | `PROD_READONLY_ROLE` | 手元用の読み取り用ロールの名前（Production だけ・Secret） | 読み取り用ロールの権限を付け直せず、デプロイが止まる |
 | `AUTH_SECRET`（または `NEXTAUTH_SECRET`） | 認証のセッションの署名 | 環境変数の検証で起動に失敗する |
 | `CURSOR_SECRET` | 記事一覧のページ送りのトークン（カーソル）の HMAC 署名 | 本番では `CURSOR_SECRET is required in production` で記事一覧（`/api/articles/list` など）が動かない |
@@ -47,7 +47,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ### マイグレーションが適用されない
 
-1. `MIGRATION_DATABASE_URL` が Production の環境に設定されているか（無いと `DATABASE_URL` のアプリ用ロールで流れ、権限エラーか P3005 で失敗する）
+1. `MIGRATION_DATABASE_URL` と `PROD_READONLY_ROLE` が Production の環境に設定されているか（無いとビルドが DB に繋ぐ前に止まる。ログに `[readonly-grants]` か `MIGRATION_DATABASE_URL is required` が出る）
 2. ビルドコマンドが `npm run vercel-build` になっているか
 3. デプロイのログ（Deployments → 該当のデプロイ → Building）のエラー
 
@@ -55,9 +55,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ### 失敗したマイグレーションが残っている（P3009）
 
-失敗したマイグレーションのうち、途中まで確定した変更（先に作られた表や列など）が残っていないかを、先に SQL Editor で確かめる。残っていれば、その変更を取り消す SQL を流すか、マイグレーションの SQL を残った状態から続けられる形（`IF NOT EXISTS` など）に直す。残ったまま記録だけを戻して再デプロイすると、同じ変更が `relation already exists` などで再び失敗する。
+既存のマイグレーションのファイルは直さない（ほかの環境では成功していて、中身が食い違うため）。原因によって、次のどちらかにする。
 
-そのうえで、`prisma migrate resolve --rolled-back` と同じく、失敗の記録を取り消し済みにしてから、直したマイグレーションで再デプロイする。
+- 本番のデータが原因（制約に合わない行があるなど）: SQL Editor でデータを直し、途中まで確定した変更（先に作られた表や列など）があれば取り消す。残ったまま再デプロイすると、同じ変更が `relation already exists` などで再び失敗する。そのうえで、下の SQL（`prisma migrate resolve --rolled-back` と同じ）で失敗の記録を取り消し済みにし、同じマイグレーションを再デプロイする
+- マイグレーションの SQL が原因: 意図した変更を SQL Editor で済ませてから、次の節の手順で適用済みとして記録し、直しは新しいマイグレーションで行う
 
 ```sql
 UPDATE "_prisma_migrations" SET rolled_back_at = now()
@@ -129,14 +130,25 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
 
 管理者のパスワードは、SQL Editor の `ALTER ROLE <admin_role> WITH PASSWORD '<new_password>'`（60 ビット以上のエントロピー）か、コンソールの Reset password で変え、Vercel の `MIGRATION_DATABASE_URL` を差し替える。
 
-新しい読み取り用ロールの記録（`personal` に分類したことのある表）は、作ったときの一覧の `personal` から始まる。`personal` から `content` に戻せるのは下の手順だけなので、今の一覧の `personal` が、それまでの記録をすべて含む。
+`personal` に分類したことのある表の記録は DB のコメントにあるので、ロールを作り直しても引き継がれる。古い読み取り用ロールも、消すまではビルドが付け直す（印が付いているため）。
 
 ### 表を personal から content に戻す
 
-記録にある表は、一覧を直しただけでは読めるようにならない（ビルドが `content_table_recorded_as_personal` で止まる）。個人情報を持たなくなったことを確かめてから、SQL Editor で記録から外し、一覧を直した commit をデプロイする。
+記録にある表は、一覧を直しただけでは読めるようにならない（ビルドが `content_table_recorded_as_personal` で止まる）。
+
+1. 個人情報を消すマイグレーションが要るなら、先に別のデプロイで済ませる（読めるようにするのはマイグレーションの後なので、同じデプロイでも漏れはしないが、失敗したときの戻し方が分かりやすい）
+2. 個人情報を持たなくなったことを確かめてから、SQL Editor で DB のコメントからその表を外す（JSON を手で書くと打ち間違いで `personal_record_unreadable` になり、すべてのビルドが止まるので、次の SQL で 1 つだけ外す）
+3. 次のデプロイを、一覧を直した commit にする（先に古い一覧のビルドが走ると、その一覧の `personal` が記録に戻る）
 
 ```sql
-COMMENT ON ROLE <readonly_role> IS 'techtrend:personal-tables:["<残す表>", ...]';
+DO $$
+DECLARE
+  prefix text := 'techtrend:personal-tables:';
+  current_record text := shobj_description((SELECT oid FROM pg_database WHERE datname = current_database()), 'pg_database');
+BEGIN
+  EXECUTE format('COMMENT ON DATABASE %I IS %L', current_database(),
+    prefix || ((substr(current_record, length(prefix) + 1))::jsonb - '<外す表>')::text);
+END $$;
 ```
 
 ## 注意
