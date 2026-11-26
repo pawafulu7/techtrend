@@ -6,7 +6,7 @@
  * - アプリ用: Vercel の関数と GitHub Actions が使う。表の読み書きだけで、表の作成・変更・削除やロールの作成はできない。
  *   マイグレーションの記録（_prisma_migrations）は触れない
  * - 手元用（読み取り用）: ローカルと AI が使う。グループのロール techtrend_readonly のメンバーで、権限はマイグレーション
- *   でだけ付け外しする（readonly-grants.ts）
+ *   でだけ付け外しする（権限を調べる処理は readonly-grants.ts）
  *
  * ロールは SQL で作る（Neon のコンソール・API で作ると neon_superuser が付き、管理者と同じ権限になる）。
  * ログインのロールの名前は本番の接続先の情報なので、リポジトリには書かず、作るときに乱数で決める（create-prod-roles.ts）。
@@ -74,15 +74,29 @@ export async function createProdRoles(
   client: RoleQueryable,
   input: CreateProdRolesInput
 ): Promise<CreateProdRolesResult> {
-  const { rows: owner } = await client.query<{ owns_db: boolean; db: string; group_ok: boolean }>(
+  const { rows: owner } = await client.query<{
+    owns_db: boolean;
+    db: string;
+    group_ok: boolean;
+    grantable: boolean;
+  }>(
     `SELECT d.datdba = (SELECT oid FROM pg_roles WHERE rolname = current_user) AS owns_db,
             current_database() AS db,
-            EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1 AND NOT rolcanlogin) AS group_ok
+            EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1 AND NOT rolcanlogin) AS group_ok,
+            -- グループのロールをメンバーに付けられるか（PostgreSQL 16 からは、作ったロールに付く ADMIN OPTION が要る。
+            -- マイグレーションを流した管理者と同じ管理者で流せば付いている）
+            (SELECT rolsuper FROM pg_roles WHERE rolname = current_user)
+              -- pg_has_role は無いロールに渡すと失敗する。AND では評価の順番が決まらないので CASE で守る
+              OR CASE WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)
+                   THEN pg_has_role(current_user, $1, 'MEMBER WITH ADMIN OPTION') ELSE false END
+              OR (current_setting('server_version_num')::int < 160000
+                  AND (SELECT rolcreaterole FROM pg_roles WHERE rolname = current_user)) AS grantable
      FROM pg_database d WHERE d.datname = current_database()`,
     [READONLY_GROUP_ROLE]
   );
   if (!owner[0]?.owns_db) throw new RoleSetupError('not_db_owner');
   if (!owner[0].group_ok) throw new RoleSetupError('readonly_group_missing');
+  if (!owner[0].grantable) throw new RoleSetupError('readonly_group_not_grantable');
   const { rows: taken } = await client.query<{ n: number }>(
     `SELECT count(*)::int AS n FROM pg_roles WHERE rolname = ANY($1::name[])`,
     [[input.appRole, input.readonlyRole]]

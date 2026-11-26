@@ -27,19 +27,22 @@ function isCandidateReason(value: unknown): value is CandidateReason {
 }
 
 /**
- * 手元用のログインのロールにしてよいかを確かめる。ログインでき、特権を持たず、何も所有せず、書き込めず、
- * 属するロールが techtrend_readonly だけであること（ほかのロールに属すると、そこから読める表が増えるため）
+ * 手元用のログインのロールにしてよいかを確かめる。ログインでき、特権を持たず、属するロールが techtrend_readonly だけで
+ * （ほかのロールに属すると、そこから読める表が増えるため）、public の表・列・スキーマへの権限を直接持たず（マイグレーション
+ * での付け外しが届かないため。以前の版のスクリプトで作ったロールが当たる）、何も所有せず、書き込めないこと
  */
 export async function assertReadonlyCandidate(
   client: RoleQueryable,
-  role: string
+  role: string,
+  /** 繋いだロール自身を調べるとき（状態の確認）は true。管理者が自分を手元用に指定する誤りを止める条件を外す */
+  options: { self?: boolean } = {}
 ): Promise<void> {
   const { rows } = await client.query<{ reason: string | null }>(
     `SELECT CASE
        WHEN r.oid IS NULL THEN 'role_missing'
        WHEN NOT r.rolcanlogin THEN 'role_cannot_login'
        WHEN r.rolsuper OR r.rolcreaterole OR r.rolcreatedb OR r.rolbypassrls OR r.rolreplication THEN 'role_privileged'
-       WHEN r.rolname = current_user THEN 'role_is_current_user'
+       WHEN r.rolname = current_user AND NOT $3 THEN 'role_is_current_user'
        WHEN EXISTS (
          SELECT 1 FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid
          WHERE m.member = r.oid AND g.rolname <> $2
@@ -47,14 +50,25 @@ export async function assertReadonlyCandidate(
          SELECT 1 FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid
          WHERE m.member = r.oid AND g.rolname = $2
        ) THEN 'role_not_only_in_readonly_group'
+       -- 表を所有すると、所有者の権限も表の ACL に直接載るので、所有を先に見る
        WHEN EXISTS (SELECT 1 FROM (${PUBLIC_RELATIONS}) t WHERE t.relowner = r.oid) THEN 'role_owns_tables'
+       WHEN EXISTS (
+         SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace, aclexplode(c.relacl) a
+         WHERE n.nspname = 'public' AND a.grantee = r.oid
+       ) OR EXISTS (
+         SELECT 1 FROM pg_attribute att JOIN pg_class c ON c.oid = att.attrelid
+           JOIN pg_namespace n ON n.oid = c.relnamespace, aclexplode(att.attacl) a
+         WHERE n.nspname = 'public' AND a.grantee = r.oid
+       ) OR EXISTS (
+         SELECT 1 FROM pg_namespace n, aclexplode(n.nspacl) a WHERE n.nspname = 'public' AND a.grantee = r.oid
+       ) THEN 'role_has_direct_grants'
        WHEN EXISTS (
          SELECT 1 FROM (${PUBLIC_RELATIONS}) t
          WHERE has_table_privilege(r.oid, t.oid, 'INSERT, UPDATE, DELETE, TRUNCATE')
        ) THEN 'role_can_write'
      END AS reason
      FROM (SELECT $1::name AS name) q LEFT JOIN pg_roles r ON r.rolname = q.name`,
-    [role, READONLY_GROUP_ROLE]
+    [role, READONLY_GROUP_ROLE, options.self === true]
   );
   const reason = rows[0]?.reason;
   if (reason === null || reason === undefined) return;

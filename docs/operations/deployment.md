@@ -91,7 +91,7 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
 |------|------|------|
 | 管理者（DB と表の所有者） | Vercel の Production の `MIGRATION_DATABASE_URL`、Neon のコンソール | すべて（マイグレーション・ロールの管理） |
 | アプリ用 | Vercel の Production の `DATABASE_URL`、GitHub Actions の secret `DATABASE_URL` | 表の読み書きだけ。表の作成・変更・削除、ロールの作成、マイグレーションの記録の読み書きはできない |
-| 手元用（読み取り用） | `.env.local` の `PROD_DATABASE_URL` | グループのロール `techtrend_readonly`（ログインできない）のメンバー。`scripts/db/prod-table-access.json` の `content` の表と、マイグレーションの記録の状態の列（失敗のログ以外）を読むだけ。`personal`（個人情報）の表は読めない。書き込めず、文とトランザクションに 60 秒の上限がある |
+| 手元用（読み取り用） | `.env.local` の `PROD_DATABASE_URL` | グループのロール `techtrend_readonly`（ログインできない）のメンバー。`scripts/db/prod-table-access.json` の `content` の表と、マイグレーションの記録の状態の列（失敗のログ以外）を読むだけ。`personal`（個人情報）の表は読めない。書き込めない既定で、文とトランザクションの時間の上限は既定で 60 秒（自分で変えられるので、守りではなく、うっかり長く止めないための既定） |
 
 アプリ用ロールは、管理者が作った表を既定の権限で読み書きできる（マイグレーションは必ず管理者で流す。ほかのロールで作った表には既定の権限が効かない）。`ops_backup` などの public 以外のスキーマは、アプリ用も読み取り用も読めない。そこから戻すときは SQL Editor で行う。
 
@@ -99,9 +99,10 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
 
 `techtrend_readonly` の権限は、マイグレーションでだけ付け外しする（作ったのは `prisma/migrations/20261127000000_add_readonly_content_role`）。マイグレーションは Prisma が順に 1 回だけ流すので、古い commit を再デプロイしても権限は戻らない。
 
-- 表を足すとき: `scripts/db/prod-table-access.json` の `personal`（個人情報を持つ表）か `content`（それ以外）に入れる。`content` なら、その表を作るマイグレーションに `GRANT SELECT ON TABLE "<表>" TO techtrend_readonly;` を書く。`personal` なら何も書かない（読み取り用には既定の権限が無いので、読めない）
+- 表を足すとき: `scripts/db/prod-table-access.json` の `personal`（個人情報を持つ表）か `content`（それ以外）に入れる。`content` なら、その表を作るマイグレーションに `GRANT SELECT ON TABLE "<表>" TO techtrend_readonly;` を書く（`autoincrement()` などでシーケンスもできるなら、`GRANT SELECT ON SEQUENCE "<シーケンス>" TO techtrend_readonly;` も書く。本番からの同期の pg_dump がシーケンスの値を読むため）。`personal` なら何も書かない（読み取り用には既定の権限が無いので、読めない）
 - 表を `personal` に移すとき: 一覧を直し、`REVOKE ALL ON TABLE "<表>" FROM techtrend_readonly;` のマイグレーションを書く
 - 書き忘れ・書き違いは、マイグレーション済みのテスト DB で `__tests__/scripts/db/prod-table-access.db.test.ts` が落とす
+- 本番の実際の権限（マイグレーションの外で付いた GRANT などを含む）は、手元から `npm run migrate:production:check` で確かめる。繋いだ手元用のロール自身を調べ、一覧と違えば `readonly_privileges_ok=false` で終了コード 1 になる
 
 本番に書き込む作業（保守スクリプト・データの直し）は、GitHub Actions の `Maintenance - Run Script`（`.github/workflows/maintenance-run.yml`）を main から手動で実行する。アプリ用のロールで動くので、表を作るスクリプトは流せない（表を作るならマイグレーションにする）。ログは公開されるので、出力は `名前=数値` の行だけが出る。スクリプトは結果と失敗の件数をその形で出し、失敗したら 0 以外で終える。引数には個人情報や秘密を入れない。
 
@@ -121,7 +122,7 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
    ```
 
 2. `.workflow/tmp/prod-db/new-roles.env` の値を、Vercel の `DATABASE_URL`、GitHub の secret `DATABASE_URL`、`.env.local` の `PROD_DATABASE_URL` に入れ、本番を再デプロイする。入れ終えたら、このファイルを消す（書き込めるアプリ用の接続情報を手元に残さない）
-3. 古いロールを、Neon のコンソールの SQL Editor で消す。権限と既定の権限が残っていると `DROP ROLE` が失敗するので、先に外す（手元用のロールは、`techtrend_readonly` から外すだけでよい）
+3. 古いロールを、Neon のコンソールの SQL Editor で消す。権限と既定の権限が残っていると `DROP ROLE` が失敗する（`2BP01`）ので、先に外す
 
    ```sql
    -- アプリ用
@@ -132,11 +133,28 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
    ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM <old_role>;
    REVOKE CONNECT ON DATABASE <database> FROM <old_role>;
    DROP ROLE <old_role>;
-   -- 手元用
+   -- 手元用（以前の版で作り、表の権限を直接持つロールも、これで消せる）
+   REVOKE ALL ON ALL TABLES IN SCHEMA public FROM <old_role>;
+   REVOKE ALL ON SCHEMA public FROM <old_role>;
    REVOKE techtrend_readonly FROM <old_role>;
    REVOKE CONNECT ON DATABASE <database> FROM <old_role>;
    DROP ROLE <old_role>;
    ```
+
+### 以前の版で作った手元用のロールを移す
+
+以前の版の `create-prod-roles.ts` で作った手元用のロールは、表の権限を直接持ち、`techtrend_readonly` のメンバーではない。このままだと、マイグレーションでの付け外しが届かない（表を `personal` に移しても読めたまま残る）。`techtrend_readonly` を作るマイグレーションが本番に適用された後、SQL Editor で、直接の権限を外してメンバーにする（表への `REVOKE ALL` は列の権限も外す）。
+
+```sql
+BEGIN;
+GRANT techtrend_readonly TO <readonly_role>;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM <readonly_role>;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM <readonly_role>;
+REVOKE ALL ON SCHEMA public FROM <readonly_role>;
+COMMIT;
+```
+
+そのあと、そのロールで `npm run migrate:production:check` を流し、`readonly_privileges_ok=true` になることを確かめる。
 
 管理者のパスワードは、SQL Editor の `ALTER ROLE <admin_role> WITH PASSWORD '<new_password>'`（60 ビット以上のエントロピー）か、コンソールの Reset password で変え、Vercel の `MIGRATION_DATABASE_URL` を差し替える。
 

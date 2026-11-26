@@ -22,13 +22,14 @@ export interface RoleQueryable {
   escapeLiteral(value: string): string;
 }
 
-/** 手元用のログインのロールが読み取り用として持ってよい理由（SQL の CASE が返す値。readonly-grants.ts） */
+/** 手元用のログインのロールとして断る理由（readonly-grants.ts の SQL の CASE が返す値） */
 export const READONLY_CANDIDATE_REASONS = [
   'role_missing',
   'role_cannot_login',
   'role_privileged',
   'role_is_current_user',
   'role_not_only_in_readonly_group',
+  'role_has_direct_grants',
   'role_owns_tables',
   'role_can_write',
 ] as const;
@@ -40,6 +41,7 @@ export const READONLY_CANDIDATE_REASONS = [
 export type RoleSetupReason =
   | (typeof READONLY_CANDIDATE_REASONS)[number]
   | 'readonly_group_missing'
+  | 'readonly_group_not_grantable'
   | 'readonly_privileges_mismatch'
   | 'not_db_owner'
   | 'role_exists'

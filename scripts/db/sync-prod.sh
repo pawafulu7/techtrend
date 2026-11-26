@@ -188,7 +188,7 @@ UNCLASSIFIED_PROD_TABLES="$(printf '%s\n' "$PROD_TABLES" | node -e '
 ' "$ROOT_DIR/scripts/db/prod-table-access.json")"
 if [ -n "$UNCLASSIFIED_PROD_TABLES" ]; then
   echo "[sync] ERROR: 本番に、scripts/db/prod-table-access.json で分類していない表があります: ${UNCLASSIFIED_PROD_TABLES}"
-  echo "         JSON の personal（個人情報）か content に入れて、本番にデプロイしてから流してください。"
+  echo "         JSON の personal（個人情報）か content に入れ、content ならマイグレーションで techtrend_readonly に GRANT して、本番にデプロイしてから流してください。"
   exit 1
 fi
 LOCAL_ONLY_TABLES="$(LC_ALL=C comm -13 <(printf '%s\n' "$PROD_TABLES" | LC_ALL=C sort) <(printf '%s\n' "$LOCAL_TABLES" | LC_ALL=C sort) | paste -sd, - | sed 's/,/, /g')"

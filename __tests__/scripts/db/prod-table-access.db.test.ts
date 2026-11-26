@@ -249,6 +249,15 @@ describeTestDb('createProdRoles (real test DB)', () => {
         `SELECT current_setting('default_transaction_read_only') AS read_only`
       );
       expect(rows[0].read_only).toBe('on');
+      // 手元用のロール自身で調べる（npm run migrate:production:check と同じ）
+      await expect(
+        assertReadonlyCandidate(readonly, readonlyRole, { self: true })
+      ).resolves.toBeUndefined();
+      await expect(assertReadonlyCandidate(readonly, readonlyRole)).rejects.toMatchObject({
+        reason: 'role_is_current_user',
+      });
+      const own = await inspectReadonlyPrivileges(readonly, readonlyRole, access);
+      expect(readonlyPrivilegesMatch(own, true)).toBe(true);
       // 書き込めない既定（25006）か権限（42501）で止まる
       await expect(
         readonly.query(`UPDATE "Article" SET title = title WHERE false`)
@@ -282,14 +291,24 @@ describeTestDb('createProdRoles (real test DB)', () => {
       await admin.query(`CREATE ROLE ${ident('owner')} LOGIN IN ROLE ${group}`);
       await admin.query(`CREATE TABLE ${table} (id int)`);
       await admin.query(`ALTER TABLE ${table} OWNER TO ${ident('owner')}`);
-      await admin.query(`CREATE ROLE ${ident('writer')} LOGIN IN ROLE ${group}`);
-      await admin.query(`GRANT INSERT ON public."Article" TO ${ident('writer')}`);
+      // 以前の版のスクリプトで作ったロールのように、表への権限を直接持つもの
+      await admin.query(`CREATE ROLE ${ident('direct')} LOGIN IN ROLE ${group}`);
+      await admin.query(`GRANT SELECT ON public."Article" TO ${ident('direct')}`);
+      await admin.query(`CREATE ROLE ${ident('column')} LOGIN IN ROLE ${group}`);
+      await admin.query(`GRANT SELECT (migration_name) ON public."_prisma_migrations" TO ${ident('column')}`);
       for (const [kind, reason] of [
         ['nologin', 'role_cannot_login'],
         ['member', 'role_not_only_in_readonly_group'],
+        ['direct', 'role_has_direct_grants'],
+        ['column', 'role_has_direct_grants'],
         ['owner', 'role_owns_tables'],
-        ['writer', 'role_can_write'],
       ]) {
+        await expect(assertReadonlyCandidate(admin, name(kind))).rejects.toMatchObject({ reason });
+      }
+      // PUBLIC への GRANT で書けるようになったもの
+      await admin.query(`CREATE ROLE ${ident('writer')} LOGIN IN ROLE ${group}`);
+      await admin.query(`GRANT INSERT ON public."Article" TO PUBLIC`);
+      for (const [kind, reason] of [['writer', 'role_can_write']]) {
         await expect(assertReadonlyCandidate(admin, name(kind))).rejects.toMatchObject({ reason });
       }
     });
@@ -319,6 +338,13 @@ describeTestDb('createProdRoles (real test DB)', () => {
       await admin.query(`GRANT CREATE ON DATABASE ${admin.escapeIdentifier(rows[0].db)} TO PUBLIC`);
       await expect(createProdRoles(admin, input)).rejects.toMatchObject({
         reason: 'app_can_create_objects',
+      });
+    });
+    // マイグレーションの外で techtrend_readonly に個人情報の表の権限が付いていたら、作ったロールの確認で止まる
+    await inRolledBackTransaction(admin, async () => {
+      await admin.query(`GRANT SELECT ON public."User" TO ${admin.escapeIdentifier(READONLY_GROUP_ROLE)}`);
+      await expect(createProdRoles(admin, input)).rejects.toMatchObject({
+        reason: 'readonly_privileges_mismatch',
       });
     });
   });

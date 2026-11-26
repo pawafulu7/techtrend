@@ -153,8 +153,9 @@ async function main(): Promise<void> {
     console.log(`failure_reason_${errorReason(error)}=true`);
     process.exitCode = 1;
     if (!commitSent) {
-      await admin.query('ROLLBACK').catch(() => undefined);
+      // COMMIT を送っていないのでロールはできていない。止まった文の後ろで ROLLBACK が待たされても控えが残らないよう、先に消す
       removeOutput();
+      await admin.query('ROLLBACK').catch(() => undefined);
     }
     return;
   } finally {
