@@ -11,7 +11,7 @@
  * 値を Vercel・GitHub・.env.local に入れ終えたら、このファイルは消す（書き込めるアプリ用の接続情報を手元に残さないため）。
  * 画面には `名前=値` の行だけを出す（with-prod-db.sh がそれ以外を通さない）。作った後、それぞれのロールで繋いで権限を確かめる
  */
-import { mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   buildRoleUrl,
@@ -67,26 +67,37 @@ async function main(): Promise<void> {
   const appUrl = buildRoleUrl(adminUrl, appRole, appPassword);
   const readonlyUrl = buildRoleUrl(adminUrl, readonlyRole, readonlyPassword);
 
-  // 先に書き出す（ロールを作った後に書けないと、パスワードを失う）。作らずに終わったら消す
+  // 先に書き出す（ロールを作った後に書けないと、パスワードを失う）。作らずに終わったら消す。
+  // 既にあるファイル（前の実行の控え）は消さないよう、排他で作ってから書き、書けなかったら今回作ったファイルだけを消す
   mkdirSync(path.dirname(OUTPUT), { recursive: true, mode: 0o700 });
+  let fd: number;
   try {
-    writeFileSync(
-      OUTPUT,
-      [
-        `PROD_APP_ROLE=${appRole}`,
-        `PROD_APP_DATABASE_URL=${appUrl}`,
-        `PROD_READONLY_ROLE=${readonlyRole}`,
-        `PROD_READONLY_DATABASE_URL=${readonlyUrl}`,
-        '',
-      ].join('\n'),
-      { mode: 0o600, flag: 'wx' }
-    );
+    fd = openSync(OUTPUT, 'wx', 0o600);
   } catch (error) {
     const exists = (error as { code?: unknown }).code === 'EEXIST';
     console.log(`failure_reason_${exists ? 'output_exists' : errorReason(error)}=true`);
     process.exitCode = 1;
     return;
   }
+  try {
+    writeFileSync(
+      fd,
+      [
+        `PROD_APP_ROLE=${appRole}`,
+        `PROD_APP_DATABASE_URL=${appUrl}`,
+        `PROD_READONLY_ROLE=${readonlyRole}`,
+        `PROD_READONLY_DATABASE_URL=${readonlyUrl}`,
+        '',
+      ].join('\n')
+    );
+  } catch (error) {
+    closeSync(fd);
+    unlinkSync(OUTPUT);
+    console.log(`failure_reason_${errorReason(error)}=true`);
+    process.exitCode = 1;
+    return;
+  }
+  closeSync(fd);
 
   const admin = createScriptClient(adminUrl);
   let commitSent = false;
@@ -153,25 +164,28 @@ async function main(): Promise<void> {
     `SELECT 'readonly_can_read_article' AS name, has_table_privilege('public."Article"', 'SELECT')::text AS value
      UNION ALL SELECT 'readonly_can_write_article',
        has_table_privilege('public."Article"', 'INSERT, UPDATE, DELETE, TRUNCATE')::text
-     UNION ALL SELECT 'readonly_can_read_migration_names',
-       has_column_privilege('public."_prisma_migrations"', 'migration_name', 'SELECT')::text
+     UNION ALL SELECT 'readonly_can_read_migration_status',
+       (has_column_privilege('public."_prisma_migrations"', 'migration_name', 'SELECT')
+         AND has_column_privilege('public."_prisma_migrations"', 'finished_at', 'SELECT')
+         AND has_column_privilege('public."_prisma_migrations"', 'rolled_back_at', 'SELECT'))::text
      UNION ALL SELECT 'readonly_can_read_migration_logs',
        has_column_privilege('public."_prisma_migrations"', 'logs', 'SELECT')::text
      UNION ALL SELECT 'readonly_readable_personal_tables', count(*)::text
        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
        WHERE n.nspname = 'public' AND c.relname = ANY($1::name[])
          AND has_any_column_privilege(c.oid, 'SELECT')
-     UNION ALL SELECT 'readonly_can_create_in_public', has_schema_privilege('public', 'CREATE')::text
+     UNION ALL SELECT 'readonly_can_create_objects', (has_schema_privilege('public', 'CREATE')
+       OR has_database_privilege(current_database(), 'CREATE'))::text
      UNION ALL SELECT 'readonly_default_read_only',
        (current_setting('default_transaction_read_only') = 'on')::text`,
     [access.personal],
     {
       readonly_can_read_article: 'true',
       readonly_can_write_article: 'false',
-      readonly_can_read_migration_names: 'true',
+      readonly_can_read_migration_status: 'true',
       readonly_can_read_migration_logs: 'false',
       readonly_readable_personal_tables: '0',
-      readonly_can_create_in_public: 'false',
+      readonly_can_create_objects: 'false',
       readonly_default_read_only: 'true',
     }
   );

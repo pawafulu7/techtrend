@@ -1,7 +1,9 @@
 /**
  * 手元（ローカル・AI）の読み取り用ロールの権限を、scripts/db/prod-table-access.json どおりに付け直す。
- * Vercel の本番ビルド（package.json の vercel-build）で、マイグレーションの後に毎回流す。マイグレーションで足した表も、
- * content に入れていれば読めるようになり、personal に入れた表や分類し忘れた表は読めないままになる。
+ * Vercel の本番ビルド（package.json の vercel-build）で、マイグレーションの前と後に毎回流す。前の 1 回で、personal に
+ * 移した表を読めなくしてからマイグレーションを確定させる（後の付け直しが失敗しても、読めたまま残らないように）。
+ * 後の 1 回で、マイグレーションで足した表を、content に入れていれば読めるようにする（personal に入れた表や分類し忘れた
+ * 表は読めないまま）。
  *
  * 管理者の接続（MIGRATION_DATABASE_URL）と読み取り用ロールの名前（PROD_READONLY_ROLE）は、Vercel の Production にだけある。
  * 本番のビルドでなければ何もしない。本番のビルドで、どちらかが無い・付け直しに失敗した・付け直した後の権限が一覧と違う

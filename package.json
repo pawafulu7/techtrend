@@ -19,7 +19,7 @@
     "docker:build:e2e": "docker compose -f docker-compose.test.yml build playwright-e2e && npm run docker:prune",
     "docker:prune": "docker image prune -f && docker builder prune -f --max-used-space 20GB",
     "docker:build": "docker compose -f docker-compose.test.yml run --rm -e NODE_ENV=production node-ci npm run build",
-    "vercel-build": "prisma generate && USE_MIGRATION_DATABASE_URL=1 prisma migrate deploy && tsx scripts/db/apply-readonly-grants.ts && next build --webpack",
+    "vercel-build": "prisma generate && tsx scripts/db/apply-readonly-grants.ts && USE_MIGRATION_DATABASE_URL=1 prisma migrate deploy && tsx scripts/db/apply-readonly-grants.ts && next build --webpack",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --fix --ext .ts,.tsx",

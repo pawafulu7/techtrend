@@ -7,14 +7,16 @@
 Vercel のビルドコマンドは `npm run vercel-build`（Settings → General → Build & Output Settings）。
 
 ```json
-"vercel-build": "prisma generate && USE_MIGRATION_DATABASE_URL=1 prisma migrate deploy && tsx scripts/db/apply-readonly-grants.ts && next build --webpack"
+"vercel-build": "prisma generate && tsx scripts/db/apply-readonly-grants.ts && USE_MIGRATION_DATABASE_URL=1 prisma migrate deploy && tsx scripts/db/apply-readonly-grants.ts && next build --webpack"
 ```
 
 ビルドの途中で `prisma migrate deploy` が未適用のマイグレーションを本番の DB に適用する。マイグレーションの作り方は [database-migrations.md](../development/database-migrations.md)。
 
-マイグレーションは管理者のロール（`MIGRATION_DATABASE_URL`）で流し、アプリは表の読み書きだけのロール（`DATABASE_URL`）で動く。`prisma.config.ts` が、`USE_MIGRATION_DATABASE_URL=1` を付けた本番のビルドの `prisma migrate deploy` でだけ `MIGRATION_DATABASE_URL` を使う（`scripts/db/migration-database-url.ts`）。
+マイグレーションは管理者のロール（`MIGRATION_DATABASE_URL`）で流し、アプリは表の読み書きだけのロール（`DATABASE_URL`）で動く。`prisma.config.ts` が、`USE_MIGRATION_DATABASE_URL=1` を付けた本番のビルドの `prisma migrate deploy` でだけ `MIGRATION_DATABASE_URL` を使う（`scripts/db/migration-database-url.ts`。無ければ DB に繋ぐ前に止まる）。
 
-続く `apply-readonly-grants.ts` が、手元用の読み取り用ロールの権限を `scripts/db/prod-table-access.json` どおりに付け直し、付け直した後の権限を確かめる。失敗するとビルドが止まる（表を `personal` に移したのに、読み取り用ロールが読めたまま残るのを防ぐため）。理由はログに `[readonly-grants]` で出る。DB にこのビルドより新しいマイグレーションが適用済みのとき（古い commit の Redeploy など）は、古い一覧で戻さないよう、付け直さずに進む。ロールの分け方は「DB のロール」の節。
+`apply-readonly-grants.ts` は、手元用の読み取り用ロールの権限を `scripts/db/prod-table-access.json` どおりに付け直し、付け直した後の権限を確かめる。マイグレーションの前と後に流す。前の 1 回で `personal` に移した表を読めなくしてからマイグレーションを確定させ、後の 1 回でマイグレーションで足した `content` の表を読めるようにする。どちらかが失敗するとビルドが止まる（前の 1 回で止まれば、マイグレーションも流れない）。理由はログに `[readonly-grants]` で出る。
+
+一度でも `personal` に分類した表は、読み取り用ロールのコメントに記録する。記録にある表を `content` に入れた一覧のビルド（古い commit の Redeploy など）は、権限を変えずに止まる（`content_table_recorded_as_personal`）。DB にこのビルドより新しいマイグレーションが適用済みのときも、古い一覧で戻さないよう、付け直さずに進む。ロールの分け方は「DB のロール」の節。
 
 1. `npx prisma migrate dev --name <変更内容>` でマイグレーションを作り、`prisma/migrations/` を commit する。表を足したら `scripts/db/prod-table-access.json` にも入れる
 2. PR を main に merge する
@@ -53,7 +55,9 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ### 失敗したマイグレーションが残っている（P3009）
 
-`prisma migrate resolve --rolled-back` と同じく、失敗の記録を取り消し済みにしてから、直したマイグレーションで再デプロイする。
+失敗したマイグレーションのうち、途中まで確定した変更（先に作られた表や列など）が残っていないかを、先に SQL Editor で確かめる。残っていれば、その変更を取り消す SQL を流すか、マイグレーションの SQL を残った状態から続けられる形（`IF NOT EXISTS` など）に直す。残ったまま記録だけを戻して再デプロイすると、同じ変更が `relation already exists` などで再び失敗する。
+
+そのうえで、`prisma migrate resolve --rolled-back` と同じく、失敗の記録を取り消し済みにしてから、直したマイグレーションで再デプロイする。
 
 ```sql
 UPDATE "_prisma_migrations" SET rolled_back_at = now()
@@ -104,10 +108,10 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
 
 ### ロールを作り直す・パスワードを変える
 
-1. Neon のコンソールで管理者の接続文字列を表示し、手元の端末で、画面に出さずに環境変数へ入れてから流す。`.env.local` の `PROD_DATABASE_URL` は読み取り用なので、管理者の URL は `PROD_ADMIN_DATABASE_URL` で渡す
+1. Neon のコンソールで管理者の接続文字列を表示し、手元の端末で、画面に出さずに環境変数へ入れてから流す。`.env.local` の `PROD_DATABASE_URL` は読み取り用なので、管理者の URL は `PROD_ADMIN_DATABASE_URL` で渡す。サブシェルで流すので、終わると変数は消え、終了コードはスクリプトのものになる（0 以外なら先に進まない）
 
    ```bash
-   read -rs PROD_ADMIN_DATABASE_URL && export PROD_ADMIN_DATABASE_URL && bash scripts/db/with-prod-db.sh npx tsx scripts/db/create-prod-roles.ts; unset PROD_ADMIN_DATABASE_URL
+   ( read -rs PROD_ADMIN_DATABASE_URL && export PROD_ADMIN_DATABASE_URL && bash scripts/db/with-prod-db.sh npx tsx scripts/db/create-prod-roles.ts )
    ```
 
 2. `.workflow/tmp/prod-db/new-roles.env` の値を、Vercel の `DATABASE_URL`・`PROD_READONLY_ROLE`、GitHub の secret `DATABASE_URL`、`.env.local` の `PROD_DATABASE_URL` に入れ、本番を再デプロイする。入れ終えたら、このファイルを消す（書き込めるアプリ用の接続情報を手元に残さない）
@@ -124,6 +128,16 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
    ```
 
 管理者のパスワードは、SQL Editor の `ALTER ROLE <admin_role> WITH PASSWORD '<new_password>'`（60 ビット以上のエントロピー）か、コンソールの Reset password で変え、Vercel の `MIGRATION_DATABASE_URL` を差し替える。
+
+新しい読み取り用ロールの記録（`personal` に分類したことのある表）は、作ったときの一覧の `personal` から始まる。`personal` から `content` に戻せるのは下の手順だけなので、今の一覧の `personal` が、それまでの記録をすべて含む。
+
+### 表を personal から content に戻す
+
+記録にある表は、一覧を直しただけでは読めるようにならない（ビルドが `content_table_recorded_as_personal` で止まる）。個人情報を持たなくなったことを確かめてから、SQL Editor で記録から外し、一覧を直した commit をデプロイする。
+
+```sql
+COMMENT ON ROLE <readonly_role> IS 'techtrend:personal-tables:["<残す表>", ...]';
+```
 
 ## 注意
 

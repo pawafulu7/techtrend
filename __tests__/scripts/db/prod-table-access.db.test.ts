@@ -14,7 +14,9 @@ import {
   hasAppDefaultPrivileges,
   inspectReadonlyPrivileges,
   loadTableAccess,
+  PERSONAL_RECORD_PREFIX,
   readonlyPrivilegesMatch,
+  recordedPersonalTables,
 } from '@/scripts/db/prod-db-roles';
 
 const url = process.env.DATABASE_URL;
@@ -208,12 +210,48 @@ describeDb('createProdRoles and applyReadonlyGrants (real test DB)', () => {
     }
     const inspected = await inspectReadonlyPrivileges(admin, readonlyRole, access);
     expect(inspected).toMatchObject({
-      canReadMigrationNames: true,
+      canReadMigrationColumns: true,
       canReadMigrationLogs: false,
+      canCreateObjects: false,
       unexpectedReadable: 0,
       writable: 0,
     });
     expect(readonlyPrivilegesMatch(inspected, true)).toBe(true);
+    await expect(recordedPersonalTables(admin, readonlyRole)).resolves.toEqual(
+      [...access.personal].sort()
+    );
+  });
+
+  it('refuses an older list that puts a table recorded as personal back into content, without changing privileges', async () => {
+    const ro = admin.escapeIdentifier(readonlyRole);
+    await inRolledBackTransaction(admin, async () => {
+      // 新しい一覧で Tag を personal に移したビルドが、記録を残した後の状態
+      const record = `${PERSONAL_RECORD_PREFIX}${JSON.stringify([...access.personal, 'Tag'].sort())}`;
+      await admin.query(`COMMENT ON ROLE ${ro} IS ${admin.escapeLiteral(record)}`);
+      await admin.query(`REVOKE SELECT ON public."Tag" FROM ${ro}`);
+      // Tag を content に置いたままの古い一覧
+      await expect(applyReadonlyGrants(admin, readonlyRole, access)).rejects.toMatchObject({
+        reason: 'content_table_recorded_as_personal',
+      });
+      const privileges = await privilegesOf(admin, readonlyRole);
+      expect(privileges.get('Tag')?.can_select_any_column).toBe(false);
+    });
+  });
+
+  it('detects a readonly role that can create objects or cannot read the migration status columns', async () => {
+    const ro = admin.escapeIdentifier(readonlyRole);
+    await inRolledBackTransaction(admin, async () => {
+      await admin.query(`REVOKE SELECT (finished_at) ON public."_prisma_migrations" FROM ${ro}`);
+      const inspected = await inspectReadonlyPrivileges(admin, readonlyRole, access);
+      expect(inspected.canReadMigrationColumns).toBe(false);
+      expect(readonlyPrivilegesMatch(inspected, true)).toBe(false);
+    });
+    await inRolledBackTransaction(admin, async () => {
+      await admin.query(`GRANT CREATE ON SCHEMA public TO PUBLIC`);
+      await expect(applyReadonlyGrants(admin, readonlyRole, access)).rejects.toMatchObject({
+        reason: 'readonly_privileges_mismatch',
+      });
+    });
   });
 
   it('gives the app role, but not the readonly role, tables created later by the owner', async () => {

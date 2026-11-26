@@ -79,7 +79,8 @@ describe('readonlyPrivilegesMatch', () => {
     unreadableContent: 0,
     unexpectedReadable: 0,
     writable: 0,
-    canReadMigrationNames: true,
+    canCreateObjects: false,
+    canReadMigrationColumns: true,
     canReadMigrationLogs: false,
   };
 
@@ -87,12 +88,14 @@ describe('readonlyPrivilegesMatch', () => {
     expect(readonlyPrivilegesMatch(ok, true)).toBe(true);
   });
 
-  it('rejects any extra read, any write, an unreadable content table, or readable migration logs', () => {
+  it('rejects any extra read, any write, creating objects, an unreadable content table, or wrong migration columns', () => {
     expect(readonlyPrivilegesMatch({ ...ok, unexpectedReadable: 1 }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, writable: 1 }, true)).toBe(false);
+    expect(readonlyPrivilegesMatch({ ...ok, canCreateObjects: true }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, unreadableContent: 1 }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, canReadMigrationLogs: true }, true)).toBe(false);
-    expect(readonlyPrivilegesMatch({ ...ok, canReadMigrationNames: false }, true)).toBe(false);
+    expect(readonlyPrivilegesMatch({ ...ok, canReadMigrationColumns: false }, true)).toBe(false);
+    expect(readonlyPrivilegesMatch({ ...ok, canReadMigrationColumns: false }, false)).toBe(true);
   });
 });
 
@@ -119,8 +122,14 @@ describe('migrationDatabaseUrl', () => {
     ).toBe(app);
   });
 
-  it('falls back to DATABASE_URL when the admin URL is missing', () => {
-    expect(migrationDatabaseUrl({ ...build, DATABASE_URL: app })).toBe(app);
+  it('stops before connecting when the admin URL is missing in a production build', () => {
+    expect(() => migrationDatabaseUrl({ ...build, DATABASE_URL: app })).toThrow(
+      /MIGRATION_DATABASE_URL is required/
+    );
+  });
+
+  it('uses DATABASE_URL elsewhere, even when it is missing', () => {
+    expect(migrationDatabaseUrl({ DATABASE_URL: app })).toBe(app);
     expect(migrationDatabaseUrl({})).toBeUndefined();
   });
 });
