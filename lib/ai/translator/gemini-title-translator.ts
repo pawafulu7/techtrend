@@ -25,8 +25,22 @@ type TranslatorOptions = {
   maxOutputTokens: number;
 };
 
-export class GeminiTitleTranslator implements TitleTranslator {
+/**
+ * API の呼び出しそのものが失敗した（HTTP エラー・タイムアウト・回路の遮断）。
+ * 応答は返ったが訳文として使えない場合（原文のまま・空）とは分けて数えられるようにする。
+ * status は summarizeError がログに出す（例: `TitleTranslationRequestError status=404`）
+ */
+export class TitleTranslationRequestError extends Error {
+  readonly status?: number;
 
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = 'TitleTranslationRequestError';
+    this.status = status;
+  }
+}
+
+export class GeminiTitleTranslator implements TitleTranslator {
   constructor(
     private readonly transport: GeminiTransport,
     private readonly options: TranslatorOptions
@@ -64,8 +78,15 @@ export class GeminiTitleTranslator implements TitleTranslator {
       },
     });
 
-    if (result.status !== 'ok' || !result.payload) {
-      throw new Error(result.error?.message ?? 'Translation failed');
+    if (result.status !== 'ok') {
+      throw new TitleTranslationRequestError(
+        result.error?.message ?? 'Translation failed',
+        result.httpStatus
+      );
+    }
+
+    if (!result.payload) {
+      throw new Error('Translation failed');
     }
 
     const translated = this.extractTranslation(result.payload);
@@ -76,9 +97,13 @@ export class GeminiTitleTranslator implements TitleTranslator {
 
     // UNCHANGEDまたは原文がそのまま返された場合のハンドリング
     const normalizedTranslated = translated.trim();
-    if (normalizedTranslated.toLowerCase() === 'unchanged' ||
-        normalizedTranslated === '翻訳不要') {
-      throw new Error(`Translation API returned invalid result: ${normalizedTranslated}`);
+    if (
+      normalizedTranslated.toLowerCase() === 'unchanged' ||
+      normalizedTranslated === '翻訳不要'
+    ) {
+      throw new Error(
+        `Translation API returned invalid result: ${normalizedTranslated}`
+      );
     }
 
     // 原文がそのまま返された場合、日本語タイトルかチェック
@@ -88,7 +113,9 @@ export class GeminiTitleTranslator implements TitleTranslator {
         return null;
       }
       // English title returned unchanged - API error
-      throw new Error(`Translation API returned invalid result: ${normalizedTranslated}`);
+      throw new Error(
+        `Translation API returned invalid result: ${normalizedTranslated}`
+      );
     }
 
     return normalizedTranslated;
@@ -134,12 +161,14 @@ export class GeminiTitleTranslator implements TitleTranslator {
   }
 
   private extractTranslation(payload: Record<string, unknown>): string {
-    const candidates = payload.candidates as Array<Record<string, unknown>> | undefined;
+    const candidates = payload.candidates as
+      Array<Record<string, unknown>> | undefined;
     if (!candidates?.length) {
       throw new Error('No candidates in response');
     }
 
-    const content = candidates[0]?.content as Record<string, unknown> | undefined;
+    const content = candidates[0]?.content as
+      Record<string, unknown> | undefined;
     const parts = content?.parts as Array<Record<string, unknown>> | undefined;
     const raw = parts?.[0]?.text as string | undefined;
 

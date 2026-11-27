@@ -1,4 +1,7 @@
-import { GeminiTitleTranslator } from '../gemini-title-translator';
+import {
+  GeminiTitleTranslator,
+  TitleTranslationRequestError,
+} from '../gemini-title-translator';
 import { GeminiTransport } from '../../transport/gemini-transport.interface';
 
 describe('GeminiTitleTranslator', () => {
@@ -228,6 +231,53 @@ describe('GeminiTitleTranslator', () => {
           requestId: 'test-9',
         })
       ).rejects.toThrow('API Error');
+    });
+
+    it('API の呼び出しが失敗したら、HTTP の状態を持つ TitleTranslationRequestError を投げる', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'fatal_error',
+        httpStatus: 404,
+        error: new Error('HTTP 404: model is no longer available'),
+        latencyMs: 10,
+        headers: {},
+      });
+
+      const promise = translator.translateTitle({
+        title: 'Test Title',
+        requestId: 'test-10',
+      });
+
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationRequestError
+      );
+      await expect(promise).rejects.toMatchObject({
+        name: 'TitleTranslationRequestError',
+        status: 404,
+        message: 'HTTP 404: model is no longer available',
+      });
+    });
+
+    it('応答が返ったが原文のままのときは、API の呼び出しの失敗として扱わない', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: {
+          candidates: [{ content: { parts: [{ text: 'kitty 0.50.0' }] } }],
+        },
+        latencyMs: 10,
+        headers: {},
+      });
+
+      const promise = translator.translateTitle({
+        title: 'kitty 0.50.0',
+        requestId: 'test-11',
+      });
+
+      await expect(promise).rejects.toThrow(
+        'Translation API returned invalid result'
+      );
+      await expect(promise).rejects.not.toBeInstanceOf(
+        TitleTranslationRequestError
+      );
     });
   });
 });

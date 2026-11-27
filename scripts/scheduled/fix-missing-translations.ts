@@ -1,5 +1,6 @@
 import { createPrismaClient } from '@/lib/prisma/create-client';
 import { getAppDependencies } from '@/lib/di/bootstrap';
+import { TitleTranslationRequestError } from '@/lib/ai/translator/gemini-title-translator';
 import {
   isLikelyJapanese,
   isLikelyJapaneseBody,
@@ -55,6 +56,9 @@ async function fixMissingTranslations(options: FixOptions = {}) {
 
   let successCount = 0;
   let failureCount = 0;
+  // failureCount のうち、API の呼び出しそのものが失敗したもの（HTTP エラー・タイムアウトなど）。
+  // 残りは応答が返ったが訳文として使えなかったもの（製品名だけのタイトルを原文のまま返すなど）
+  let requestFailureCount = 0;
   let skipCount = 0;
 
   // 2. Batch processing
@@ -109,6 +113,9 @@ async function fixMissingTranslations(options: FixOptions = {}) {
 
         } catch (error) {
           failureCount++;
+          if (error instanceof TitleTranslationRequestError) {
+            requestFailureCount++;
+          }
           console.error(`  ERROR [${article.id}] ${summarizeError(error)}`);
         }
       })
@@ -123,9 +130,19 @@ async function fixMissingTranslations(options: FixOptions = {}) {
 
   console.error(`\n\n=== Fix Summary ===`);
   console.error(`  Success: ${successCount} articles`);
-  console.error(`  Failure: ${failureCount} articles`);
+  console.error(`  Failure: ${failureCount} articles (API request failed: ${requestFailureCount})`);
   console.error(`  Skipped: ${skipCount} articles`);
   console.error(`  Total: ${articles.length} articles\n`);
+
+  // API の呼び出しが 1 件も通らなかったときは、モデルの提供終了・API キーの不備・利用上限など、
+  // 次の実行でも直らない原因の可能性が高い。終了コードで失敗を返し、ワークフローの通知に載せる
+  // （以前は全件 404 でも成功で終わり、数か月気づけなかった）。
+  // 応答が返ったが訳文として使えなかった記事は毎回残りうるので、通知の条件には入れない
+  const apiReachedCount = successCount + (failureCount - requestFailureCount);
+  if (requestFailureCount > 0 && apiReachedCount === 0) {
+    console.error(`All ${requestFailureCount} translation API requests failed`);
+    process.exitCode = 1;
+  }
 }
 
 // CLI execution
