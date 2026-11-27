@@ -186,4 +186,71 @@ describe('generate-tags additive connect pattern', () => {
       expect(txArticleUpdate).not.toHaveBeenCalled();
     });
   });
+
+  describe('Gemini の呼び出しが 1 件も届かなかった回の判定', () => {
+    it('すべての呼び出しが HTTP エラーなら allGeminiCallsFailed を true にする', async () => {
+      (prisma.article.findMany as jest.Mock)
+        .mockResolvedValueOnce([makeArticleStub('article-3', [])])
+        .mockResolvedValueOnce([]);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        text: async () => '{"error":{"status":"NOT_FOUND"}}',
+      } as any);
+
+      const result = await generateTagsForArticles();
+
+      expect(result).toMatchObject({
+        generated: 0,
+        errors: 1,
+        allGeminiCallsFailed: true,
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('応答が返っていれば、保存で失敗しても allGeminiCallsFailed は false', async () => {
+      (prisma.article.findMany as jest.Mock)
+        .mockResolvedValueOnce([makeArticleStub('article-4', [])])
+        .mockResolvedValueOnce([]);
+      mockGeminiResponse('A, B');
+      (prisma.$transaction as jest.Mock).mockRejectedValueOnce(
+        new Error('db error')
+      );
+
+      const result = await generateTagsForArticles();
+
+      expect(result).toMatchObject({
+        errors: 1,
+        allGeminiCallsFailed: false,
+      });
+    });
+
+    it('依頼が安全性のフィルタで止められたら、理由をログに出して失敗に数える（呼び出しは届いている）', async () => {
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      (prisma.article.findMany as jest.Mock)
+        .mockResolvedValueOnce([makeArticleStub('article-5', [])])
+        .mockResolvedValueOnce([]);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          promptFeedback: { blockReason: 'PROHIBITED_CONTENT' },
+        }),
+        text: async () => '',
+      } as any);
+
+      const result = await generateTagsForArticles();
+
+      expect(result).toMatchObject({
+        generated: 0,
+        errors: 1,
+        allGeminiCallsFailed: false,
+      });
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('code=PROHIBITED_CONTENT')
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+  });
 });

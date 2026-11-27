@@ -41,6 +41,17 @@ export class TitleTranslationRequestError extends Error {
   }
 }
 
+/**
+ * 応答は返ったが、英語のタイトルが原文のまま（または UNCHANGED・翻訳不要）だった。
+ * 製品名と版だけのタイトル（例: "kitty 0.50.0"）のように訳しようがない場合に多い
+ */
+export class TitleTranslationUnchangedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TitleTranslationUnchangedError';
+  }
+}
+
 export class GeminiTitleTranslator implements TitleTranslator {
   constructor(
     private readonly transport: GeminiTransport,
@@ -103,7 +114,7 @@ export class GeminiTitleTranslator implements TitleTranslator {
       normalizedTranslated.toLowerCase() === 'unchanged' ||
       normalizedTranslated === '翻訳不要'
     ) {
-      throw new Error(
+      throw new TitleTranslationUnchangedError(
         `Translation API returned invalid result: ${normalizedTranslated}`
       );
     }
@@ -114,8 +125,8 @@ export class GeminiTitleTranslator implements TitleTranslator {
         // Japanese title detected - skip translation (normal behavior)
         return null;
       }
-      // English title returned unchanged - API error
-      throw new Error(
+      // 英語のタイトルが原文のまま返った（製品名と版だけなど、訳しようがないことが多い）
+      throw new TitleTranslationUnchangedError(
         `Translation API returned invalid result: ${normalizedTranslated}`
       );
     }

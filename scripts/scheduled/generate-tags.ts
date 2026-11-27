@@ -6,6 +6,7 @@ import { getOrCreateTags } from '@/lib/tags/tag-service';
 import { env } from '@/lib/config/env';
 import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { summarizeError } from '@/lib/utils/sanitize-error';
+import { GeminiCallTally } from '@/lib/ai/gemini-call-tally';
 
 type ArticleWithSourceAndTags = Article & {
   source: Source;
@@ -15,10 +16,16 @@ type ArticleWithSourceAndTags = Article & {
 interface GenerateResult {
   generated: number;
   errors: number;
+  /** Gemini の呼び出しが 1 件も届かずに失敗だけが出たか（lib/ai/gemini-call-tally.ts） */
+  allGeminiCallsFailed: boolean;
 }
 
 // タグ生成用の関数（要約生成から分離）
-async function generateTags(title: string, content: string): Promise<string[]> {
+async function generateTags(
+  title: string,
+  content: string,
+  tally: GeminiCallTally
+): Promise<string[]> {
   const apiKey = env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not set');
@@ -44,25 +51,32 @@ async function generateTags(title: string, content: string): Promise<string[]> {
   const timeoutId = setTimeout(() => controller.abort(), 30_000);
   let data: any;
   try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 200,
-        }
-      }),
-      signal: controller.signal,
+    // 応答が返ったか（HTTP エラー・タイムアウト・通信の失敗でないか）を数える
+    data = await tally.track(async () => {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 200,
+          },
+        }),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `API request failed: ${response.status} - ${errorText}`
+        );
+      }
+      return response.json();
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API request failed: ${response.status} - ${errorText}`);
-    }
-    data = await response.json();
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
@@ -72,13 +86,25 @@ async function generateTags(title: string, content: string): Promise<string[]> {
   } finally {
     clearTimeout(timeoutId);
   }
-  const responseText = data.candidates[0].content.parts[0].text.trim();
-  
+  // 依頼が安全性のフィルタで止められると、HTTP 200 で候補が 1 件も返らない
+  // （promptFeedback.blockReason。性犯罪の報道などで PROHIBITED_CONTENT になる）。
+  // 理由は決まった形の値なので code に入れ、公開されるログにも出す（summarizeError）
+  const candidate = data?.candidates?.[0];
+  const text = candidate?.content?.parts?.[0]?.text;
+  if (typeof text !== 'string') {
+    const reason = data?.promptFeedback?.blockReason ?? candidate?.finishReason;
+    throw Object.assign(new Error('Gemini returned no text'), {
+      code: typeof reason === 'string' ? reason : 'NO_TEXT',
+    });
+  }
+  const responseText = text.trim();
+
   // タグの抽出
   const tagLine = responseText.replace(/^タグ[:：]\s*/, '');
-  const tags = tagLine.split(/[,、，]/)
-    .map(tag => tag.trim())
-    .filter(tag => tag.length > 0 && tag.length <= 30);
+  const tags = tagLine
+    .split(/[,、，]/)
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0 && tag.length <= 30);
 
   return tags;
 }
@@ -89,91 +115,95 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
 
   try {
     // 1. タグがない記事を取得
-    const articlesWithoutTags = await prisma.article.findMany({
+    const articlesWithoutTags = (await prisma.article.findMany({
       where: {
         tags: {
-          none: {}
-        }
+          none: {},
+        },
       },
       include: { source: true, tags: true },
       orderBy: { publishedAt: 'desc' },
-      take: 25  // API負荷を考慮して25件に制限
-    }) as ArticleWithSourceAndTags[];
+      take: 25, // API負荷を考慮して25件に制限
+    })) as ArticleWithSourceAndTags[];
 
     // 2. 「article」タグのみの記事を取得
-    const articlesWithOnlyArticleTag = await prisma.article.findMany({
+    const articlesWithOnlyArticleTag = (await prisma.article.findMany({
       where: {
         tags: {
           every: { name: 'article' },
-          some: { name: 'article' }
-        }
+          some: { name: 'article' },
+        },
       },
       include: { source: true, tags: true },
       orderBy: { publishedAt: 'desc' },
-      take: 25
-    }) as ArticleWithSourceAndTags[];
+      take: 25,
+    })) as ArticleWithSourceAndTags[];
 
     // 「article」タグのみの記事をフィルタリング
     const singleArticleTagArticles = articlesWithOnlyArticleTag.filter(
-      article => article.tags.length === 1
+      (article) => article.tags.length === 1
     );
 
     // 対象記事を結合（重複除去）
-    const allArticles = [
-      ...articlesWithoutTags,
-      ...singleArticleTagArticles
-    ];
+    const allArticles = [...articlesWithoutTags, ...singleArticleTagArticles];
 
     const uniqueArticles = Array.from(
-      new Map(allArticles.map(a => [a.id, a])).values()
+      new Map(allArticles.map((a) => [a.id, a])).values()
     );
 
     if (uniqueArticles.length === 0) {
       console.error('✅ タグ生成が必要な記事はありません');
-      return { generated: 0, errors: 0 };
+      return { generated: 0, errors: 0, allGeminiCallsFailed: false };
     }
 
     console.error(`📊 処理対象:`);
     console.error(`   - タグなし: ${articlesWithoutTags.length}件`);
-    console.error(`   - 「article」タグのみ: ${singleArticleTagArticles.length}件`);
+    console.error(
+      `   - 「article」タグのみ: ${singleArticleTagArticles.length}件`
+    );
     console.error(`   - 合計: ${uniqueArticles.length}件`);
 
     let generatedCount = 0;
     let errorCount = 0;
+    const tally = new GeminiCallTally();
 
     // 記事ごとにタグを生成
     for (const article of uniqueArticles) {
       try {
         const content = article.content || article.summary || '';
-        
+
         // タグを生成
-        const tags = await generateTags(article.title, content);
-        
+        const tags = await generateTags(article.title, content, tally);
+
         if (tags.length > 0) {
           // 更新直前に現在のタグを読み、追加分のみconnect（staleスナップショット書き戻し防止）
           // getOrCreateTagsをtx内に移動してタグupsertと記事更新をatomicに実行
           const connectedCount = await prisma.$transaction(async (tx) => {
             // AI生成タグのみ正規化（既存タグはDB上の名前を維持 — 'article'等の特殊タグ保護）
-            const newTagRecords = await getOrCreateTags(tags, { normalize: true, maxTags: 30 }, tx);
+            const newTagRecords = await getOrCreateTags(
+              tags,
+              { normalize: true, maxTags: 30 },
+              tx
+            );
 
             const current = await tx.article.findUniqueOrThrow({
               where: { id: article.id },
-              select: { tags: { select: { id: true } } }
+              select: { tags: { select: { id: true } } },
             });
 
-            const currentTagIdSet = new Set(current.tags.map(t => t.id));
+            const currentTagIdSet = new Set(current.tags.map((t) => t.id));
             const tagsToConnect = newTagRecords
-              .filter(t => !currentTagIdSet.has(t.id))
-              .map(t => ({ id: t.id }));
+              .filter((t) => !currentTagIdSet.has(t.id))
+              .map((t) => ({ id: t.id }));
 
             if (tagsToConnect.length > 0) {
               await tx.article.update({
                 where: { id: article.id },
                 data: {
                   tags: {
-                    connect: tagsToConnect
-                  }
-                }
+                    connect: tagsToConnect,
+                  },
+                },
               });
             }
 
@@ -181,19 +211,22 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
           });
 
           if (connectedCount > 0) {
-            console.error(`✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`);
+            console.error(
+              `✓ [${article.source.name}] ${article.title.substring(0, 40)}... (タグ: ${tags.join(', ')})`
+            );
             generatedCount++;
           }
         }
-        
+
         // APIレート制限対策
-        await sleep(2000);  // 2秒待機
-        
+        await sleep(2000); // 2秒待機
       } catch (error) {
-        console.error(`✗ [${article.source.name}] ${article.title.substring(0, 40)}...`);
+        console.error(
+          `✗ [${article.source.name}] ${article.title.substring(0, 40)}...`
+        );
         console.error(`  エラー: ${summarizeError(error)}`);
         errorCount++;
-        await sleep(2000);  // エラー連続時のAPI連打防止
+        await sleep(2000); // エラー連続時のAPI連打防止
       }
     }
 
@@ -202,6 +235,7 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
     console.error(`   成功: ${generatedCount}件`);
     console.error(`   エラー: ${errorCount}件`);
     console.error(`   処理時間: ${duration}秒`);
+    console.error(`   ${tally.summary()}`);
 
     // タグが生成された場合はキャッシュを無効化
     if (generatedCount > 0) {
@@ -209,8 +243,11 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
       await cacheInvalidator.onBulkImport();
     }
 
-    return { generated: generatedCount, errors: errorCount };
-
+    return {
+      generated: generatedCount,
+      errors: errorCount,
+      allGeminiCallsFailed: tally.allFailed,
+    };
   } catch (error) {
     console.error('❌ タグ生成エラー:', summarizeError(error, { stack: true }));
     throw error;
@@ -220,13 +257,20 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
 }
 
 async function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // 直接実行された場合
 if (require.main === module) {
   generateTagsForArticles()
-    .then(() => process.exit(0))
+    .then((result) => {
+      // Gemini の呼び出しが 1 件も届かなかった回は失敗で終え、ワークフローの通知に載せる
+      if (result.allGeminiCallsFailed) {
+        console.error('❌ Gemini の呼び出しがすべて失敗しました');
+        process.exit(1);
+      }
+      process.exit(0);
+    })
     .catch((error) => {
       console.error(summarizeError(error, { stack: true }));
       process.exit(1);

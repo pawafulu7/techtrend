@@ -1,6 +1,7 @@
 import {
   GeminiTitleTranslator,
   TitleTranslationRequestError,
+  TitleTranslationUnchangedError,
 } from '../gemini-title-translator';
 import { GeminiTransport } from '../../transport/gemini-transport.interface';
 
@@ -159,12 +160,16 @@ describe('GeminiTitleTranslator', () => {
         },
       });
 
-      await expect(
-        translator.translateTitle({
-          title: 'Test Title',
-          requestId: 'test-6',
-        })
-      ).rejects.toThrow('Translation API returned invalid result');
+      const promise = translator.translateTitle({
+        title: 'Test Title',
+        requestId: 'test-6',
+      });
+      await expect(promise).rejects.toThrow(
+        'Translation API returned invalid result'
+      );
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationUnchangedError
+      );
     });
 
     it('should return null when API returns original Japanese title', async () => {
@@ -208,12 +213,16 @@ describe('GeminiTitleTranslator', () => {
         },
       });
 
-      await expect(
-        translator.translateTitle({
-          title: englishTitle,
-          requestId: 'test-8',
-        })
-      ).rejects.toThrow('Translation API returned invalid result');
+      const promise = translator.translateTitle({
+        title: englishTitle,
+        requestId: 'test-8',
+      });
+      await expect(promise).rejects.toThrow(
+        'Translation API returned invalid result'
+      );
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationUnchangedError
+      );
     });
 
     it('タイムアウトなど HTTP の状態が無い失敗では、status が無く cause に元の例外を持つ', async () => {

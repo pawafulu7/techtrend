@@ -9,6 +9,7 @@ import {
   isCompleteFinish,
 } from '@/lib/ai/gemini-sdk';
 import { summarizeError } from '@/lib/utils/sanitize-error';
+import { GeminiCallTally } from '@/lib/ai/gemini-call-tally';
 
 const FETCH_TIMEOUT_MS = 30_000;
 const GEMINI_TIMEOUT_MS = 60_000;
@@ -61,7 +62,8 @@ interface TranslatedEntry {
  */
 async function translateEntries(
   entries: string[],
-  apiKey: string
+  apiKey: string,
+  tally: GeminiCallTally
 ): Promise<Map<string, TranslatedEntry>> {
   const client = createGeminiClient(apiKey);
   const translations = new Map<string, TranslatedEntry>();
@@ -84,14 +86,16 @@ ${numberedEntries}`;
     const MAX_ATTEMPTS = 3;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
-        const { text: responseText, finishReason } =
-          await generateGeminiTextResult(client, {
+        // 応答が返ったか（HTTP エラー・タイムアウト・通信の失敗でないか）を数える
+        const { text: responseText, finishReason } = await tally.track(() =>
+          generateGeminiTextResult(client, {
             model: GEMINI_MODEL,
             prompt,
             maxOutputTokens: 8192,
             temperature: 0.3,
             timeoutMs: GEMINI_TIMEOUT_MS,
-          });
+          })
+        );
         // 上限などで止まると最後の行の訳が途中で切れるが、番号はそろって成功に見える。
         // 保存した訳は次回から使い回されるので、試し直しに回す
         if (!isCompleteFinish(finishReason)) {
@@ -156,8 +160,10 @@ ${numberedEntries}`;
   return translations;
 }
 
-async function collectChangelog(): Promise<void> {
+/** 戻り値: Gemini の呼び出しが 1 件も届かずに失敗だけが出たか（lib/ai/gemini-call-tally.ts） */
+async function collectChangelog(): Promise<boolean> {
   const startTime = Date.now();
+  const tally = new GeminiCallTally();
   let totalVersionsUpserted = 0;
   let totalEntries = 0;
   let totalTranslated = 0;
@@ -242,7 +248,7 @@ async function collectChangelog(): Promise<void> {
 
         if (needsTranslation.length > 0) {
           console.log(`[INFO] Translating ${needsTranslation.length} new entries...`);
-          translationMap = await translateEntries(needsTranslation, geminiApiKey!);
+          translationMap = await translateEntries(needsTranslation, geminiApiKey!, tally);
           for (const key of translationMap.keys()) {
             newlyTranslatedKeys.add(key);
           }
@@ -329,6 +335,8 @@ async function collectChangelog(): Promise<void> {
 
     const duration = Math.round((Date.now() - startTime) / 1000);
     console.log(`[INFO] Changelog collection completed in ${duration}s: ${totalVersionsUpserted} versions, ${totalEntries} entries, ${totalTranslated} translated`);
+    console.log(`[INFO] ${tally.summary()}`);
+    return tally.allFailed;
   } finally {
     await prisma.$disconnect();
   }
@@ -336,7 +344,13 @@ async function collectChangelog(): Promise<void> {
 
 // Self-executing main
 collectChangelog()
-  .then(() => {
+  .then((allGeminiCallsFailed) => {
+    // 訳せなかった項目も英語のまま保存済み。Gemini の呼び出しが 1 件も届かなかった回は
+    // 失敗で終え、ワークフローの通知に載せる
+    if (allGeminiCallsFailed) {
+      console.error('[ERROR] All Gemini translation requests failed');
+      process.exit(1);
+    }
     process.exit(0);
   })
   .catch((error) => {

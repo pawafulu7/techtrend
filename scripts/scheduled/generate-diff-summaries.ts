@@ -152,7 +152,12 @@ async function main() {
         }
       }
 
-      if (results.failed > 0) {
+      if (results.total > 0 && results.successful === 0) {
+        // 1 カテゴリーも作れなかった回は、モデルの提供終了・API キーの不備などを知らせるため失敗にする
+        // （finally の切断を飛ばさないよう process.exit ではなく exitCode にする）
+        console.error(`\nAll ${results.total} categories failed.`);
+        process.exitCode = 1;
+      } else if (results.failed > 0) {
         console.error(`\nWarning: ${results.failed} categories failed.`);
         // Don't exit with error code for partial failures
       }
