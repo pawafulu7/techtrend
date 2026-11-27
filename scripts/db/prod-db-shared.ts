@@ -29,6 +29,7 @@ export const READONLY_CANDIDATE_REASONS = [
   'role_privileged',
   'role_is_current_user',
   'role_not_only_in_readonly_group',
+  'readonly_group_unsafe',
   'role_has_direct_grants',
   'role_owns_tables',
   'role_can_write',

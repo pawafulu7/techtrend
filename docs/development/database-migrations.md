@@ -24,9 +24,12 @@ npx prisma migrate dev
 
 ```bash
 # 1. prisma/schema.prisma を編集する
-# 2. マイグレーションを作る
-npx prisma migrate dev --name add_user_profile_fields
-# 3. prisma/ を commit する
+# 2. マイグレーションを作る（--create-only で、まだ適用しない）
+npx prisma migrate dev --create-only --name add_user_profile_fields
+# 3. 表を足したなら、下の GRANT などを、できた migration.sql に書き足す
+# 4. 開発の DB に適用する
+npx prisma migrate dev
+# 5. prisma/ を commit する
 ```
 
 ### 本番に適用する
@@ -44,6 +47,8 @@ GRANT SELECT ON TABLE "<表>" TO techtrend_readonly;
 ```
 
 表を `personal` に移すときは、一覧を直し、`REVOKE ALL ON TABLE "<表>" FROM techtrend_readonly;` のマイグレーションを書く。どちらかを忘れると、テスト（`__tests__/scripts/db/prod-table-access.db.test.ts`）が落ちる。詳しくは [deployment.md](../operations/deployment.md) の「DB のロール」。
+
+`migrate dev` と `npm run db:check-schema` は、マイグレーションを空のシャドウ DB に流し直して照合する。シャドウ DB には Prisma がマイグレーションの記録の表（`_prisma_migrations`）を作らないので、`prisma.config.ts` と `prisma/schema-check.config.ts` の `initShadowDb` で同じ形の表を先に作っている（`scripts/db/shadow-db-init.ts`。その表の列に GRANT するマイグレーションがあるため）。ほかにも、マイグレーションの中で作らない表を参照するなら、ここに足す。
 
 ## うまくいかないとき
 

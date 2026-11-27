@@ -79,6 +79,8 @@ describeTestDb('prod-table-access.json and techtrend_readonly against the migrat
       canReadMigrationLogs: false,
       canCreateObjects: false,
       unexpectedReadable: 0,
+      unreadableContentSequences: 0,
+      unexpectedReadableSequences: 0,
       writable: 0,
     });
     expect(readonlyPrivilegesMatch(inspected, true)).toBe(true);
@@ -101,6 +103,30 @@ describeTestDb('prod-table-access.json and techtrend_readonly against the migrat
         await admin.query(grant);
         const inspected = await inspectReadonlyPrivileges(admin, READONLY_GROUP_ROLE, access);
         expect({ grant, ok: readonlyPrivilegesMatch(inspected, true) }).toEqual({ grant, ok: false });
+      });
+    }
+  });
+
+  it('requires the sequences of content tables to be readable, and no other sequence', async () => {
+    const group = admin.escapeIdentifier(READONLY_GROUP_ROLE);
+    // content の表にシーケンスを足したのに、マイグレーションで GRANT SELECT ON SEQUENCE を書き忘れたもの
+    await inRolledBackTransaction(admin, async () => {
+      await admin.query(`CREATE SEQUENCE public."tmp_content_seq" OWNED BY public."Tag"."id"`);
+      const missing = await inspectReadonlyPrivileges(admin, READONLY_GROUP_ROLE, access);
+      expect(missing).toMatchObject({ unreadableContentSequences: 1, unexpectedReadableSequences: 0 });
+      expect(readonlyPrivilegesMatch(missing, true)).toBe(false);
+      await admin.query(`GRANT SELECT ON SEQUENCE public."tmp_content_seq" TO ${group}`);
+      expect(
+        readonlyPrivilegesMatch(await inspectReadonlyPrivileges(admin, READONLY_GROUP_ROLE, access), true)
+      ).toBe(true);
+    });
+    for (const owned of [' OWNED BY public."User"."id"', '']) {
+      await inRolledBackTransaction(admin, async () => {
+        await admin.query(`CREATE SEQUENCE public."tmp_other_seq"${owned}`);
+        await admin.query(`GRANT SELECT ON SEQUENCE public."tmp_other_seq" TO ${group}`);
+        const extra = await inspectReadonlyPrivileges(admin, READONLY_GROUP_ROLE, access);
+        expect({ owned, ...extra }).toMatchObject({ owned, unexpectedReadableSequences: 1 });
+        expect(readonlyPrivilegesMatch(extra, true)).toBe(false);
       });
     }
   });
@@ -312,6 +338,29 @@ describeTestDb('createProdRoles (real test DB)', () => {
         await expect(assertReadonlyCandidate(admin, name(kind))).rejects.toMatchObject({ reason });
       }
     });
+    // techtrend_readonly 自身が特権を持つ・ほかのロールに属すると、メンバーが SET ROLE で辿れる（権限を数えても現れない）
+    const group = admin.escapeIdentifier(READONLY_GROUP_ROLE);
+    const { rows: version } = await admin.query<{ pg16: boolean }>(
+      `SELECT current_setting('server_version_num')::int >= 160000 AS pg16`
+    );
+    // 属しても権限を受け継がない形（PostgreSQL 16 からは GRANT の INHERIT FALSE、15 以前はロールの NOINHERIT）
+    const memberWithoutInherit = version[0]?.pg16
+      ? [`GRANT pg_read_all_data TO ${group} WITH INHERIT FALSE, SET TRUE`]
+      : [`ALTER ROLE ${group} NOINHERIT`, `GRANT pg_read_all_data TO ${group}`];
+    for (const changes of [
+      memberWithoutInherit,
+      [`ALTER ROLE ${group} CREATEDB`],
+      [`ALTER ROLE ${group} LOGIN`],
+    ]) {
+      await inRolledBackTransaction(admin, async () => {
+        for (const sql of changes) await admin.query(sql);
+        await expect(assertReadonlyCandidate(admin, readonlyRole)).rejects.toMatchObject({
+          reason: 'readonly_group_unsafe',
+        });
+        const privileges = await inspectReadonlyPrivileges(admin, readonlyRole, access);
+        expect({ changes, ok: readonlyPrivilegesMatch(privileges, true) }).toEqual({ changes, ok: true });
+      });
+    }
   });
 
   it('refuses to create roles unless connected as the database owner, or when a role exists', async () => {

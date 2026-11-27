@@ -51,6 +51,8 @@ async function main(): Promise<void> {
     const privileges = await inspectReadonlyPrivileges(client, me[0].name, loadTableAccess());
     console.log(`readonly_unexpected_readable_tables=${privileges.unexpectedReadable}`);
     console.log(`readonly_unreadable_content_tables=${privileges.unreadableContent}`);
+    console.log(`readonly_unreadable_content_sequences=${privileges.unreadableContentSequences}`);
+    console.log(`readonly_unexpected_readable_sequences=${privileges.unexpectedReadableSequences}`);
     console.log(`readonly_writable_tables=${privileges.writable}`);
     let candidateReason = 'none';
     await assertReadonlyCandidate(client, me[0].name, { self: true }).catch((error: unknown) => {

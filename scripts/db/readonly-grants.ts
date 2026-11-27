@@ -29,7 +29,10 @@ function isCandidateReason(value: unknown): value is CandidateReason {
 /**
  * 手元用のログインのロールにしてよいかを確かめる。ログインでき、特権を持たず、属するロールが techtrend_readonly だけで
  * （ほかのロールに属すると、そこから読める表が増えるため）、public の表・列・スキーマへの権限を直接持たず（マイグレーション
- * での付け外しが届かないため。以前の版のスクリプトで作ったロールが当たる）、何も所有せず、書き込めないこと
+ * での付け外しが届かないため。以前の版のスクリプトで作ったロールが当たる）、何も所有せず、書き込めないこと。
+ * techtrend_readonly 自身も、ログインできず、特権を持たず、ほかのロールに属さないこと（メンバーは SET ROLE で
+ * techtrend_readonly になれ、そこから属するロールにも SET ROLE できる。INHERIT FALSE で属していると、権限を数えても
+ * 現れない）
  */
 export async function assertReadonlyCandidate(
   client: RoleQueryable,
@@ -50,6 +53,12 @@ export async function assertReadonlyCandidate(
          SELECT 1 FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.roleid
          WHERE m.member = r.oid AND g.rolname = $2
        ) THEN 'role_not_only_in_readonly_group'
+       WHEN EXISTS (
+         SELECT 1 FROM pg_roles g WHERE g.rolname = $2
+           AND (g.rolcanlogin OR g.rolsuper OR g.rolcreaterole OR g.rolcreatedb OR g.rolbypassrls OR g.rolreplication)
+       ) OR EXISTS (
+         SELECT 1 FROM pg_auth_members m JOIN pg_roles g ON g.oid = m.member WHERE g.rolname = $2
+       ) THEN 'readonly_group_unsafe'
        -- 表を所有すると、所有者の権限も表の ACL に直接載るので、所有を先に見る
        WHEN EXISTS (SELECT 1 FROM (${PUBLIC_RELATIONS}) t WHERE t.relowner = r.oid) THEN 'role_owns_tables'
        WHEN EXISTS (
@@ -83,6 +92,10 @@ export interface ReadonlyPrivileges {
   unreadableContent: number;
   /** content 以外（personal・分類していない表・マイグレーションの記録の表全体）で読めるもの */
   unexpectedReadable: number;
+  /** content の表が持つシーケンスのうち、読めないもの（本番からの同期の pg_dump がシーケンスの値を読むため） */
+  unreadableContentSequences: number;
+  /** content の表のもの以外（personal・分類していない表のもの、どの表のものでもないもの）で読めるシーケンス */
+  unexpectedReadableSequences: number;
   /** 変更できる（書き込み・TRUNCATE など）表とシーケンスの数 */
   writable: number;
   /** public スキーマか DB に、永続の表やスキーマを作れる（一時表はセッションの中だけで消え、ほかの表を読めないので見ない） */
@@ -130,6 +143,17 @@ export async function inspectReadonlyPrivileges(
             ) AS writable_sequences`,
     [role]
   );
+  // シーケンスと、それを持つ表（serial・identity の列のシーケンスは、表に依存する。持たないものは owner が NULL）
+  const { rows: sequences } = await client.query<{ owner: string | null; can_select: boolean }>(
+    `SELECT o.relname AS owner,
+            CASE WHEN s.relkind = 'S' THEN has_sequence_privilege($1::name, s.oid, 'SELECT') ELSE false END AS can_select
+     FROM pg_class s JOIN pg_namespace n ON n.oid = s.relnamespace
+     LEFT JOIN pg_depend d ON d.classid = 'pg_class'::regclass AND d.objid = s.oid
+       AND d.refclassid = 'pg_class'::regclass AND d.deptype IN ('a', 'i')
+     LEFT JOIN pg_class o ON o.oid = d.refobjid
+     WHERE n.nspname = 'public' AND s.relkind = 'S'`,
+    [role]
+  );
   let migrationColumns = { all_columns: false, logs: false };
   if (rows.some((r) => r.relname === '_prisma_migrations')) {
     const { rows: cols } = await client.query<{ all_columns: boolean; logs: boolean }>(
@@ -141,6 +165,7 @@ export async function inspectReadonlyPrivileges(
     migrationColumns = cols[0] ?? migrationColumns;
   }
   const content = new Set(access.content);
+  const contentSequence = (owner: string | null) => owner !== null && content.has(owner);
   return {
     readableContent: rows.filter((r) => content.has(r.relname) && r.can_select).length,
     unreadableContent: rows.filter((r) => content.has(r.relname) && !r.can_select).length,
@@ -150,6 +175,8 @@ export async function inspectReadonlyPrivileges(
         !content.has(r.relname) &&
         (r.relname === '_prisma_migrations' ? r.can_select : r.can_select_any_column)
     ).length,
+    unreadableContentSequences: sequences.filter((s) => contentSequence(s.owner) && !s.can_select).length,
+    unexpectedReadableSequences: sequences.filter((s) => !contentSequence(s.owner) && s.can_select).length,
     writable: rows.filter((r) => r.can_change).length + (other[0]?.writable_sequences ?? 0),
     canCreateObjects: other[0]?.can_create !== false,
     canReadMigrationColumns: migrationColumns.all_columns,
@@ -157,7 +184,10 @@ export async function inspectReadonlyPrivileges(
   };
 }
 
-/** 一覧どおりの権限か（content はすべて読め、それ以外は読めず、どれも書けず、何も作れず、マイグレーションの記録は状態の列だけ読める） */
+/**
+ * 一覧どおりの権限か（content の表とそのシーケンスはすべて読め、それ以外は読めず、どれも書けず、何も作れず、
+ * マイグレーションの記録は状態の列だけ読める）
+ */
 export function readonlyPrivilegesMatch(
   p: ReadonlyPrivileges,
   hasMigrationsTable: boolean
@@ -165,6 +195,8 @@ export function readonlyPrivilegesMatch(
   return (
     p.unreadableContent === 0 &&
     p.unexpectedReadable === 0 &&
+    p.unreadableContentSequences === 0 &&
+    p.unexpectedReadableSequences === 0 &&
     p.writable === 0 &&
     !p.canCreateObjects &&
     !p.canReadMigrationLogs &&

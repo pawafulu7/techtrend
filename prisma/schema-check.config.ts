@@ -3,6 +3,7 @@ import {
   checkShadowUrl,
   validateCheckTarget,
 } from '../lib/database/schema-integrity';
+import { SHADOW_DB_INIT_SQL } from '../scripts/db/shadow-db-init';
 
 // Only check-schema's child process supplies this generated URL. Normal migration config is unchanged.
 const target = validateCheckTarget(
@@ -20,7 +21,10 @@ if (
 }
 
 export default defineConfig({
+  // initShadowDb を使うのに要る。外部の表（tables.external）は登録しないので、ほかの動きは変わらない
+  experimental: { externalTables: true },
   schema: 'schema.prisma',
-  migrations: { path: 'migrations' },
+  // migrate diff --from-migrations のシャドウ DB に、マイグレーションの記録の表を先に作る（scripts/db/shadow-db-init.ts）
+  migrations: { path: 'migrations', initShadowDb: SHADOW_DB_INIT_SQL },
   datasource: { url: target.toString(), shadowDatabaseUrl: shadow.toString() },
 });

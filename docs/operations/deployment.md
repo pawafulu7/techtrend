@@ -14,7 +14,7 @@ Vercel のビルドコマンドは `npm run vercel-build`（Settings → General
 
 マイグレーションは管理者のロール（`MIGRATION_DATABASE_URL`）で流し、アプリは表の読み書きだけのロール（`DATABASE_URL`）で動く。`prisma.config.ts` が、`USE_MIGRATION_DATABASE_URL=1` を付けた本番のビルドの `prisma migrate deploy` でだけ `MIGRATION_DATABASE_URL` を使う（`scripts/db/migration-database-url.ts`。無ければ DB に繋ぐ前に止まる）。`MIGRATION_DATABASE_URL` は、Neon の接続プール（`-pooler`）を通さない直接の接続にする（Prisma のマイグレーションはセッション単位の advisory lock で排他するため）。
 
-1. `npx prisma migrate dev --name <変更内容>` でマイグレーションを作り、`prisma/migrations/` を commit する。表を足したら `scripts/db/prod-table-access.json` にも入れ、`content` の表ならマイグレーションに手元用の GRANT を書く（「DB のロール」の節）
+1. `npx prisma migrate dev --create-only --name <変更内容>` でマイグレーションを作る（`--create-only` を付けないと、GRANT を書き足す前に開発の DB に適用される）。表を足したら `scripts/db/prod-table-access.json` にも入れ、`content` の表ならできた `migration.sql` に手元用の GRANT を書き足す（「DB のロール」の節）。`npx prisma migrate dev` で開発の DB に適用してから、`prisma/migrations/` を commit する
 2. PR を main に merge する
 3. Vercel のビルドで適用される（デプロイのログの Building で確かめられる）
 

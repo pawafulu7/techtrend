@@ -87,6 +87,8 @@ describe('readonlyPrivilegesMatch', () => {
     readableContent: 20,
     unreadableContent: 0,
     unexpectedReadable: 0,
+    unreadableContentSequences: 0,
+    unexpectedReadableSequences: 0,
     writable: 0,
     canCreateObjects: false,
     canReadMigrationColumns: true,
@@ -97,8 +99,10 @@ describe('readonlyPrivilegesMatch', () => {
     expect(readonlyPrivilegesMatch(ok, true)).toBe(true);
   });
 
-  it('rejects any extra read, any write, creating objects, an unreadable content table, or wrong migration columns', () => {
+  it('rejects any extra read, any write, creating objects, an unreadable content table or sequence, or wrong migration columns', () => {
     expect(readonlyPrivilegesMatch({ ...ok, unexpectedReadable: 1 }, true)).toBe(false);
+    expect(readonlyPrivilegesMatch({ ...ok, unreadableContentSequences: 1 }, true)).toBe(false);
+    expect(readonlyPrivilegesMatch({ ...ok, unexpectedReadableSequences: 1 }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, writable: 1 }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, canCreateObjects: true }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, unreadableContent: 1 }, true)).toBe(false);
