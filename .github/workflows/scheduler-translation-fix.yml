@@ -19,7 +19,9 @@ jobs:
   translation-fix:
     if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # 30 minutes max (historical worst case: 1 minute)
+    # 10 件ごとに 60 秒待つので、100 件余りで 15 分ほどかかる。API が遅い日や、障害の後に
+    # 対象が溜まった回でも打ち切られないよう 60 分にする（打ち切られると集計と終了コードが出ない）
+    timeout-minutes: 60
     permissions:
       contents: read
     steps:

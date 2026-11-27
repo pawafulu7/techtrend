@@ -3,7 +3,7 @@
  */
 import type { GeminiCallTally } from '../gemini-call-tally';
 import {
-  TitleTranslationRequestError,
+  TitleTranslationInvalidResponseError,
   TitleTranslationUnchangedError,
   type TitleTranslator,
 } from './gemini-title-translator';
@@ -31,17 +31,27 @@ async function attempt(
     const result = await translator.translateTitle(input);
     // null は API を呼ばずに決まることがある（日本語の記事など）ので、届いた数に入れない
     if (result === null) return { kind: 'not_needed' };
-    tally.reached++;
-    return { kind: 'translated', text: result };
-  } catch (error) {
-    if (error instanceof TitleTranslationRequestError) {
-      tally.failed++;
-      return { kind: 'failed', error };
+    tally.recordReached();
+    // 空の訳を保存すると "translatedTitle" IS NULL から外れ、二度と補完されないので失敗にする
+    if (result.trim() === '') {
+      return {
+        kind: 'failed',
+        error: new TitleTranslationInvalidResponseError('Empty translation'),
+      };
     }
-    // 応答は返ったが使えなかった
-    tally.reached++;
+    return { kind: 'translated', text: result.trim() };
+  } catch (error) {
     if (error instanceof TitleTranslationUnchangedError) {
+      tally.recordReached();
       return { kind: 'unchanged' };
+    }
+    // 応答は返ったが使えなかったものだけを「届いた」に数える。HTTP エラー・タイムアウト
+    // （TitleTranslationRequestError）と、正体の分からない例外は「届かなかった」に数え、
+    // 全件失敗を見逃さない側に倒す
+    if (error instanceof TitleTranslationInvalidResponseError) {
+      tally.recordReached();
+    } else {
+      tally.recordFailed();
     }
     return { kind: 'failed', error };
   }

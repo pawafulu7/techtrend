@@ -154,6 +154,8 @@ describe('GeminiTransportImpl', () => {
 
       expect(result.status).toBe('retryable_error');
       expect(global.fetch).toHaveBeenCalledTimes(4);
+      // 本文が JSON でなければ、状態名も付けずに状態コードだけにする
+      expect(result.error?.message).toBe('HTTP 500');
     }, 15000);
   });
 
@@ -406,6 +408,8 @@ describe('GeminiTransportImpl', () => {
 
       expect(result.status).toBe('fatal_error');
       expect(result.httpStatus).toBe(404);
+      // message には本文を入れず、状態コードと状態名だけにする
+      expect(result.error?.message).toBe('HTTP 404 NOT_FOUND');
       expect(errorSpy).toHaveBeenCalledWith(
         expect.objectContaining({ httpStatus: 404, apiStatus: 'NOT_FOUND' }),
         'Transport HTTP error'

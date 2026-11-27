@@ -1,5 +1,6 @@
 import {
   GeminiTitleTranslator,
+  TitleTranslationInvalidResponseError,
   TitleTranslationRequestError,
   TitleTranslationUnchangedError,
 } from '../gemini-title-translator';
@@ -138,12 +139,82 @@ describe('GeminiTitleTranslator', () => {
         },
       });
 
+      const promise = translator.translateTitle({
+        title: 'Test Title',
+        requestId: 'test-5',
+      });
+      await expect(promise).rejects.toThrow(
+        'Translation API returned empty result'
+      );
+      // 応答は返っているので、API に届かなかった失敗とは別の型にする
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationInvalidResponseError
+      );
+    });
+
+    it('安全性のフィルタで候補が返らないときは、応答不良（TitleTranslationInvalidResponseError）にする', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: { promptFeedback: { blockReason: 'PROHIBITED_CONTENT' } },
+        latencyMs: 10,
+        headers: {},
+      });
+
+      await expect(
+        translator.translateTitle({ title: 'Test Title', requestId: 'test-5b' })
+      ).rejects.toBeInstanceOf(TitleTranslationInvalidResponseError);
+    });
+
+    it('本文が文字列でないときも、応答不良にする', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: { candidates: [{ content: { parts: [{ text: 42 }] } }] },
+        latencyMs: 10,
+        headers: {},
+      });
+
+      await expect(
+        translator.translateTitle({ title: 'Test Title', requestId: 'test-5c' })
+      ).rejects.toBeInstanceOf(TitleTranslationInvalidResponseError);
+    });
+
+    it.each([
+      ['「Colorfigures」', 'Colorfigures'],
+      ['"kitty 0.50.0"', 'kitty 0.50.0'],
+      ['darktable', 'Darktable'],
+      ['StarCraft: Ashfall', 'Starcraft: Ashfall'],
+    ])(
+      '原文を引用符・かぎ括弧で囲んだり大文字小文字だけを変えたりした応答（%s）も、原文のままとみなす',
+      async (returned, title) => {
+        mockTransport.invoke.mockResolvedValue({
+          status: 'ok',
+          payload: { candidates: [{ content: { parts: [{ text: returned }] } }] },
+          latencyMs: 10,
+          headers: {},
+        });
+
+        await expect(
+          translator.translateTitle({ title, requestId: 'test-5d' })
+        ).rejects.toBeInstanceOf(TitleTranslationUnchangedError);
+      }
+    );
+
+    it('原文を含んでいても、訳した部分があれば訳文として返す', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: {
+          candidates: [{ content: { parts: [{ text: 'kitty 0.50.0 をリリース' }] } }],
+        },
+        latencyMs: 10,
+        headers: {},
+      });
+
       await expect(
         translator.translateTitle({
-          title: 'Test Title',
-          requestId: 'test-5',
+          title: 'kitty 0.50.0 released',
+          requestId: 'test-5e',
         })
-      ).rejects.toThrow('Translation API returned empty result');
+      ).resolves.toBe('kitty 0.50.0 をリリース');
     });
 
     it('should throw error when API returns UNCHANGED', async () => {

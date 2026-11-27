@@ -726,6 +726,8 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
       }
     }
 
+    // 要約が 1 件も作れなかった回の失敗（ワークフローの通知に載せる）
+    let summaryFailure: string | null = null;
     if (newArticleIds.length > 0) {
       console.error('\n[INFO] 要約生成を自動実行します...');
       try {
@@ -733,6 +735,19 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
         const { generateSummaries } = await import('./generate-summaries');
         const result = await generateSummaries({ articleIds: newArticleIds });
         console.error(`[INFO] 要約生成完了: ${result.generated}件の要約を生成`);
+
+        // 要約が 1 件も作れずに失敗だけが出た回は、モデルの提供終了・API キーの不備などを知らせる。
+        // 件数が少ない回は一時的な失敗のこともあるので警告にとどめる（manage-summaries.ts と同じしきい値）
+        const processed = result.generated + result.errors;
+        if (result.generated === 0 && result.errors > 0) {
+          if (processed >= env.MIN_PROCESSED_FOR_FAILURE) {
+            summaryFailure = `要約生成がすべて失敗しました（${result.errors}件）`;
+          } else {
+            console.error(
+              `[WARN] 要約生成がすべて失敗しました（${result.errors}件。しきい値 ${env.MIN_PROCESSED_FOR_FAILURE} 件未満なので失敗にしない）`
+            );
+          }
+        }
 
         // 要約生成後に再度キャッシュを無効化
         // excludeUnprocessed=trueクエリで要約生成済み記事が即座に表示されるようにする
@@ -748,7 +763,10 @@ async function collectFeeds(sourceTypes?: string[]): Promise<CollectResult> {
       }
     }
 
-    const failures = describeCollectFailures(unregisteredSources, formatErrorSourceNames);
+    const failures = [
+      ...describeCollectFailures(unregisteredSources, formatErrorSourceNames),
+      ...(summaryFailure ? [summaryFailure] : []),
+    ];
     failures.forEach((message) => console.error(`[ERROR] ${message}`));
 
     return {
@@ -786,7 +804,8 @@ if (require.main === module) {
   collectFeeds(sourceTypes)
     .then((result) => {
       collectFeedsLock.release();
-      // DB に無いソース名・形式の変わったソースは、ワークフローの失敗として通知する
+      // DB に無いソース名・形式の変わったソースと、要約が 1 件も作れなかった回は、
+      // ワークフローの失敗として通知する
       process.exit(result.failures.length > 0 ? 1 : 0);
     })
     .catch((error) => {

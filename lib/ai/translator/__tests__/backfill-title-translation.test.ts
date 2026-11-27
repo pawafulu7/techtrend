@@ -1,6 +1,7 @@
 import { GeminiCallTally } from '../../gemini-call-tally';
 import { backfillTitleTranslation } from '../backfill-title-translation';
 import {
+  TitleTranslationInvalidResponseError,
   TitleTranslationRequestError,
   TitleTranslationUnchangedError,
   type TitleTranslator,
@@ -127,7 +128,9 @@ describe('backfillTitleTranslation', () => {
   });
 
   it('応答が訳文として使えなかったら（空など）failed を返し、届いた呼び出しに数える', async () => {
-    const error = new Error('Translation API returned empty result');
+    const error = new TitleTranslationInvalidResponseError(
+      'Translation API returned empty result'
+    );
     const translator = createTranslator(error);
     const tally = new GeminiCallTally();
 
@@ -136,5 +139,36 @@ describe('backfillTitleTranslation', () => {
     ).resolves.toEqual({ kind: 'failed', error });
     expect(tally.reached).toBe(1);
     expect(tally.failed).toBe(0);
+  });
+
+  it('正体の分からない例外は、届かなかった呼び出しに数える（全件失敗を見逃さない）', async () => {
+    const error = new TypeError("Cannot read properties of undefined");
+    const translator = createTranslator(error);
+    const tally = new GeminiCallTally();
+
+    await expect(
+      backfillTitleTranslation(translator, input, tally)
+    ).resolves.toEqual({ kind: 'failed', error });
+    expect(tally.reached).toBe(0);
+    expect(tally.failed).toBe(1);
+    expect(tally.allFailed).toBe(true);
+  });
+
+  it('空白だけの訳文は保存せずに failed を返す', async () => {
+    const translator = createTranslator('   ');
+    const tally = new GeminiCallTally();
+
+    const outcome = await backfillTitleTranslation(translator, input, tally);
+
+    expect(outcome.kind).toBe('failed');
+    expect(tally.reached).toBe(1);
+  });
+
+  it('訳文の前後の空白は落として返す', async () => {
+    const translator = createTranslator('  訳したタイトル  ');
+
+    await expect(
+      backfillTitleTranslation(translator, input, new GeminiCallTally())
+    ).resolves.toEqual({ kind: 'translated', text: '訳したタイトル' });
   });
 });

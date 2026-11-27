@@ -35,6 +35,7 @@ import fetch from 'node-fetch';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateTags } from '@/lib/tags/tag-service';
 import { generateTagsForArticles } from '@/scripts/scheduled/generate-tags';
+import { env } from '@/lib/config/env';
 
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 const mockGetOrCreateTags = getOrCreateTags as jest.MockedFunction<typeof getOrCreateTags>;
@@ -188,7 +189,16 @@ describe('generate-tags additive connect pattern', () => {
   });
 
   describe('Gemini の呼び出しが 1 件も届かなかった回の判定', () => {
-    it('すべての呼び出しが HTTP エラーなら allGeminiCallsFailed を true にする', async () => {
+    // console.error を差し替えたテストが途中で落ちても、後のテストに残さない
+    let errorSpy: jest.SpyInstance;
+    beforeEach(() => {
+      errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      errorSpy.mockRestore();
+    });
+
+    it('すべての呼び出しが HTTP エラーなら allGeminiCallsFailed を true にし、状態と状態名をログに出す', async () => {
       (prisma.article.findMany as jest.Mock)
         .mockResolvedValueOnce([makeArticleStub('article-3', [])])
         .mockResolvedValueOnce([]);
@@ -206,6 +216,23 @@ describe('generate-tags additive connect pattern', () => {
         allGeminiCallsFailed: true,
       });
       expect(prisma.$transaction).not.toHaveBeenCalled();
+      // 本文はログに出さず、状態コードと状態名だけを出す
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('code=NOT_FOUND status=404')
+      );
+    });
+
+    it('API キーが無ければ、記事を読む前に失敗で止める', async () => {
+      const originalKey = env.GEMINI_API_KEY;
+      (env as { GEMINI_API_KEY?: string }).GEMINI_API_KEY = undefined;
+      try {
+        await expect(generateTagsForArticles()).rejects.toThrow(
+          'GEMINI_API_KEY is not set'
+        );
+        expect(prisma.article.findMany).not.toHaveBeenCalled();
+      } finally {
+        (env as { GEMINI_API_KEY?: string }).GEMINI_API_KEY = originalKey;
+      }
     });
 
     it('応答が返っていれば、保存で失敗しても allGeminiCallsFailed は false', async () => {
@@ -226,7 +253,6 @@ describe('generate-tags additive connect pattern', () => {
     });
 
     it('依頼が安全性のフィルタで止められたら、理由をログに出して失敗に数える（呼び出しは届いている）', async () => {
-      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       (prisma.article.findMany as jest.Mock)
         .mockResolvedValueOnce([makeArticleStub('article-5', [])])
         .mockResolvedValueOnce([]);
@@ -250,7 +276,6 @@ describe('generate-tags additive connect pattern', () => {
         expect.stringContaining('code=PROHIBITED_CONTENT')
       );
       expect(prisma.$transaction).not.toHaveBeenCalled();
-      errorSpy.mockRestore();
     });
   });
 });

@@ -24,6 +24,37 @@ describe('GeminiCallTally', () => {
     expect(tally.failed).toBe(1);
   });
 
+  it('isReachedError が true を返す例外（応答は返ったが使えなかった）は reached に数える', async () => {
+    const tally = new GeminiCallTally();
+    const blocked = new Error('Gemini blocked the prompt: SAFETY');
+
+    await expect(
+      tally.track(() => Promise.reject(blocked), {
+        isReachedError: (error) => error === blocked,
+      })
+    ).rejects.toBe(blocked);
+    await expect(
+      tally.track(() => Promise.reject(new Error('HTTP 404')), {
+        isReachedError: (error) => error === blocked,
+      })
+    ).rejects.toThrow('HTTP 404');
+
+    expect(tally.reached).toBe(1);
+    expect(tally.failed).toBe(1);
+    expect(tally.allFailed).toBe(false);
+  });
+
+  it('recordReached・recordFailed で直接数えられる', () => {
+    const tally = new GeminiCallTally();
+    tally.recordFailed();
+    expect(tally.allFailed).toBe(true);
+    tally.recordReached();
+    expect(tally.allFailed).toBe(false);
+    expect(tally.summary()).toBe(
+      'gemini_calls_reached=1 gemini_calls_failed=1'
+    );
+  });
+
   it('1 件も届かずに失敗だけが出たときだけ allFailed になる', async () => {
     const fail = () => Promise.reject(new Error('HTTP 404'));
 

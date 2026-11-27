@@ -52,6 +52,30 @@ export class TitleTranslationUnchangedError extends Error {
   }
 }
 
+/**
+ * 応答は返ったが、訳文として使えなかった（本文が無い・空・安全性のフィルタで候補が返らないなど）。
+ * API に届かなかった失敗（TitleTranslationRequestError）と分けて数えられるようにする
+ */
+export class TitleTranslationInvalidResponseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TitleTranslationInvalidResponseError';
+  }
+}
+
+// 比べる前に外す、前後の引用符とかぎ括弧（プロンプトがタイトルを引用符で囲むので、付けて返すことがある）
+const SURROUNDING_QUOTES = /^["'“”‘’「『]+|["'“”‘’」』]+$/g;
+
+/**
+ * 訳文が原文と同じか。前後の空白・引用符・かぎ括弧と、大文字小文字の違いは無視する
+ * （「Colorfigures」や darktable のように、原文に近い形で返っても訳せていないため）
+ */
+function isSameAsOriginal(translated: string, original: string): boolean {
+  const normalize = (text: string) =>
+    text.trim().replace(SURROUNDING_QUOTES, '').trim().toLowerCase();
+  return normalize(translated) === normalize(original);
+}
+
 export class GeminiTitleTranslator implements TitleTranslator {
   constructor(
     private readonly transport: GeminiTransport,
@@ -99,13 +123,15 @@ export class GeminiTitleTranslator implements TitleTranslator {
     }
 
     if (!result.payload) {
-      throw new Error('Translation failed');
+      throw new TitleTranslationInvalidResponseError('Translation failed');
     }
 
     const translated = this.extractTranslation(result.payload);
 
     if (!translated || translated.trim() === '') {
-      throw new Error('Translation API returned empty result');
+      throw new TitleTranslationInvalidResponseError(
+        'Translation API returned empty result'
+      );
     }
 
     // UNCHANGEDまたは原文がそのまま返された場合のハンドリング
@@ -120,9 +146,10 @@ export class GeminiTitleTranslator implements TitleTranslator {
     }
 
     // 原文がそのまま返された場合、日本語タイトルかチェック
-    if (normalizedTranslated === input.title.trim()) {
-      if (isLikelyJapanese(normalizedTranslated)) {
-        // Japanese title detected - skip translation (normal behavior)
+    if (isSameAsOriginal(normalizedTranslated, input.title)) {
+      // 元のタイトルが日本語なら訳さない記事。応答の文字列で見ると、「」で囲んで返した
+      // 英語のタイトルまで日本語とみなしてしまうので、元のタイトルで判定する
+      if (isLikelyJapanese(input.title)) {
         return null;
       }
       // 英語のタイトルが原文のまま返った（製品名と版だけなど、訳しようがないことが多い）
@@ -177,16 +204,21 @@ export class GeminiTitleTranslator implements TitleTranslator {
     const candidates = payload.candidates as
       Array<Record<string, unknown>> | undefined;
     if (!candidates?.length) {
-      throw new Error('No candidates in response');
+      // 安全性のフィルタで依頼が止められると、候補が 1 件も返らない（promptFeedback.blockReason）
+      throw new TitleTranslationInvalidResponseError(
+        'No candidates in response'
+      );
     }
 
     const content = candidates[0]?.content as
       Record<string, unknown> | undefined;
     const parts = content?.parts as Array<Record<string, unknown>> | undefined;
-    const raw = parts?.[0]?.text as string | undefined;
+    const raw: unknown = parts?.[0]?.text;
 
-    if (!raw) {
-      throw new Error('No text returned from translator');
+    if (typeof raw !== 'string' || raw === '') {
+      throw new TitleTranslationInvalidResponseError(
+        'No text returned from translator'
+      );
     }
 
     return raw.trim();

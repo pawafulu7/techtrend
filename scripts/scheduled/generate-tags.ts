@@ -7,10 +7,20 @@ import { env } from '@/lib/config/env';
 import { buildGeminiEndpoint } from '@/scripts/lib/gemini-endpoint';
 import { summarizeError } from '@/lib/utils/sanitize-error';
 import { GeminiCallTally } from '@/lib/ai/gemini-call-tally';
+import { extractApiStatus } from '@/lib/ai/transport/gemini-transport';
 
 type ArticleWithSourceAndTags = Article & {
   source: Source;
   tags: Tag[];
+};
+
+/** generateContent の応答のうち、ここで読む部分 */
+type GeminiGenerateResponse = {
+  candidates?: Array<{
+    content?: { parts?: Array<{ text?: unknown }> };
+    finishReason?: unknown;
+  }>;
+  promptFeedback?: { blockReason?: unknown };
 };
 
 interface GenerateResult {
@@ -49,11 +59,11 @@ async function generateTags(
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30_000);
-  let data: any;
+  let response: Awaited<ReturnType<typeof fetch>>;
   try {
     // 応答が返ったか（HTTP エラー・タイムアウト・通信の失敗でないか）を数える
-    data = await tally.track(async () => {
-      const response = await fetch(apiUrl, {
+    response = await tally.track(async () => {
+      const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -69,13 +79,16 @@ async function generateTags(
         }),
         signal: controller.signal,
       });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `API request failed: ${response.status} - ${errorText}`
-        );
+      if (!res.ok) {
+        const errorText = await res.text();
+        // 本文は message に入れない（403 などの本文には API の利用先の識別子が入りうる）。
+        // HTTP の状態と状態名（NOT_FOUND など）を持たせ、公開されるログにも出す（summarizeError）
+        throw Object.assign(new Error(`API request failed: ${res.status}`), {
+          status: res.status,
+          code: extractApiStatus(errorText),
+        });
       }
-      return response.json();
+      return res;
     });
   } catch (error) {
     clearTimeout(timeoutId);
@@ -86,13 +99,14 @@ async function generateTags(
   } finally {
     clearTimeout(timeoutId);
   }
+  const data = (await response.json()) as GeminiGenerateResponse;
   // 依頼が安全性のフィルタで止められると、HTTP 200 で候補が 1 件も返らない
   // （promptFeedback.blockReason。性犯罪の報道などで PROHIBITED_CONTENT になる）。
   // 理由は決まった形の値なので code に入れ、公開されるログにも出す（summarizeError）
-  const candidate = data?.candidates?.[0];
+  const candidate = data.candidates?.[0];
   const text = candidate?.content?.parts?.[0]?.text;
   if (typeof text !== 'string') {
-    const reason = data?.promptFeedback?.blockReason ?? candidate?.finishReason;
+    const reason = data.promptFeedback?.blockReason ?? candidate?.finishReason;
     throw Object.assign(new Error('Gemini returned no text'), {
       code: typeof reason === 'string' ? reason : 'NO_TEXT',
     });
@@ -114,6 +128,12 @@ async function generateTagsForArticles(): Promise<GenerateResult> {
   const startTime = Date.now();
 
   try {
+    // キーが無いと全記事が失敗するのに、Gemini を呼ばないので呼び出しの集計では気づけない。
+    // 先に止めて失敗で終える（scripts/scheduled/manage-summaries.ts と同じ）
+    if (!env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not set');
+    }
+
     // 1. タグがない記事を取得
     const articlesWithoutTags = (await prisma.article.findMany({
       where: {

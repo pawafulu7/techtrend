@@ -33,10 +33,10 @@ interface RegenerationResult {
 /**
  * レート制限で失敗したかどうか。サービスは最後の試行の例外を
  * 「Failed to generate quality summary after N attempts: Retryable error during
- * summarization: HTTP 429: ...」の形で包む。429 が続くとトランスポートの
+ * summarization: HTTP 429 RESOURCE_EXHAUSTED」の形で包む。429 が続くとトランスポートの
  * サーキットブレーカーが開き、以降は 429 を含まない
  * 「Circuit breaker is open」で即座に失敗するので、これも待機の対象にする。
- * 429 以外のステータス（503 など）でも、本文が割り当ての枯渇（RESOURCE_EXHAUSTED）なら待つ
+ * 429 以外のステータス（503 など）でも、状態名が割り当ての枯渇（RESOURCE_EXHAUSTED）なら待つ
  */
 function isRateLimitedError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;

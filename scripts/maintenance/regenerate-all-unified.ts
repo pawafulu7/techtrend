@@ -293,8 +293,8 @@ async function main() {
         console.error(`  ❌ エラー: ${errorMessage}`);
         
         // Rate Limitエラーの場合は特別処理
-        // 要約サービス（lib/ai/service/）は「... HTTP 429: {本文}」の形で投げる（transport の HTTP エラー）。
-        // 本文にはエラーの種類に関わらず generativelanguage.googleapis.com が入るので、'rate' の部分一致では判定しない
+        // 要約サービス（lib/ai/service/）は「... HTTP 429 RESOURCE_EXHAUSTED」の形（状態コードと
+        // 状態名）で投げる（transport の HTTP エラー）。'rate' の部分一致では判定しない
         if (/HTTP 429\b|RESOURCE_EXHAUSTED/.test(errorMessage)) {
           console.error('⚠️  Rate Limitエラーを検出しました。');
           console.error('📊 現在の進捗:');

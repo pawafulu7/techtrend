@@ -10,6 +10,9 @@ import { summarizeError } from '@/lib/utils/sanitize-error';
 
 const prisma = createPrismaClient();
 
+// キャッシュの破棄を待つ上限（scripts/scheduled/classify-off-topic.ts と同じ）
+const CACHE_INVALIDATION_TIMEOUT_MS = 30_000;
+
 interface FixOptions {
   dryRun?: boolean;
   limit?: number;
@@ -62,6 +65,8 @@ async function fixMissingTranslations(options: FixOptions = {}) {
   let skipCount = 0;
   // Gemini の呼び出しが届いた数・届かなかった数。DB の失敗は数えない
   const tally = new GeminiCallTally();
+  // 訳を書いた記事。最後にキャッシュを捨てる
+  const translatedIds: string[] = [];
 
   // 2. Batch processing
   for (let i = 0; i < articles.length; i += batchSize) {
@@ -105,13 +110,18 @@ async function fixMissingTranslations(options: FixOptions = {}) {
               // （その間に毎時の要約が訳を書いていたら、印は付けない）。
               // 印の列だけを生の SQL で書く。Prisma の update は @updatedAt を書き換え、updatedAt を
               // 差分の取得に使う処理を無駄に動かすため（lib/articles/off-topic-classifier.ts の writeVerdicts と同じ）
-              await prisma.$executeRaw`
+              const marked = await prisma.$executeRaw`
                 UPDATE "Article"
                 SET "titleTranslationSkippedAt" = ${new Date()}
                 WHERE id = ${article.id} AND "translatedTitle" IS NULL
               `;
+              if (marked === 0) {
+                skipCount++;
+                return;
+              }
               untranslatableCount++;
-              console.error(`  UNTRANSLATABLE [${article.id}] Model returned the original title`);
+              // タイトルは公開の RSS の値。誤って印を付けた記事をログから見直せるように出す
+              console.error(`  UNTRANSLATABLE [${article.id}] ${article.title.substring(0, 60)}`);
               return;
             case 'failed':
               failureCount++;
@@ -121,12 +131,18 @@ async function fixMissingTranslations(options: FixOptions = {}) {
               break;
           }
 
-          const translatedTitle = outcome.text.trim();
-          await prisma.article.update({
-            where: { id: article.id },
+          const translatedTitle = outcome.text;
+          // 訳を待つ間に毎時の要約が訳を書いていたら、上書きしない
+          const updated = await prisma.article.updateMany({
+            where: { id: article.id, translatedTitle: null },
             data: { translatedTitle }
           });
+          if (updated.count === 0) {
+            skipCount++;
+            return;
+          }
 
+          translatedIds.push(article.id);
           successCount++;
           console.error(`  SUCCESS [${article.id}] ${translatedTitle.substring(0, 40)}...`);
 
@@ -144,6 +160,10 @@ async function fixMissingTranslations(options: FixOptions = {}) {
     }
   }
 
+  if (translatedIds.length > 0) {
+    await invalidateTranslatedArticles(translatedIds);
+  }
+
   console.error(`\n\n=== Fix Summary ===`);
   console.error(`  Success: ${successCount} articles`);
   console.error(`  Untranslatable (marked): ${untranslatableCount} articles`);
@@ -159,15 +179,46 @@ async function fixMissingTranslations(options: FixOptions = {}) {
   }
 }
 
+/**
+ * 訳を書いた記事のキャッシュを捨てる（訳を書くほかの経路と同じ onArticleUpdated）。
+ * 捨てられなくても訳は保存済みなので失敗にはしない（一覧は TTL の間、古い表示が残る）
+ */
+async function invalidateTranslatedArticles(articleIds: string[]): Promise<void> {
+  try {
+    // 読み込んだだけで Redis につなぐので、要るときだけ読み込む
+    const { cacheInvalidator } = await import('@/lib/cache/cache-invalidator');
+    await Promise.race([
+      (async () => {
+        for (const id of articleIds) {
+          await cacheInvalidator.onArticleUpdated(id);
+        }
+      })(),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Cache invalidation timed out')),
+          CACHE_INVALIDATION_TIMEOUT_MS
+        ).unref()
+      ),
+    ]);
+  } catch (error) {
+    console.error(`  WARN cache invalidation failed: ${summarizeError(error)}`);
+  }
+}
+
 // CLI execution
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const limitArg = args.find(arg => arg.startsWith('--limit='));
 const limit = limitArg ? parseInt(limitArg.split('=')[1]) : undefined;
 
+// Redis の接続が残るとプロセスが終わらないので、終わったら明示的に抜ける（classify-off-topic.ts と同じ）
 fixMissingTranslations({ dryRun, limit })
   .catch((error) => {
     console.error(summarizeError(error, { stack: true }));
     process.exitCode = 1;
   })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+    // 引数なしの process.exit は process.exitCode で終わる
+    process.exit();
+  });
