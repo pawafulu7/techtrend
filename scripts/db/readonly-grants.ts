@@ -98,6 +98,11 @@ export interface ReadonlyPrivileges {
   unexpectedReadableSequences: number;
   /** 変更できる（書き込み・TRUNCATE など）表とシーケンスの数 */
   writable: number;
+  /**
+   * public の SECURITY DEFINER の関数のうち、呼べるもの。所有者の権限で動くので、個人情報の表を返す関数があると
+   * 読めてしまう（新しい関数は、既定で PUBLIC が呼べる）
+   */
+  executableSecurityDefiner: number;
   /** public スキーマか DB に、永続の表やスキーマを作れる（一時表はセッションの中だけで消え、ほかの表を読めないので見ない） */
   canCreateObjects: boolean;
   /** マイグレーションの記録の、状態の確認に使う列（READONLY_MIGRATION_COLUMNS）をすべて読める */
@@ -131,7 +136,11 @@ export async function inspectReadonlyPrivileges(
      FROM (${PUBLIC_RELATIONS}) t`,
     [role, changes]
   );
-  const { rows: other } = await client.query<{ can_create: boolean; writable_sequences: number }>(
+  const { rows: other } = await client.query<{
+    can_create: boolean;
+    writable_sequences: number;
+    security_definer: number;
+  }>(
     `SELECT (has_schema_privilege($1::name, 'public', 'CREATE')
               OR has_database_privilege($1::name, current_database(), 'CREATE')) AS can_create,
             (SELECT count(*)::int FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -140,7 +149,10 @@ export async function inspectReadonlyPrivileges(
              WHERE n.nspname = 'public'
                AND CASE WHEN c.relkind = 'S'
                      THEN has_sequence_privilege($1::name, c.oid, 'USAGE, UPDATE') ELSE false END
-            ) AS writable_sequences`,
+            ) AS writable_sequences,
+            (SELECT count(*)::int FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+             WHERE n.nspname = 'public' AND p.prosecdef AND has_function_privilege($1::name, p.oid, 'EXECUTE')
+            ) AS security_definer`,
     [role]
   );
   // シーケンスと、それを持つ表（serial・identity の列のシーケンスは、表に依存する。持たないものは owner が NULL）
@@ -178,6 +190,8 @@ export async function inspectReadonlyPrivileges(
     unreadableContentSequences: sequences.filter((s) => contentSequence(s.owner) && !s.can_select).length,
     unexpectedReadableSequences: sequences.filter((s) => !contentSequence(s.owner) && s.can_select).length,
     writable: rows.filter((r) => r.can_change).length + (other[0]?.writable_sequences ?? 0),
+    // 数えられなかったときは 1 にして、一覧どおりとは扱わない
+    executableSecurityDefiner: other[0]?.security_definer ?? 1,
     canCreateObjects: other[0]?.can_create !== false,
     canReadMigrationColumns: migrationColumns.all_columns,
     canReadMigrationLogs: migrationColumns.logs,
@@ -185,8 +199,8 @@ export async function inspectReadonlyPrivileges(
 }
 
 /**
- * 一覧どおりの権限か（content の表とそのシーケンスはすべて読め、それ以外は読めず、どれも書けず、何も作れず、
- * マイグレーションの記録は状態の列だけ読める）
+ * 一覧どおりの権限か（content の表とそのシーケンスはすべて読め、それ以外は読めず、どれも書けず、SECURITY DEFINER の
+ * 関数を呼べず、何も作れず、マイグレーションの記録は状態の列だけ読める）
  */
 export function readonlyPrivilegesMatch(
   p: ReadonlyPrivileges,
@@ -198,6 +212,7 @@ export function readonlyPrivilegesMatch(
     p.unreadableContentSequences === 0 &&
     p.unexpectedReadableSequences === 0 &&
     p.writable === 0 &&
+    p.executableSecurityDefiner === 0 &&
     !p.canCreateObjects &&
     !p.canReadMigrationLogs &&
     p.canReadMigrationColumns === hasMigrationsTable

@@ -6,9 +6,14 @@ import { buildRoleUrl } from '@/scripts/db/prod-db-roles';
 
 export const testDatabaseUrl = process.env.DATABASE_URL;
 
+const isTestDb = !!testDatabaseUrl && /_test$/.test(new URL(testDatabaseUrl).pathname);
+// CI にはテスト DB があるので、無ければ飛ばさずに落とす（設定が変わって、権限の検査が黙って消えないように）
+if (!isTestDb && process.env.CI === 'true') {
+  throw new Error('In CI, DATABASE_URL must point to a database whose name ends with _test');
+}
+
 /** テスト DB（名前が _test で終わる）のときだけ流す */
-export const describeTestDb =
-  testDatabaseUrl && /_test$/.test(new URL(testDatabaseUrl).pathname) ? describe : describe.skip;
+export const describeTestDb = isTestDb ? describe : describe.skip;
 
 export type TablePrivileges = {
   relname: string;

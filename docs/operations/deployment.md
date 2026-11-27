@@ -100,7 +100,8 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
 `techtrend_readonly` の権限は、マイグレーションでだけ付け外しする（作ったのは `prisma/migrations/20261127000000_add_readonly_content_role`）。マイグレーションは Prisma が順に 1 回だけ流すので、古い commit を再デプロイしても権限は戻らない。
 
 - 表を足すとき: `scripts/db/prod-table-access.json` の `personal`（個人情報を持つ表）か `content`（それ以外）に入れる。`content` なら、その表を作るマイグレーションに `GRANT SELECT ON TABLE "<表>" TO techtrend_readonly;` を書く（`autoincrement()` などでシーケンスもできるなら、`GRANT SELECT ON SEQUENCE "<シーケンス>" TO techtrend_readonly;` も書く。本番からの同期の pg_dump がシーケンスの値を読むため）。`personal` なら何も書かない（読み取り用には既定の権限が無いので、読めない）
-- 表を `personal` に移すとき: 一覧を直し、`REVOKE ALL ON TABLE "<表>" FROM techtrend_readonly;` のマイグレーションを書く
+- 表を `personal` に移すとき: 一覧を直し、`REVOKE ALL ON TABLE "<表>" FROM techtrend_readonly;` のマイグレーションを書く（シーケンスに GRANT していたら、`REVOKE ALL ON SEQUENCE "<シーケンス>" FROM techtrend_readonly;` も書く）
+- 関数を足すとき: `SECURITY DEFINER` の関数は、作るマイグレーションで `REVOKE EXECUTE ON FUNCTION <関数> FROM PUBLIC;` を書き、要るロールにだけ GRANT する（所有者の権限で動くので、手元用が呼べると、関数が返す個人情報も読める）
 - 書き忘れ・書き違いは、マイグレーション済みのテスト DB で `__tests__/scripts/db/prod-table-access.db.test.ts` が落とす
 - 本番の実際の権限（マイグレーションの外で付いた GRANT などを含む）は、手元から `npm run migrate:production:check` で確かめる。繋いだ手元用のロール自身を調べ、一覧と違えば `readonly_privileges_ok=false` で終了コード 1 になる
 
@@ -110,27 +111,34 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
 
 - 管理者の接続情報（`MIGRATION_DATABASE_URL`）は、ビルドだけでなく、本番の関数の実行中にも環境変数として読める（Vercel の環境変数をビルドだけに限る設定は無い）。SQL インジェクションのようにアプリの DB の接続を悪用される場合はアプリ用ロールの権限に収まる。一方、関数の中で任意のコードを実行されると管理者の接続情報も取られ、裏口のロールの作成や表の構造の破壊までできる。その疑いがあるときは、管理者のパスワードを変え、`pg_roles` に知らないロールが無いかを確かめる
 - Neon は SQL で作るロールのパスワードを平文で受け取る（ハッシュは受け付けない）。`CREATE ROLE` が失敗すると、文がパスワードごとサーバーのログに残りうる
+- advisory lock は、どのロールでも取れる。アプリ用の接続を悪用されると、マイグレーションの鍵（`prisma migrate` と同じ番号）や表のロックを取り続けて、デプロイのマイグレーションを止められる（記録や表の構造は変えられない）
 
 ### ロールを作り直す・パスワードを変える
 
 ロールは、マイグレーションを流した後の DB で作る（手元用は、マイグレーションで作る `techtrend_readonly` のメンバーにするため）。
 
-1. Neon のコンソールで管理者の接続文字列を表示し、手元の端末で、画面に出さずに環境変数へ入れてから流す。`.env.local` の `PROD_DATABASE_URL` は読み取り用なので、管理者の URL は `PROD_ADMIN_DATABASE_URL` で渡す。サブシェルで流すので、終わると変数は消え、終了コードはスクリプトのものになる（0 以外なら先に進まない）
+1. Neon のコンソールで管理者の接続文字列を表示し、手元の端末で、画面に出さずに環境変数へ入れてから流す。`.env.local` の `PROD_DATABASE_URL` は読み取り用なので、管理者の URL は `PROD_ADMIN_DATABASE_URL` で渡す。サブシェルで流すので、終わると変数は消え、終了コードはスクリプトのものになる（0 以外なら先に進まない）。管理者の URL は、接続プール（`-pooler`）を通さない直接の接続のものを渡す（作る URL は、ユーザーとパスワードだけを替えて、ホストを受け継ぐ。手元用は直接の接続で使う。本番からの同期の pg_dump が、セッションの設定を前提にするため）
 
    ```bash
    ( read -rs PROD_ADMIN_DATABASE_URL && export PROD_ADMIN_DATABASE_URL && bash scripts/db/with-prod-db.sh npx tsx scripts/db/create-prod-roles.ts )
    ```
 
-2. `.workflow/tmp/prod-db/new-roles.env` の値を、Vercel の `DATABASE_URL`、GitHub の secret `DATABASE_URL`、`.env.local` の `PROD_DATABASE_URL` に入れ、本番を再デプロイする。入れ終えたら、このファイルを消す（書き込めるアプリ用の接続情報を手元に残さない）
-3. 古いロールを、Neon のコンソールの SQL Editor で消す。権限と既定の権限が残っていると `DROP ROLE` が失敗する（`2BP01`）ので、先に外す
+   失敗したときの扱い（`new-roles.env` は、ロールができたかもしれないときだけ残る）:
+   - `created_roles=2` の後の失敗（`verification_ok=false` か `failure_reason_...`）: ロールはできている。原因を確かめ、SQL Editor で、できたロールを手順 3 の SQL で消し、ファイルも消してから流し直す
+   - `commit_result_unknown=true`: COMMIT の結果が分からない。SQL Editor で、ファイルの中のロールが `pg_roles` にあるかを確かめ、あれば上と同じに扱い、無ければファイルを消して流し直す
+   - `failure_reason_output_exists=true`: 前の回のファイルが残っている。前の回が上の 2 つのどちらでもなければロールは無いので、ファイルを消して流し直す
+   - それ以外の `failure_reason_...`: ロールはできていない（ファイルも消える）。理由を直して流し直す
+
+2. `.workflow/tmp/prod-db/new-roles.env` の値を、Vercel の `DATABASE_URL`、GitHub の secret `DATABASE_URL`、`.env.local` の `PROD_DATABASE_URL` に入れ、本番を再デプロイする。アプリ用の URL を Vercel と GitHub に入れるときは、ホストを、いま入っている `DATABASE_URL` と同じ種類（接続プールを通すか）にそろえる。入れ終えたら、このファイルを消す（書き込めるアプリ用の接続情報を手元に残さない）
+3. 古いロールを、Neon のコンソールの SQL Editor で消す。権限と既定の権限が残っていると `DROP ROLE` が失敗する（`2BP01`）ので、先に外す。SQL Editor のロールは、マイグレーションを流した管理者にする（`REVOKE` は自分が付けた権限しか外さず、ほかのロールで流すと警告だけで終わる）
 
    ```sql
    -- アプリ用
    REVOKE ALL ON ALL TABLES IN SCHEMA public FROM <old_role>;
    REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM <old_role>;
    REVOKE ALL ON SCHEMA public FROM <old_role>;
-   ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM <old_role>;
-   ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM <old_role>;
+   ALTER DEFAULT PRIVILEGES FOR ROLE <admin_role> IN SCHEMA public REVOKE ALL ON TABLES FROM <old_role>;
+   ALTER DEFAULT PRIVILEGES FOR ROLE <admin_role> IN SCHEMA public REVOKE ALL ON SEQUENCES FROM <old_role>;
    REVOKE CONNECT ON DATABASE <database> FROM <old_role>;
    DROP ROLE <old_role>;
    -- 手元用（以前の版で作り、表の権限を直接持つロールも、これで消せる）
@@ -143,7 +151,7 @@ Vercel の Deployments から成功した過去のデプロイを選んで Promo
 
 ### 以前の版で作った手元用のロールを移す
 
-以前の版の `create-prod-roles.ts` で作った手元用のロールは、表の権限を直接持ち、`techtrend_readonly` のメンバーではない。このままだと、マイグレーションでの付け外しが届かない（表を `personal` に移しても読めたまま残る）。`techtrend_readonly` を作るマイグレーションが本番に適用された後、SQL Editor で、直接の権限を外してメンバーにする（表への `REVOKE ALL` は列の権限も外す）。
+以前の版の `create-prod-roles.ts` で作った手元用のロールは、表の権限を直接持ち、`techtrend_readonly` のメンバーではない。このままだと、マイグレーションでの付け外しが届かない（表を `personal` に移しても読めたまま残る）。`techtrend_readonly` を作るマイグレーションが本番に適用された後、SQL Editor で、直接の権限を外してメンバーにする（表への `REVOKE ALL` は列の権限も外す）。SQL Editor のロールは、マイグレーションを流した管理者にする（`techtrend_readonly` を付けるのに、それを作ったロールに付く ADMIN OPTION が要るため）。
 
 ```sql
 BEGIN;
@@ -157,6 +165,15 @@ COMMIT;
 そのあと、そのロールで `npm run migrate:production:check` を流し、`readonly_privileges_ok=true` になることを確かめる。
 
 管理者のパスワードは、SQL Editor の `ALTER ROLE <admin_role> WITH PASSWORD '<new_password>'`（60 ビット以上のエントロピー）か、コンソールの Reset password で変え、Vercel の `MIGRATION_DATABASE_URL` を差し替える。
+
+### 初めてロールを分けるとき
+
+1. Vercel の Production に `MIGRATION_DATABASE_URL`（管理者の、直接の接続の URL。Secret）を入れる。無いと、merge の後のビルドがマイグレーションの前に止まる
+2. PR を merge し、ビルドでマイグレーションを適用する（`techtrend_readonly` ができる）
+3. 手元用のロールを用意する。以前の版で作ったロールがあれば「以前の版で作った手元用のロールを移す」、無ければ「ロールを作り直す・パスワードを変える」で作る
+4. `.env.local` の `PROD_DATABASE_URL` を手元用のロールにして、`npm run migrate:production:check` で、未適用が 0 で `readonly_privileges_ok=true` になることを確かめる（管理者のままだと `readonly_role_problem_role_privileged=true` で終了コード 1 になる。マイグレーションを流したロールが表の所有者でないと GRANT が警告だけで抜けるので、その確かめにもなる）
+5. Vercel の Production の `DATABASE_URL` と GitHub の secret `DATABASE_URL` をアプリ用のロールにし、再デプロイと定期実行の 1 回で動くことを確かめる
+6. 古いロールを消し、管理者のパスワードを変える
 
 ## 注意
 

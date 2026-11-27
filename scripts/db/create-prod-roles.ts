@@ -174,7 +174,8 @@ async function main(): Promise<void> {
          OR has_table_privilege('public."_prisma_migrations"', 'DELETE, TRUNCATE'))::text
      UNION ALL SELECT 'app_can_create_objects', (has_schema_privilege('public', 'CREATE')
        OR has_database_privilege(current_database(), 'CREATE'))::text
-     UNION ALL SELECT 'app_is_privileged', (rolsuper OR rolcreaterole OR rolcreatedb OR rolbypassrls)::text
+     UNION ALL SELECT 'app_is_privileged',
+       (rolsuper OR rolcreaterole OR rolcreatedb OR rolbypassrls OR rolreplication)::text
        FROM pg_roles WHERE rolname = current_user
      UNION ALL SELECT 'app_can_select_article',
        ((SELECT count(*) FROM (SELECT 1 FROM "Article" LIMIT 1) s) >= 0)::text`,

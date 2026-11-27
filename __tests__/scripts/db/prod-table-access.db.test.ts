@@ -82,6 +82,7 @@ describeTestDb('prod-table-access.json and techtrend_readonly against the migrat
       unreadableContentSequences: 0,
       unexpectedReadableSequences: 0,
       writable: 0,
+      executableSecurityDefiner: 0,
     });
     expect(readonlyPrivilegesMatch(inspected, true)).toBe(true);
   });
@@ -89,10 +90,15 @@ describeTestDb('prod-table-access.json and techtrend_readonly against the migrat
   it('detects extra reads, writes, creating objects, and missing migration columns', async () => {
     const group = admin.escapeIdentifier(READONLY_GROUP_ROLE);
     const { rows } = await admin.query<{ db: string }>('SELECT current_database() AS db');
+    const missed: string[] = [];
     for (const grant of [
       `GRANT SELECT ON public."User" TO ${group}`,
       `GRANT SELECT ON public."User" TO PUBLIC`,
+      `GRANT SELECT (email) ON public."User" TO ${group}`,
       `GRANT TRIGGER ON public."Article" TO ${group}`,
+      `GRANT UPDATE (title) ON public."Article" TO ${group}`,
+      // 所有者の権限で動く関数（新しい関数は既定で PUBLIC が呼べる）
+      `CREATE FUNCTION public.tmp_definer() RETURNS bigint LANGUAGE sql SECURITY DEFINER AS 'SELECT count(*) FROM "User"'`,
       `GRANT CREATE ON SCHEMA public TO PUBLIC`,
       `GRANT CREATE ON DATABASE ${admin.escapeIdentifier(rows[0].db)} TO PUBLIC`,
       `GRANT SELECT (logs) ON public."_prisma_migrations" TO ${group}`,
@@ -102,9 +108,11 @@ describeTestDb('prod-table-access.json and techtrend_readonly against the migrat
       await inRolledBackTransaction(admin, async () => {
         await admin.query(grant);
         const inspected = await inspectReadonlyPrivileges(admin, READONLY_GROUP_ROLE, access);
-        expect({ grant, ok: readonlyPrivilegesMatch(inspected, true) }).toEqual({ grant, ok: false });
+        if (readonlyPrivilegesMatch(inspected, true)) missed.push(grant);
       });
     }
+    // 見逃したものを、まとめて出す
+    expect(missed).toEqual([]);
   });
 
   it('requires the sequences of content tables to be readable, and no other sequence', async () => {
@@ -119,6 +127,11 @@ describeTestDb('prod-table-access.json and techtrend_readonly against the migrat
       expect(
         readonlyPrivilegesMatch(await inspectReadonlyPrivileges(admin, READONLY_GROUP_ROLE, access), true)
       ).toBe(true);
+      // 値を進められる（nextval）と、書き込めるものに数える
+      await admin.query(`GRANT USAGE ON SEQUENCE public."tmp_content_seq" TO ${group}`);
+      const writable = await inspectReadonlyPrivileges(admin, READONLY_GROUP_ROLE, access);
+      expect(writable).toMatchObject({ writable: 1 });
+      expect(readonlyPrivilegesMatch(writable, true)).toBe(false);
     });
     for (const owned of [' OWNED BY public."User"."id"', '']) {
       await inRolledBackTransaction(admin, async () => {
@@ -188,7 +201,8 @@ describeTestDb('createProdRoles (real test DB)', () => {
       [appRole]
     );
     expect(rows[0]).toEqual({ can_create: false, privileged: false, owns_tables: false });
-    await expect(hasAppDefaultPrivileges(admin)).resolves.toBe(true);
+    await expect(hasAppDefaultPrivileges(admin, appRole)).resolves.toBe(true);
+    await expect(hasAppDefaultPrivileges(admin, readonlyRole)).resolves.toBe(false);
   });
 
   it('runs the app writes that fire triggers, as the app role', async () => {
@@ -284,10 +298,14 @@ describeTestDb('createProdRoles (real test DB)', () => {
       });
       const own = await inspectReadonlyPrivileges(readonly, readonlyRole, access);
       expect(readonlyPrivilegesMatch(own, true)).toBe(true);
-      // 書き込めない既定（25006）か権限（42501）で止まる
+      // 書き込めない既定（25006）で止まり、既定を外しても権限（42501）で止まる
       await expect(
         readonly.query(`UPDATE "Article" SET title = title WHERE false`)
-      ).rejects.toMatchObject({ code: expect.stringMatching(/^(42501|25006)$/) });
+      ).rejects.toMatchObject({ code: '25006' });
+      await readonly.query('SET default_transaction_read_only = off');
+      await expect(
+        readonly.query(`UPDATE "Article" SET title = title WHERE false`)
+      ).rejects.toMatchObject({ code: '42501' });
     } finally {
       await readonly.end();
     }
@@ -322,11 +340,14 @@ describeTestDb('createProdRoles (real test DB)', () => {
       await admin.query(`GRANT SELECT ON public."Article" TO ${ident('direct')}`);
       await admin.query(`CREATE ROLE ${ident('column')} LOGIN IN ROLE ${group}`);
       await admin.query(`GRANT SELECT (migration_name) ON public."_prisma_migrations" TO ${ident('column')}`);
+      await admin.query(`CREATE ROLE ${ident('schema')} LOGIN IN ROLE ${group}`);
+      await admin.query(`GRANT USAGE ON SCHEMA public TO ${ident('schema')}`);
       for (const [kind, reason] of [
         ['nologin', 'role_cannot_login'],
         ['member', 'role_not_only_in_readonly_group'],
         ['direct', 'role_has_direct_grants'],
         ['column', 'role_has_direct_grants'],
+        ['schema', 'role_has_direct_grants'],
         ['owner', 'role_owns_tables'],
       ]) {
         await expect(assertReadonlyCandidate(admin, name(kind))).rejects.toMatchObject({ reason });

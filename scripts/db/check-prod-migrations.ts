@@ -54,6 +54,7 @@ async function main(): Promise<void> {
     console.log(`readonly_unreadable_content_sequences=${privileges.unreadableContentSequences}`);
     console.log(`readonly_unexpected_readable_sequences=${privileges.unexpectedReadableSequences}`);
     console.log(`readonly_writable_tables=${privileges.writable}`);
+    console.log(`readonly_executable_security_definer_functions=${privileges.executableSecurityDefiner}`);
     let candidateReason = 'none';
     await assertReadonlyCandidate(client, me[0].name, { self: true }).catch((error: unknown) => {
       candidateReason = errorReason(error);

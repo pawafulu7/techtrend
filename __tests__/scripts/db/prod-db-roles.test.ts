@@ -90,6 +90,7 @@ describe('readonlyPrivilegesMatch', () => {
     unreadableContentSequences: 0,
     unexpectedReadableSequences: 0,
     writable: 0,
+    executableSecurityDefiner: 0,
     canCreateObjects: false,
     canReadMigrationColumns: true,
     canReadMigrationLogs: false,
@@ -104,6 +105,7 @@ describe('readonlyPrivilegesMatch', () => {
     expect(readonlyPrivilegesMatch({ ...ok, unreadableContentSequences: 1 }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, unexpectedReadableSequences: 1 }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, writable: 1 }, true)).toBe(false);
+    expect(readonlyPrivilegesMatch({ ...ok, executableSecurityDefiner: 1 }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, canCreateObjects: true }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, unreadableContent: 1 }, true)).toBe(false);
     expect(readonlyPrivilegesMatch({ ...ok, canReadMigrationLogs: true }, true)).toBe(false);

@@ -29,11 +29,14 @@ export * from './prod-db-shared';
 export * from './readonly-grants';
 
 /**
- * 現在のロール（マイグレーションを流す管理者）が後で作る表に、ログインできる一般のロール（アプリ用）が
- * 書き込める既定の権限があるか。無いと、マイグレーションで足した表をアプリが読み書きできない
- * （ALTER DEFAULT PRIVILEGES は、それを流したロールが作る表にだけ効く）
+ * 現在のロール（マイグレーションを流す管理者）が後で作る表に、appRole（アプリ用）が書き込める既定の権限があるか。
+ * 無いと、マイグレーションで足した表をアプリが読み書きできない（ALTER DEFAULT PRIVILEGES は、それを流したロールが
+ * 作る表にだけ効く）
  */
-export async function hasAppDefaultPrivileges(client: RoleQueryable): Promise<boolean> {
+export async function hasAppDefaultPrivileges(
+  client: RoleQueryable,
+  appRole: string
+): Promise<boolean> {
   const { rows } = await client.query<{ ok: boolean }>(
     `SELECT EXISTS (
        SELECT 1 FROM pg_default_acl d
@@ -42,8 +45,9 @@ export async function hasAppDefaultPrivileges(client: RoleQueryable): Promise<bo
        JOIN pg_roles g ON g.oid = a.grantee
        WHERE d.defaclrole = (SELECT oid FROM pg_roles WHERE rolname = current_user)
          AND n.nspname = 'public' AND d.defaclobjtype = 'r'
-         AND a.privilege_type = 'INSERT' AND g.rolcanlogin AND NOT g.rolsuper
-     ) AS ok`
+         AND a.privilege_type = 'INSERT' AND g.rolname = $1
+     ) AS ok`,
+    [appRole]
   );
   return rows[0]?.ok === true;
 }
@@ -152,7 +156,7 @@ export async function createProdRoles(
   if (!check[0] || check[0].writable !== check[0].tables) {
     throw new RoleSetupError('app_missing_table_privileges');
   }
-  if (!(await hasAppDefaultPrivileges(client))) {
+  if (!(await hasAppDefaultPrivileges(client, input.appRole))) {
     throw new RoleSetupError('app_default_privileges_missing');
   }
 
