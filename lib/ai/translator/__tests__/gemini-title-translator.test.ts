@@ -160,9 +160,44 @@ describe('GeminiTitleTranslator', () => {
         headers: {},
       });
 
+      const promise = translator.translateTitle({
+        title: 'Test Title',
+        requestId: 'test-5b',
+      });
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationInvalidResponseError
+      );
+      // 止められた理由を code に持ち、止められたことが分かる
+      await expect(promise).rejects.toMatchObject({
+        code: 'PROHIBITED_CONTENT',
+        blocked: true,
+      });
+    });
+
+    it('出力の途中で止められて本文が無いときは、終了理由を code に持つ', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: { candidates: [{ finishReason: 'SAFETY', content: {} }] },
+        latencyMs: 10,
+        headers: {},
+      });
+
       await expect(
-        translator.translateTitle({ title: 'Test Title', requestId: 'test-5b' })
-      ).rejects.toBeInstanceOf(TitleTranslationInvalidResponseError);
+        translator.translateTitle({ title: 'Test Title', requestId: 'test-5f' })
+      ).rejects.toMatchObject({ code: 'SAFETY', blocked: true });
+    });
+
+    it('上限で止まって本文が無いときは、止められた扱いにしない', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: { candidates: [{ finishReason: 'MAX_TOKENS', content: {} }] },
+        latencyMs: 10,
+        headers: {},
+      });
+
+      await expect(
+        translator.translateTitle({ title: 'Test Title', requestId: 'test-5g' })
+      ).rejects.toMatchObject({ code: undefined, blocked: false });
     });
 
     it('本文が文字列でないときも、応答不良にする', async () => {
@@ -183,6 +218,9 @@ describe('GeminiTitleTranslator', () => {
       ['"kitty 0.50.0"', 'kitty 0.50.0'],
       ['darktable', 'Darktable'],
       ['StarCraft: Ashfall', 'Starcraft: Ashfall'],
+      ['【kitty】', 'kitty'],
+      ['"UNCHANGED"', 'Test Title'],
+      ['「翻訳不要」', 'Test Title'],
     ])(
       '原文を引用符・かぎ括弧で囲んだり大文字小文字だけを変えたりした応答（%s）も、原文のままとみなす',
       async (returned, title) => {

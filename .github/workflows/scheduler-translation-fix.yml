@@ -19,8 +19,9 @@ jobs:
   translation-fix:
     if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
     runs-on: ubuntu-latest
-    # 10 件ごとに 60 秒待つので、100 件余りで 15 分ほどかかる。API が遅い日や、障害の後に
-    # 対象が溜まった回でも打ち切られないよう 60 分にする（打ち切られると集計と終了コードが出ない）
+    # 10 件ごとに 60 秒待つので、100 件余りで 15 分ほどかかる。1 回の件数を 300 件に限り
+    # （下の --limit。残りは次の実行に回る）、API が遅い日でも打ち切られないよう 60 分にする
+    # （打ち切られると集計・キャッシュの破棄・終了コードが出ない）
     timeout-minutes: 60
     permissions:
       contents: read
@@ -43,7 +44,7 @@ jobs:
           ENABLE_TITLE_TRANSLATION: 'true'
         run: |
           echo "Starting translation fix process..."
-          npx tsx scripts/scheduled/fix-missing-translations.ts
+          npx tsx scripts/scheduled/fix-missing-translations.ts --limit=300
           echo "Translation fix completed."
       - name: Notify failure to Slack
         if: failure()

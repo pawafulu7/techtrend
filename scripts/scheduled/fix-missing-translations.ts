@@ -180,17 +180,23 @@ async function fixMissingTranslations(options: FixOptions = {}) {
 }
 
 /**
- * 訳を書いた記事のキャッシュを捨てる（訳を書くほかの経路と同じ onArticleUpdated）。
+ * 訳を書いた記事のキャッシュを捨てる。一覧（訳を表示に使う）は onBulkImport で 1 回だけ消し、
+ * 詳細は記事ごとにキーを消す（auto-regenerate-low-quality.ts と同じく、onArticleUpdated は
+ * 一覧のキャッシュを消さず、記事ごとに Redis の全キーを走査するので使わない）。
  * 捨てられなくても訳は保存済みなので失敗にはしない（一覧は TTL の間、古い表示が残る）
  */
 async function invalidateTranslatedArticles(articleIds: string[]): Promise<void> {
   try {
     // 読み込んだだけで Redis につなぐので、要るときだけ読み込む
-    const { cacheInvalidator } = await import('@/lib/cache/cache-invalidator');
+    const [{ cacheInvalidator }, { articleDetailCache }] = await Promise.all([
+      import('@/lib/cache/cache-invalidator'),
+      import('@/lib/cache/article-detail-cache'),
+    ]);
     await Promise.race([
       (async () => {
+        await cacheInvalidator.onBulkImport();
         for (const id of articleIds) {
-          await cacheInvalidator.onArticleUpdated(id);
+          await articleDetailCache.invalidateArticle(id);
         }
       })(),
       new Promise((_, reject) =>
@@ -218,7 +224,11 @@ fixMissingTranslations({ dryRun, limit })
     process.exitCode = 1;
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    try {
+      await prisma.$disconnect();
+    } catch {
+      // 切断に失敗しても終了する（例外の本文を公開されるログに出さない）
+    }
     // 引数なしの process.exit は process.exitCode で終わる
     process.exit();
   });

@@ -37,10 +37,14 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SLACK_NOTIFICATION_ENABLED: ${{ secrets.SLACK_NOTIFICATION_ENABLED }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        # 収集が失敗で終わっても（要約が 1 件も作れなかった回など）、要約と品質の計算は流してから失敗にする
+        # （scheduler-scraping.yml と同じ）
         run: |
-          npx tsx scripts/scheduled/collect-feeds.ts "Qiita Popular"
+          collect_status=0
+          npx tsx scripts/scheduled/collect-feeds.ts "Qiita Popular" || collect_status=$?
           npx tsx scripts/scheduled/manage-summaries.ts generate
           npx tsx scripts/scheduled/manage-quality-scores.ts calculate
+          exit "$collect_status"
       - name: Notify failure to Slack
         if: failure()
         env:

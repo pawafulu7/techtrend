@@ -258,5 +258,13 @@ describe('getGeminiResponseText', () => {
     expect(() => getGeminiResponseText(response)).toThrow(
       GeminiBlockedResponseError
     );
+    // 理由は code に持ち、公開されるログにも出せるようにする
+    let thrown: unknown;
+    try {
+      getGeminiResponseText(response);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toMatchObject({ code: 'SAFETY' });
   });
 });

@@ -15,12 +15,16 @@ export type BackfillTitleOutcome =
   | { kind: 'translated'; text: string }
   /** 訳さない記事（日本語の記事・翻訳が無効）。API を呼ばずに決まることがある */
   | { kind: 'not_needed' }
-  /** 要約あり・なしの両方で原文のまま返った（製品名と版だけのタイトルなど） */
+  /**
+   * 要約あり・なしの両方で、原文のまま返った（製品名と版だけのタイトルなど）か、
+   * 安全性のフィルタで止められた。何度送っても訳せない
+   */
   | { kind: 'untranslatable' }
   /** API に届かなかった、または応答が訳文として使えなかった。次の実行でやり直す */
   | { kind: 'failed'; error: unknown };
 
-type AttemptResult = BackfillTitleOutcome | { kind: 'unchanged' };
+/** モデルが訳さなかった（原文のまま返った、または安全性のフィルタで止められた） */
+type AttemptResult = BackfillTitleOutcome | { kind: 'not_translated' };
 
 async function attempt(
   translator: TitleTranslator,
@@ -43,13 +47,14 @@ async function attempt(
   } catch (error) {
     if (error instanceof TitleTranslationUnchangedError) {
       tally.recordReached();
-      return { kind: 'unchanged' };
+      return { kind: 'not_translated' };
     }
     // 応答は返ったが使えなかったものだけを「届いた」に数える。HTTP エラー・タイムアウト
     // （TitleTranslationRequestError）と、正体の分からない例外は「届かなかった」に数え、
     // 全件失敗を見逃さない側に倒す
     if (error instanceof TitleTranslationInvalidResponseError) {
       tally.recordReached();
+      if (error.blocked) return { kind: 'not_translated' };
     } else {
       tally.recordFailed();
     }
@@ -58,8 +63,9 @@ async function attempt(
 }
 
 /**
- * 原文のまま返ったら、要約を渡さずに 1 回だけやり直す（要約に引きずられて原文を返すことがあるため。
- * 毎時の要約で訳すときの 2 回目以降と同じ）。それでも原文のままなら、訳しようがないと決める。
+ * 原文のまま返ったか安全性のフィルタで止められたら、要約を渡さずに 1 回だけやり直す
+ * （要約に引きずられて原文を返したり、要約の中身で止められたりすることがあるため。
+ * 毎時の要約で訳すときの 2 回目以降と同じ）。それでも訳さなければ、訳しようがないと決める。
  * やり直しが API に届かなかったときは決めずに失敗とし、次の実行でやり直す
  */
 export async function backfillTitleTranslation(
@@ -68,7 +74,7 @@ export async function backfillTitleTranslation(
   tally: GeminiCallTally
 ): Promise<BackfillTitleOutcome> {
   const first = await attempt(translator, input, tally);
-  if (first.kind !== 'unchanged') return first;
+  if (first.kind !== 'not_translated') return first;
   if (!input.summary) return { kind: 'untranslatable' };
 
   const retry = await attempt(
@@ -80,5 +86,5 @@ export async function backfillTitleTranslation(
     },
     tally
   );
-  return retry.kind === 'unchanged' ? { kind: 'untranslatable' } : retry;
+  return retry.kind === 'not_translated' ? { kind: 'untranslatable' } : retry;
 }

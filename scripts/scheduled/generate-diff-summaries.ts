@@ -140,6 +140,10 @@ async function main() {
       console.log('\n=== Results ===');
       console.log(`Total: ${results.total}`);
       console.log(`Successful: ${results.successful}`);
+      // データが無くて飛ばしたカテゴリー（Successful に含まれる）
+      console.log(
+        `Skipped (no data): ${results.results.filter((result) => result.skipped).length}`
+      );
       console.log(`Failed: ${results.failed}`);
       console.log('');
 

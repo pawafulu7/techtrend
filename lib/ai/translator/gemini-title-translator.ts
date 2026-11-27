@@ -53,27 +53,58 @@ export class TitleTranslationUnchangedError extends Error {
 }
 
 /**
- * 応答は返ったが、訳文として使えなかった（本文が無い・空・安全性のフィルタで候補が返らないなど）。
- * API に届かなかった失敗（TitleTranslationRequestError）と分けて数えられるようにする
+ * 応答は返ったが、訳文として使えなかった（本文が無い・空・安全性のフィルタで止められたなど）。
+ * API に届かなかった失敗（TitleTranslationRequestError）と分けて数えられるようにする。
+ * 安全性のフィルタで止められたときは、理由（PROHIBITED_CONTENT など）を code に持つ。
+ * code は summarizeError がログに出す
  */
 export class TitleTranslationInvalidResponseError extends Error {
-  constructor(message: string) {
+  readonly code?: string;
+
+  constructor(message: string, blockReason?: string) {
     super(message);
     this.name = 'TitleTranslationInvalidResponseError';
+    this.code = blockReason;
+  }
+
+  /** 安全性のフィルタで止められた（同じタイトルは何度送っても止められることが多い） */
+  get blocked(): boolean {
+    return this.code !== undefined;
   }
 }
 
-// 比べる前に外す、前後の引用符とかぎ括弧（プロンプトがタイトルを引用符で囲むので、付けて返すことがある）
-const SURROUNDING_QUOTES = /^["'“”‘’「『]+|["'“”‘’」』]+$/g;
+// 本文が無いときに、安全性のフィルタで止められたとみなす終了理由
+const BLOCKED_FINISH_REASONS = new Set([
+  'SAFETY',
+  'RECITATION',
+  'LANGUAGE',
+  'BLOCKLIST',
+  'PROHIBITED_CONTENT',
+  'SPII',
+]);
+
+/** 理由の値を、決まった形（大文字・数字・_）のときだけ返す（公開されるログに出すため） */
+function safeReason(value: unknown): string | undefined {
+  return typeof value === 'string' && /^[A-Z0-9_]{1,32}$/.test(value)
+    ? value
+    : undefined;
+}
+
+// 比べる前に外す、前後の引用符・かぎ括弧（プロンプトがタイトルを引用符で囲むので、付けて返すことがある）
+const SURROUNDING_QUOTES = /^["'“”‘’＂「『【]+|["'“”‘’＂」』】]+$/g;
+
+function stripQuotes(text: string): string {
+  return text.trim().replace(SURROUNDING_QUOTES, '').trim();
+}
 
 /**
  * 訳文が原文と同じか。前後の空白・引用符・かぎ括弧と、大文字小文字の違いは無視する
  * （「Colorfigures」や darktable のように、原文に近い形で返っても訳せていないため）
  */
 function isSameAsOriginal(translated: string, original: string): boolean {
-  const normalize = (text: string) =>
-    text.trim().replace(SURROUNDING_QUOTES, '').trim().toLowerCase();
-  return normalize(translated) === normalize(original);
+  return (
+    stripQuotes(translated).toLowerCase() === stripQuotes(original).toLowerCase()
+  );
 }
 
 export class GeminiTitleTranslator implements TitleTranslator {
@@ -134,25 +165,16 @@ export class GeminiTitleTranslator implements TitleTranslator {
       );
     }
 
-    // UNCHANGEDまたは原文がそのまま返された場合のハンドリング
+    // UNCHANGED・翻訳不要が返った場合と、英語のタイトルが原文のまま返った場合
+    // （製品名と版だけなど、訳しようがないことが多い）。引用符で囲んで返すことがあるので外して比べる。
+    // 日本語のタイトルは最初に null を返しているので、ここに来るのは英語のタイトルだけ
     const normalizedTranslated = translated.trim();
+    const bare = stripQuotes(normalizedTranslated).toLowerCase();
     if (
-      normalizedTranslated.toLowerCase() === 'unchanged' ||
-      normalizedTranslated === '翻訳不要'
+      bare === 'unchanged' ||
+      bare === '翻訳不要' ||
+      isSameAsOriginal(normalizedTranslated, input.title)
     ) {
-      throw new TitleTranslationUnchangedError(
-        `Translation API returned invalid result: ${normalizedTranslated}`
-      );
-    }
-
-    // 原文がそのまま返された場合、日本語タイトルかチェック
-    if (isSameAsOriginal(normalizedTranslated, input.title)) {
-      // 元のタイトルが日本語なら訳さない記事。応答の文字列で見ると、「」で囲んで返した
-      // 英語のタイトルまで日本語とみなしてしまうので、元のタイトルで判定する
-      if (isLikelyJapanese(input.title)) {
-        return null;
-      }
-      // 英語のタイトルが原文のまま返った（製品名と版だけなど、訳しようがないことが多い）
       throw new TitleTranslationUnchangedError(
         `Translation API returned invalid result: ${normalizedTranslated}`
       );
@@ -205,8 +227,11 @@ export class GeminiTitleTranslator implements TitleTranslator {
       Array<Record<string, unknown>> | undefined;
     if (!candidates?.length) {
       // 安全性のフィルタで依頼が止められると、候補が 1 件も返らない（promptFeedback.blockReason）
+      const feedback = payload.promptFeedback as
+        Record<string, unknown> | undefined;
       throw new TitleTranslationInvalidResponseError(
-        'No candidates in response'
+        'No candidates in response',
+        safeReason(feedback?.blockReason)
       );
     }
 
@@ -216,8 +241,13 @@ export class GeminiTitleTranslator implements TitleTranslator {
     const raw: unknown = parts?.[0]?.text;
 
     if (typeof raw !== 'string' || raw === '') {
+      // 出力の途中で安全性のフィルタに止められると、終了理由が SAFETY などになって本文が無い
+      const finishReason = safeReason(candidates[0]?.finishReason);
       throw new TitleTranslationInvalidResponseError(
-        'No text returned from translator'
+        'No text returned from translator',
+        finishReason && BLOCKED_FINISH_REASONS.has(finishReason)
+          ? finishReason
+          : undefined
       );
     }
 

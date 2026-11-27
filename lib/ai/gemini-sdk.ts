@@ -98,12 +98,17 @@ export async function generateGeminiTextResult(
 
 /**
  * 応答は返ったが、安全性のフィルタなどで止められて本文が無い。
- * 通信の失敗（SDK の ApiError など）と分けて数えられるようにする（lib/ai/gemini-call-tally.ts）
+ * 通信の失敗（SDK の ApiError など）と分けて数えられるようにする（lib/ai/gemini-call-tally.ts）。
+ * 理由（SAFETY など）は code に持ち、summarizeError が公開されるログにも出す
  */
 export class GeminiBlockedResponseError extends Error {
-  constructor(message: string) {
+  readonly code?: string;
+
+  constructor(message: string, reason?: string) {
     super(message);
     this.name = 'GeminiBlockedResponseError';
+    this.code =
+      reason && /^[A-Z0-9_]{1,32}$/.test(reason) ? reason : undefined;
   }
 }
 
@@ -128,7 +133,8 @@ export function getGeminiResponseText(
   if (!candidate) {
     if (response.promptFeedback) {
       throw new GeminiBlockedResponseError(
-        `Gemini blocked the prompt: ${response.promptFeedback.blockReason ?? 'unknown'}`
+        `Gemini blocked the prompt: ${response.promptFeedback.blockReason ?? 'unknown'}`,
+        response.promptFeedback.blockReason
       );
     }
     return '';
@@ -138,7 +144,8 @@ export function getGeminiResponseText(
     BLOCKED_FINISH_REASONS.has(candidate.finishReason)
   ) {
     throw new GeminiBlockedResponseError(
-      `Gemini stopped the response: ${candidate.finishReason}`
+      `Gemini stopped the response: ${candidate.finishReason}`,
+      candidate.finishReason
     );
   }
   return response.text ?? '';

@@ -88,6 +88,34 @@ describe('backfillTitleTranslation', () => {
     expect(tally.failed).toBe(0);
   });
 
+  it('安全性のフィルタで要約あり・なしの両方とも止められたら untranslatable を返す', async () => {
+    const blocked = () =>
+      new TitleTranslationInvalidResponseError(
+        'No candidates in response',
+        'PROHIBITED_CONTENT'
+      );
+    const translator = createTranslator(blocked(), blocked());
+    const tally = new GeminiCallTally();
+
+    await expect(
+      backfillTitleTranslation(translator, input, tally)
+    ).resolves.toEqual({ kind: 'untranslatable' });
+    expect(translator.translateTitle).toHaveBeenCalledTimes(2);
+    expect(tally.reached).toBe(2);
+  });
+
+  it('止められた理由の無い応答不良は、訳せないと決めずに failed を返す', async () => {
+    const error = new TitleTranslationInvalidResponseError(
+      'No text returned from translator'
+    );
+    const translator = createTranslator(error);
+
+    await expect(
+      backfillTitleTranslation(translator, input, new GeminiCallTally())
+    ).resolves.toEqual({ kind: 'failed', error });
+    expect(translator.translateTitle).toHaveBeenCalledTimes(1);
+  });
+
   it('要約の無い記事で原文のままなら、やり直さずに untranslatable を返す', async () => {
     const translator = createTranslator(unchanged());
     const tally = new GeminiCallTally();

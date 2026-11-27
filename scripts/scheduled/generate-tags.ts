@@ -59,10 +59,11 @@ async function generateTags(
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30_000);
-  let response: Awaited<ReturnType<typeof fetch>>;
+  let data: GeminiGenerateResponse | null;
   try {
-    // 応答が返ったか（HTTP エラー・タイムアウト・通信の失敗でないか）を数える
-    response = await tally.track(async () => {
+    // 応答が返ったか（HTTP エラー・タイムアウト・通信の失敗でないか）を数える。
+    // 本文の読み込みも 30 秒の中断の範囲に入れる
+    data = await tally.track(async () => {
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,7 +89,7 @@ async function generateTags(
           code: extractApiStatus(errorText),
         });
       }
-      return res;
+      return (await res.json()) as GeminiGenerateResponse | null;
     });
   } catch (error) {
     clearTimeout(timeoutId);
@@ -99,14 +100,13 @@ async function generateTags(
   } finally {
     clearTimeout(timeoutId);
   }
-  const data = (await response.json()) as GeminiGenerateResponse;
   // 依頼が安全性のフィルタで止められると、HTTP 200 で候補が 1 件も返らない
   // （promptFeedback.blockReason。性犯罪の報道などで PROHIBITED_CONTENT になる）。
   // 理由は決まった形の値なので code に入れ、公開されるログにも出す（summarizeError）
-  const candidate = data.candidates?.[0];
+  const candidate = data?.candidates?.[0];
   const text = candidate?.content?.parts?.[0]?.text;
   if (typeof text !== 'string') {
-    const reason = data.promptFeedback?.blockReason ?? candidate?.finishReason;
+    const reason = data?.promptFeedback?.blockReason ?? candidate?.finishReason;
     throw Object.assign(new Error('Gemini returned no text'), {
       code: typeof reason === 'string' ? reason : 'NO_TEXT',
     });
