@@ -24,19 +24,31 @@ npx prisma migrate dev
 
 ```bash
 # 1. prisma/schema.prisma を編集する
-# 2. マイグレーションを作る
-npx prisma migrate dev --name add_user_profile_fields
-# 3. prisma/ を commit する
+# 2. マイグレーションを作る（--create-only で、まだ適用しない）
+npx prisma migrate dev --create-only --name add_user_profile_fields
+# 3. 表を足したなら、下の GRANT などを、できた migration.sql に書き足す
+# 4. 開発の DB に適用する
+npx prisma migrate dev
+# 5. prisma/ を commit する
 ```
 
 ### 本番に適用する
 
-本番には Vercel のデプロイ時に `vercel-build`（`prisma generate && prisma migrate deploy && next build --webpack`）が自動で適用する。手で確かめる・適用するときは次を使う（接続先は `.env.local` の `PROD_DATABASE_URL`。接続先が出ないよう、決まった形の行と成否だけを表示する）。
+本番には Vercel のデプロイ時に `vercel-build` が自動で適用する（管理者のロールの `MIGRATION_DATABASE_URL` で流す。[deployment.md](../operations/deployment.md)）。手元には管理者の接続情報を置かないので、手元から適用はできない。適用状況は次で確かめる（接続先は `.env.local` の `PROD_DATABASE_URL` の読み取り用のロール。接続先が出ないよう、決まった形の行と成否だけを表示する）。
 
 ```bash
-npm run migrate:production:check   # 適用状況の確認（prisma migrate status）
-npm run migrate:production         # 未適用のマイグレーションを適用（scripts/db/deploy-migrations.sh）
+npm run migrate:production:check   # 適用状況の確認（scripts/db/check-prod-migrations.ts。読み取り用のロールでは prisma migrate status が権限で止まるため）
 ```
+
+表を足すときは、`scripts/db/prod-table-access.json` の `personal`（個人情報を持つ表）か `content`（それ以外）に表の名前を入れる。`content` の表は、その表を作るマイグレーションに次の 1 行を書く（手元の読み取り用のロールで読めるようになり、本番からの同期（`npm run db:sync:prod`）でも持ってくる）。`personal` の表は何も書かない（読み取り用のロールは読めない）。
+
+```sql
+GRANT SELECT ON TABLE "<表>" TO techtrend_readonly;
+```
+
+表を `personal` に移すときは、一覧を直し、`REVOKE ALL ON TABLE "<表>" FROM techtrend_readonly;` のマイグレーションを書く。どちらかを忘れると、テスト（`__tests__/scripts/db/prod-table-access.db.test.ts`）が落ちる。詳しくは [deployment.md](../operations/deployment.md) の「DB のロール」。
+
+`migrate dev` と `npm run db:check-schema` は、マイグレーションを空のシャドウ DB に流し直して照合する。シャドウ DB には Prisma がマイグレーションの記録の表（`_prisma_migrations`）を作らないので、`prisma.config.ts` と `prisma/schema-check.config.ts` の `initShadowDb` で同じ形の表を先に作っている（`scripts/db/shadow-db-init.ts`。その表の列に GRANT するマイグレーションがあるため）。ほかにも、マイグレーションの中で作らない表を参照するなら、ここに足す。
 
 ## うまくいかないとき
 

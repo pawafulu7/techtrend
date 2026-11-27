@@ -10,17 +10,22 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 
-# 除外テーブル（ユーザー関連、Prisma PascalCase）
-# SocialPostAuditLog は、操作したユーザーの ID・IP アドレス・User-Agent を持つ
-# GateAllowedEmail は、サイトの入口に入れる人の Gmail アドレスを持つ。GateAccessRequest は、利用を申請した人の
-# Gmail アドレスと備考を持つ
-EXCLUDE_TABLES=(
-  '"User"' '"Account"' '"Session"' '"Verification"'
-  '"Favorite"' '"ArticleView"' '"UserDeletionLog"'
-  '"UserCategoryPreference"' '"Comment"' '"UserSourcePreset"'
-  '"Inquiry"' '"SocialPostAuditLog"' '"GateAllowedEmail"'
-  '"GateAccessRequest"'
-)
+# 除外テーブル: 個人情報を持つ表（scripts/db/prod-table-access.json の personal）。手元の接続（読み取り用のロール）は
+# これらの表を読めないので、持ってこないだけでなく、ダンプの対象から外さないと pg_dump が権限で失敗する。
+# 一覧の正本は JSON で、表を足したときの分類はそちらで行う
+EXCLUDE_TABLES=()
+while IFS= read -r table; do
+  [ -n "$table" ] || continue
+  if [[ ! "$table" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    echo "[sync] ERROR: prod-table-access.json に扱えない名前の表があります: $table"
+    exit 1
+  fi
+  EXCLUDE_TABLES+=("\"${table}\"")
+done < <(node -e 'for (const t of require(process.argv[1]).personal) console.log(t)' "$ROOT_DIR/scripts/db/prod-table-access.json")
+if [ "${#EXCLUDE_TABLES[@]}" -eq 0 ]; then
+  echo "[sync] ERROR: prod-table-access.json から除外する表を読めませんでした。"
+  exit 1
+fi
 
 # 環境変数 -> .env.local -> .env の順で PROD_DATABASE_URL を読み込む
 # shellcheck source=scripts/db/prod-db-env.sh
@@ -170,6 +175,20 @@ fi
 # ローカルにだけあるテーブル（ローカルにだけ適用したマイグレーションで作ったものなど）は、消した後に何も入らない
 if ! PROD_TABLES="$("$PSQL" "$PG_CONN_NOPASS" -X -q -t -A -v ON_ERROR_STOP=1 -c "$TABLES_SQL" 2>>"$DUMP_STDERR_LOG")"; then
   echo "[sync] ERROR: 本番DBのテーブルの一覧を取れませんでした。出力 $(grep -c '' "$DUMP_STDERR_LOG" || true) 行は ${DUMP_STDERR_LOG#"$ROOT_DIR"/} に保存しました。"
+  exit 1
+fi
+
+# 本番に、prod-table-access.json のどこにも分類していない表があると、手元の読み取り用のロールは読めず、pg_dump が
+# 権限（permission denied）で失敗する。ダンプの前に名前を出して止める（表を足したら JSON の personal か content に入れる）
+UNCLASSIFIED_PROD_TABLES="$(printf '%s\n' "$PROD_TABLES" | node -e '
+  const access = require(process.argv[1]);
+  const known = new Set([...access.personal, ...access.content, ...access.metadata]);
+  const tables = require("fs").readFileSync(0, "utf8").split("\n").filter(Boolean);
+  console.log(tables.filter((t) => !known.has(t)).join(", "));
+' "$ROOT_DIR/scripts/db/prod-table-access.json")"
+if [ -n "$UNCLASSIFIED_PROD_TABLES" ]; then
+  echo "[sync] ERROR: 本番に、scripts/db/prod-table-access.json で分類していない表があります: ${UNCLASSIFIED_PROD_TABLES}"
+  echo "         JSON の personal（個人情報）か content に入れ、content ならマイグレーションで techtrend_readonly に GRANT して、本番にデプロイしてから流してください。"
   exit 1
 fi
 LOCAL_ONLY_TABLES="$(LC_ALL=C comm -13 <(printf '%s\n' "$PROD_TABLES" | LC_ALL=C sort) <(printf '%s\n' "$LOCAL_TABLES" | LC_ALL=C sort) | paste -sd, - | sed 's/,/, /g')"

@@ -1,0 +1,85 @@
+name: Maintenance - Run Script
+
+# 本番の DB に書き込む保守スクリプト（データの直し・バックフィル・ソースの登録など）を手動で流す。
+# 手元の接続は読み取り用のロールで書き込めないので、本番への書き込みはここで行う（docs/operations/deployment.md の「DB のロール」）。
+# アプリ用のロール（secret の DATABASE_URL。表の読み書きだけ）で動く。表の作成・変更はマイグレーションで行う。
+#
+# ログは公開される。スクリプトの出力は `名前=数値` の行だけを出す（scripts/db/prod-db-env.sh の prod_db_run）ので、
+# 流すスクリプトは、結果と失敗の件数を `updated=12`・`failed=0` のように出し、失敗したら 0 以外で終わるようにする
+# （それ以外の行は見えず、終了コードが 0 なら成功と表示される）。
+# 引数は環境変数を通さずにイベントのファイルから読む（ステップの環境変数はログの見出しに出るため）。それでも実行の記録には
+# 残るので、個人情報や秘密は渡さない。main ブランチのワークフローからだけ流せる
+
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: "流すスクリプト（例: scripts/maintenance/fix-something.ts）"
+        required: true
+        type: string
+      args:
+        description: 'スクリプトに渡す引数。JSON の文字列の配列（例: ["--dry-run", "--limit=10"]）。個人情報や秘密は入れない'
+        required: false
+        type: string
+        default: "[]"
+      confirm:
+        description: "Type 'YES' to confirm manual execution"
+        required: true
+        type: string
+        default: "NO"
+
+concurrency:
+  group: techtrend-maintenance-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    if: github.event.inputs.confirm == 'YES' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate inputs
+        env:
+          INPUT_SCRIPT: ${{ github.event.inputs.script }}
+        run: |
+          if [[ ! "$INPUT_SCRIPT" =~ ^scripts/[A-Za-z0-9_/-]+\.ts$ ]]; then
+            echo "::error::script は scripts/ の下の .ts を、英数字と _ / - だけで指定してください"
+            exit 1
+          fi
+          if [ ! -f "$INPUT_SCRIPT" ]; then
+            echo "::error::script が見つかりません"
+            exit 1
+          fi
+          # 引数を NUL 区切りのファイルに書き出す（中身はログに出さない。JSON として読めなければ止める）
+          node -e '
+            const fs = require("fs");
+            let args = null;
+            try {
+              const raw = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8")).inputs?.args ?? "";
+              args = raw.trim() === "" ? [] : JSON.parse(raw);
+            } catch {}
+            if (!Array.isArray(args) || !args.every((a) => typeof a === "string" && !a.includes("\0"))) {
+              console.error("::error::args は JSON の文字列の配列で指定してください");
+              process.exit(1);
+            }
+            fs.writeFileSync(process.argv[1], args.map((a) => a + "\0").join(""), { mode: 0o600 });
+          ' "$RUNNER_TEMP/maintenance-args"
+      - name: Scheduler setup
+        uses: ./.github/actions/scheduler-setup
+        with:
+          database_url: ${{ secrets.DATABASE_URL }}
+      - name: Run script
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          INPUT_SCRIPT: ${{ github.event.inputs.script }}
+        run: |
+          source scripts/db/prod-db-env.sh
+          mapfile -d '' -t script_args < "$RUNNER_TEMP/maintenance-args"
+          prod_db_run npx tsx "$INPUT_SCRIPT" "${script_args[@]}"
