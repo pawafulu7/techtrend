@@ -36,7 +36,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # GEMINI_MODEL は指定しない。毎時の要約で訳すときと同じ既定のモデル（lib/di/config.ts）を使う。
           # 固定していた gemini-2.0-flash-lite は提供が終わり、全件 404 で失敗していた
-          TRANSLATION_ENABLED: true
+          # 翻訳の有効・無効は ENABLE_TITLE_TRANSLATION で決まる（lib/di/config.ts）。
+          # 以前の TRANSLATION_ENABLED はどこからも読まれていなかった
+          ENABLE_TITLE_TRANSLATION: 'true'
         run: |
           echo "Starting translation fix process..."
           npx tsx scripts/scheduled/fix-missing-translations.ts

@@ -216,28 +216,37 @@ describe('GeminiTitleTranslator', () => {
       ).rejects.toThrow('Translation API returned invalid result');
     });
 
-    it('should throw error when API fails', async () => {
+    it('タイムアウトなど HTTP の状態が無い失敗では、status が無く cause に元の例外を持つ', async () => {
+      const abortError = Object.assign(new Error('The operation was aborted'), {
+        name: 'AbortError',
+      });
       mockTransport.invoke.mockResolvedValue({
-        status: 'error',
-        error: {
-          message: 'API Error',
-          code: 500,
-        },
+        status: 'retryable_error',
+        error: abortError,
+        latencyMs: 20000,
+        headers: {},
       });
 
-      await expect(
-        translator.translateTitle({
-          title: 'Test Title',
-          requestId: 'test-9',
-        })
-      ).rejects.toThrow('API Error');
+      const promise = translator.translateTitle({
+        title: 'Test Title',
+        requestId: 'test-9',
+      });
+
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationRequestError
+      );
+      await expect(promise).rejects.toMatchObject({
+        status: undefined,
+        cause: abortError,
+      });
     });
 
     it('API の呼び出しが失敗したら、HTTP の状態を持つ TitleTranslationRequestError を投げる', async () => {
+      const httpError = new Error('HTTP 404: model is no longer available');
       mockTransport.invoke.mockResolvedValue({
         status: 'fatal_error',
         httpStatus: 404,
-        error: new Error('HTTP 404: model is no longer available'),
+        error: httpError,
         latencyMs: 10,
         headers: {},
       });
@@ -254,6 +263,7 @@ describe('GeminiTitleTranslator', () => {
         name: 'TitleTranslationRequestError',
         status: 404,
         message: 'HTTP 404: model is no longer available',
+        cause: httpError,
       });
     });
 

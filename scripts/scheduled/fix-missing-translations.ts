@@ -56,9 +56,10 @@ async function fixMissingTranslations(options: FixOptions = {}) {
 
   let successCount = 0;
   let failureCount = 0;
-  // failureCount のうち、API の呼び出しそのものが失敗したもの（HTTP エラー・タイムアウトなど）。
-  // 残りは応答が返ったが訳文として使えなかったもの（製品名だけのタイトルを原文のまま返すなど）
+  // 翻訳の呼び出しのうち、API に届かなかったもの（HTTP エラー・タイムアウトなど）と、
+  // 応答が返ったもの（訳せた・製品名だけのタイトルを原文のまま返したなど）。DB の失敗は数えない
   let requestFailureCount = 0;
+  let apiReachedCount = 0;
   let skipCount = 0;
 
   // 2. Batch processing
@@ -82,12 +83,26 @@ async function fixMissingTranslations(options: FixOptions = {}) {
 
           // Execute translation
           const requestId = `fix-translation-${article.id}-${Date.now()}`;
-          const translated = await titleTranslator.translateTitle({
-            title: article.title,
-            summary: article.summary ?? undefined,
-            content: article.content ?? undefined,
-            requestId,
-          });
+          let translated: string | null;
+          try {
+            translated = await titleTranslator.translateTitle({
+              title: article.title,
+              summary: article.summary ?? undefined,
+              content: article.content ?? undefined,
+              requestId,
+            });
+          } catch (error) {
+            if (error instanceof TitleTranslationRequestError) {
+              requestFailureCount++;
+            } else {
+              apiReachedCount++;
+            }
+            throw error;
+          }
+          // null は API を呼ばずに訳さないと決めた場合を含むので、届いた件数に数えない
+          if (translated !== null) {
+            apiReachedCount++;
+          }
 
           // Handle null response (Japanese title detected or translation disabled)
           if (translated === null) {
@@ -113,9 +128,6 @@ async function fixMissingTranslations(options: FixOptions = {}) {
 
         } catch (error) {
           failureCount++;
-          if (error instanceof TitleTranslationRequestError) {
-            requestFailureCount++;
-          }
           console.error(`  ERROR [${article.id}] ${summarizeError(error)}`);
         }
       })
@@ -134,11 +146,10 @@ async function fixMissingTranslations(options: FixOptions = {}) {
   console.error(`  Skipped: ${skipCount} articles`);
   console.error(`  Total: ${articles.length} articles\n`);
 
-  // API の呼び出しが 1 件も通らなかったときは、モデルの提供終了・API キーの不備・利用上限など、
-  // 次の実行でも直らない原因の可能性が高い。終了コードで失敗を返し、ワークフローの通知に載せる
-  // （以前は全件 404 でも成功で終わり、数か月気づけなかった）。
+  // API の呼び出しが 1 件も通らなかったときは、終了コードで失敗を返し、ワークフローの通知に載せる
+  // （以前は全件 404 でも成功で終わり、数か月気づけなかった）。モデルの提供終了・API キーの不備・
+  // 利用上限のほか、その回の対象すべてが一時的な障害で落ちたときも通知される。
   // 応答が返ったが訳文として使えなかった記事は毎回残りうるので、通知の条件には入れない
-  const apiReachedCount = successCount + (failureCount - requestFailureCount);
   if (requestFailureCount > 0 && apiReachedCount === 0) {
     console.error(`All ${requestFailureCount} translation API requests failed`);
     process.exitCode = 1;

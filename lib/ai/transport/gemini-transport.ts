@@ -6,6 +6,24 @@ import {
   TransportResult,
 } from './gemini-transport.interface';
 
+/**
+ * エラー応答の本文（{"error":{"status":"NOT_FOUND",...}}）から、Google API の状態名だけを取り出す。
+ * 大文字と _ だけの値に限る（本文のほかの部分には API の利用先の識別子などが入りうるため）
+ */
+export function extractApiStatus(errorText: string): string | undefined {
+  try {
+    const parsed = JSON.parse(errorText) as {
+      error?: { status?: unknown };
+    } | null;
+    const status = parsed?.error?.status;
+    return typeof status === 'string' && /^[A-Z_]{1,64}$/.test(status)
+      ? status
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 type CircuitBreakerState = {
   consecutiveErrors: number;
   circuitOpen: boolean;
@@ -231,8 +249,14 @@ export class GeminiTransportImpl implements GeminiTransport {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');
+        // errorText は定期実行のログでは伏せる（lib/logger.ts）。公開されるログでも原因の種類が
+        // 分かるように、決まった形の状態名（NOT_FOUND など）だけを別に出す
         logger.error(
-          { httpStatus: response.status, errorText },
+          {
+            httpStatus: response.status,
+            apiStatus: extractApiStatus(errorText),
+            errorText,
+          },
           'Transport HTTP error'
         );
 

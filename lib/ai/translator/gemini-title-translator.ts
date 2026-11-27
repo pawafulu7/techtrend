@@ -28,13 +28,14 @@ type TranslatorOptions = {
 /**
  * API の呼び出しそのものが失敗した（HTTP エラー・タイムアウト・回路の遮断）。
  * 応答は返ったが訳文として使えない場合（原文のまま・空）とは分けて数えられるようにする。
- * status は summarizeError がログに出す（例: `TitleTranslationRequestError status=404`）
+ * status と cause の種類は summarizeError がログに出す
+ * （例: `TitleTranslationRequestError status=404 <- cause: Error`、タイムアウトなら cause が AbortError）
  */
 export class TitleTranslationRequestError extends Error {
   readonly status?: number;
 
-  constructor(message: string, status?: number) {
-    super(message);
+  constructor(message: string, status?: number, cause?: unknown) {
+    super(message, cause === undefined ? undefined : { cause });
     this.name = 'TitleTranslationRequestError';
     this.status = status;
   }
@@ -81,7 +82,8 @@ export class GeminiTitleTranslator implements TitleTranslator {
     if (result.status !== 'ok') {
       throw new TitleTranslationRequestError(
         result.error?.message ?? 'Translation failed',
-        result.httpStatus
+        result.httpStatus,
+        result.error
       );
     }
 
