@@ -1,4 +1,5 @@
-import { GeminiTransportImpl } from '../gemini-transport';
+import { logger } from '@/lib/logger';
+import { extractApiStatus, GeminiTransportImpl } from '../gemini-transport';
 
 describe('GeminiTransportImpl', () => {
   let transport: GeminiTransportImpl;
@@ -153,6 +154,8 @@ describe('GeminiTransportImpl', () => {
 
       expect(result.status).toBe('retryable_error');
       expect(global.fetch).toHaveBeenCalledTimes(4);
+      // 本文が JSON でなければ、状態名も付けずに状態コードだけにする
+      expect(result.error?.message).toBe('HTTP 500');
     }, 15000);
   });
 
@@ -380,6 +383,55 @@ describe('GeminiTransportImpl', () => {
 
       expect(result.status).toBe('retryable_error');
     }, 15000);
+
+    it('HTTP エラーのログに、本文とは別に API の状態名を出す', async () => {
+      const errorSpy = jest.spyOn(logger, 'error');
+      const body = JSON.stringify({
+        error: {
+          code: 404,
+          message: 'This model models/gemini-old is no longer available.',
+          status: 'NOT_FOUND',
+        },
+      });
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        text: async () => body,
+        headers: new Map(),
+      });
+
+      const result = await transport.invoke({
+        model: 'gemini-old',
+        body: {},
+        requestId: 'test-404',
+      });
+
+      expect(result.status).toBe('fatal_error');
+      expect(result.httpStatus).toBe(404);
+      // message には本文を入れず、状態コードと状態名だけにする
+      expect(result.error?.message).toBe('HTTP 404 NOT_FOUND');
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ httpStatus: 404, apiStatus: 'NOT_FOUND' }),
+        'Transport HTTP error'
+      );
+    });
+  });
+
+  describe('extractApiStatus', () => {
+    it('Google API のエラー応答から状態名を取り出す', () => {
+      expect(
+        extractApiStatus('{"error":{"code":429,"status":"RESOURCE_EXHAUSTED"}}')
+      ).toBe('RESOURCE_EXHAUSTED');
+    });
+
+    it('JSON でない本文や、決まった形でない値は undefined にする', () => {
+      expect(extractApiStatus('Server error')).toBeUndefined();
+      expect(extractApiStatus('null')).toBeUndefined();
+      expect(
+        extractApiStatus('{"error":{"status":"project 123456"}}')
+      ).toBeUndefined();
+      expect(extractApiStatus('{"error":{"status":404}}')).toBeUndefined();
+    });
   });
 
   describe('API呼び出し', () => {

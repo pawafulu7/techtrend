@@ -6,6 +6,25 @@ import {
   TransportResult,
 } from './gemini-transport.interface';
 
+/**
+ * エラー応答の本文（{"error":{"status":"NOT_FOUND",...}}）から、Google API の状態名だけを取り出す。
+ * 大文字と _ だけの値に限る（本文のほかの部分には API の利用先の識別子などが入りうるため）
+ */
+export function extractApiStatus(errorText: string): string | undefined {
+  try {
+    const parsed: unknown = JSON.parse(errorText);
+    if (typeof parsed !== 'object' || parsed === null) return undefined;
+    const error: unknown = (parsed as { error?: unknown }).error;
+    if (typeof error !== 'object' || error === null) return undefined;
+    const status: unknown = (error as { status?: unknown }).status;
+    return typeof status === 'string' && /^[A-Z_]{1,64}$/.test(status)
+      ? status
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 type CircuitBreakerState = {
   consecutiveErrors: number;
   circuitOpen: boolean;
@@ -231,8 +250,15 @@ export class GeminiTransportImpl implements GeminiTransport {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');
+        const apiStatus = extractApiStatus(errorText);
+        // errorText は定期実行のログでは伏せる（lib/logger.ts）。公開されるログでも原因の種類が
+        // 分かるように、決まった形の状態名（NOT_FOUND など）だけを別に出す
         logger.error(
-          { httpStatus: response.status, errorText },
+          {
+            httpStatus: response.status,
+            apiStatus,
+            errorText,
+          },
           'Transport HTTP error'
         );
 
@@ -241,7 +267,12 @@ export class GeminiTransportImpl implements GeminiTransport {
             ? 'retryable_error'
             : 'fatal_error',
           httpStatus: response.status,
-          error: new Error(`HTTP ${response.status}: ${errorText}`),
+          // 本文は message に入れない。message は要約の失敗の記録（summaryError）や
+          // 回帰テストのレポートに写り、レポートは公開される（ai-regression-test.yml）。
+          // 呼び出し側は「HTTP 429」「RESOURCE_EXHAUSTED」で判定するので、その形は保つ
+          error: new Error(
+            `HTTP ${response.status}${apiStatus ? ` ${apiStatus}` : ''}`
+          ),
           latencyMs,
           headers,
         };

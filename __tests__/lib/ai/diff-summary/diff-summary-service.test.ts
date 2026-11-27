@@ -135,6 +135,30 @@ describe('Diff Summary Service', () => {
     });
   });
 
+  describe('両方の期間にトピックが無いカテゴリー', () => {
+    it('LLM を呼ばずに成功で返し、飛ばしたことを skipped で示す（全カテゴリーの失敗の判定で成功に数えないため）', async () => {
+      const extract = jest.fn();
+      const findMany = jest.fn().mockResolvedValue([]);
+      const service = new DiffSummaryService({
+        pipeline: { extract } as unknown as LLMExtractionPipeline,
+        prisma: { article: { findMany } } as never,
+      });
+
+      const result = await service.generateForCategory(
+        'foreign',
+        '2026-W39',
+        '2026-W38'
+      );
+
+      expect(result).toMatchObject({
+        categorySlug: 'foreign',
+        success: true,
+        skipped: true,
+      });
+      expect(extract).not.toHaveBeenCalled();
+    });
+  });
+
   describe('期間のトピック集計（issue #655 項目 5）', () => {
     const articles = [
       { id: 'a1', title: 'T1', tags: [{ name: 'js' }, { name: 'JavaScript' }] },

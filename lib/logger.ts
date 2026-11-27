@@ -37,6 +37,9 @@ export function createErrorSerializers(
     err: (err: unknown) => summarizeError(err),
     error: omitMessage,
     errorMessage: omitMessage,
+    // 外部 API のエラー応答の本文（lib/ai/transport/gemini-transport.ts）。
+    // 403 などの本文には API の利用先の識別子が入りうる
+    errorText: omitMessage,
   };
 }
 

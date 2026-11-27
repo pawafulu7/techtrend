@@ -35,6 +35,7 @@ import fetch from 'node-fetch';
 import { prisma } from '@/lib/prisma';
 import { getOrCreateTags } from '@/lib/tags/tag-service';
 import { generateTagsForArticles } from '@/scripts/scheduled/generate-tags';
+import { env } from '@/lib/config/env';
 
 const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 const mockGetOrCreateTags = getOrCreateTags as jest.MockedFunction<typeof getOrCreateTags>;
@@ -184,6 +185,97 @@ describe('generate-tags additive connect pattern', () => {
 
       // tagsToConnect が空のため article.update は呼ばれない（冪等性）
       expect(txArticleUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Gemini の呼び出しが 1 件も届かなかった回の判定', () => {
+    // console.error を差し替えたテストが途中で落ちても、後のテストに残さない
+    let errorSpy: jest.SpyInstance;
+    beforeEach(() => {
+      errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      errorSpy.mockRestore();
+    });
+
+    it('すべての呼び出しが HTTP エラーなら allGeminiCallsFailed を true にし、状態と状態名をログに出す', async () => {
+      (prisma.article.findMany as jest.Mock)
+        .mockResolvedValueOnce([makeArticleStub('article-3', [])])
+        .mockResolvedValueOnce([]);
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        text: async () => '{"error":{"status":"NOT_FOUND"}}',
+      } as any);
+
+      const result = await generateTagsForArticles();
+
+      expect(result).toMatchObject({
+        generated: 0,
+        errors: 1,
+        allGeminiCallsFailed: true,
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      // 本文はログに出さず、状態コードと状態名だけを出す
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('code=NOT_FOUND status=404')
+      );
+    });
+
+    it('API キーが無ければ、記事を読む前に失敗で止める', async () => {
+      const originalKey = env.GEMINI_API_KEY;
+      (env as { GEMINI_API_KEY?: string }).GEMINI_API_KEY = undefined;
+      try {
+        await expect(generateTagsForArticles()).rejects.toThrow(
+          'GEMINI_API_KEY is not set'
+        );
+        expect(prisma.article.findMany).not.toHaveBeenCalled();
+      } finally {
+        (env as { GEMINI_API_KEY?: string }).GEMINI_API_KEY = originalKey;
+      }
+    });
+
+    it('応答が返っていれば、保存で失敗しても allGeminiCallsFailed は false', async () => {
+      (prisma.article.findMany as jest.Mock)
+        .mockResolvedValueOnce([makeArticleStub('article-4', [])])
+        .mockResolvedValueOnce([]);
+      mockGeminiResponse('A, B');
+      (prisma.$transaction as jest.Mock).mockRejectedValueOnce(
+        new Error('db error')
+      );
+
+      const result = await generateTagsForArticles();
+
+      expect(result).toMatchObject({
+        errors: 1,
+        allGeminiCallsFailed: false,
+      });
+    });
+
+    it('依頼が安全性のフィルタで止められたら、理由をログに出して失敗に数える（呼び出しは届いている）', async () => {
+      (prisma.article.findMany as jest.Mock)
+        .mockResolvedValueOnce([makeArticleStub('article-5', [])])
+        .mockResolvedValueOnce([]);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          promptFeedback: { blockReason: 'PROHIBITED_CONTENT' },
+        }),
+        text: async () => '',
+      } as any);
+
+      const result = await generateTagsForArticles();
+
+      expect(result).toMatchObject({
+        generated: 0,
+        errors: 1,
+        allGeminiCallsFailed: false,
+      });
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('code=PROHIBITED_CONTENT')
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
     });
   });
 });

@@ -14,6 +14,7 @@ import { resetEnvCache } from '@/lib/config/env';
 import { resetGeminiConfigCache } from '@/lib/ai/gemini-config';
 import {
   createGeminiClient,
+  GeminiBlockedResponseError,
   generateGeminiText,
   generateGeminiTextResult,
   isCompleteFinish,
@@ -240,6 +241,10 @@ describe('getGeminiResponseText', () => {
     expect(() => getGeminiResponseText(response)).toThrow(
       `Gemini stopped the response: ${finishReason}`
     );
+    // 通信の失敗と分けて数えられるよう、専用の型で投げる
+    expect(() => getGeminiResponseText(response)).toThrow(
+      GeminiBlockedResponseError
+    );
   });
 
   it('プロンプトが拒否されて候補が無ければ、拒否の理由を添えて例外にする', () => {
@@ -250,5 +255,16 @@ describe('getGeminiResponseText', () => {
     expect(() => getGeminiResponseText(response)).toThrow(
       'Gemini blocked the prompt: SAFETY'
     );
+    expect(() => getGeminiResponseText(response)).toThrow(
+      GeminiBlockedResponseError
+    );
+    // 理由は code に持ち、公開されるログにも出せるようにする
+    let thrown: unknown;
+    try {
+      getGeminiResponseText(response);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toMatchObject({ code: 'SAFETY' });
   });
 });

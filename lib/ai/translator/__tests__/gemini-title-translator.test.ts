@@ -1,4 +1,9 @@
-import { GeminiTitleTranslator } from '../gemini-title-translator';
+import {
+  GeminiTitleTranslator,
+  TitleTranslationInvalidResponseError,
+  TitleTranslationRequestError,
+  TitleTranslationUnchangedError,
+} from '../gemini-title-translator';
 import { GeminiTransport } from '../../transport/gemini-transport.interface';
 
 describe('GeminiTitleTranslator', () => {
@@ -134,12 +139,120 @@ describe('GeminiTitleTranslator', () => {
         },
       });
 
+      const promise = translator.translateTitle({
+        title: 'Test Title',
+        requestId: 'test-5',
+      });
+      await expect(promise).rejects.toThrow(
+        'Translation API returned empty result'
+      );
+      // 応答は返っているので、API に届かなかった失敗とは別の型にする
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationInvalidResponseError
+      );
+    });
+
+    it('安全性のフィルタで候補が返らないときは、応答不良（TitleTranslationInvalidResponseError）にする', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: { promptFeedback: { blockReason: 'PROHIBITED_CONTENT' } },
+        latencyMs: 10,
+        headers: {},
+      });
+
+      const promise = translator.translateTitle({
+        title: 'Test Title',
+        requestId: 'test-5b',
+      });
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationInvalidResponseError
+      );
+      // 止められた理由を code に持ち、止められたことが分かる
+      await expect(promise).rejects.toMatchObject({
+        code: 'PROHIBITED_CONTENT',
+        blocked: true,
+      });
+    });
+
+    it('出力の途中で止められて本文が無いときは、終了理由を code に持つ', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: { candidates: [{ finishReason: 'SAFETY', content: {} }] },
+        latencyMs: 10,
+        headers: {},
+      });
+
+      await expect(
+        translator.translateTitle({ title: 'Test Title', requestId: 'test-5f' })
+      ).rejects.toMatchObject({ code: 'SAFETY', blocked: true });
+    });
+
+    it('上限で止まって本文が無いときは、止められた扱いにしない', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: { candidates: [{ finishReason: 'MAX_TOKENS', content: {} }] },
+        latencyMs: 10,
+        headers: {},
+      });
+
+      await expect(
+        translator.translateTitle({ title: 'Test Title', requestId: 'test-5g' })
+      ).rejects.toMatchObject({ code: undefined, blocked: false });
+    });
+
+    it('本文が文字列でないときも、応答不良にする', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: { candidates: [{ content: { parts: [{ text: 42 }] } }] },
+        latencyMs: 10,
+        headers: {},
+      });
+
+      await expect(
+        translator.translateTitle({ title: 'Test Title', requestId: 'test-5c' })
+      ).rejects.toBeInstanceOf(TitleTranslationInvalidResponseError);
+    });
+
+    it.each([
+      ['「Colorfigures」', 'Colorfigures'],
+      ['"kitty 0.50.0"', 'kitty 0.50.0'],
+      ['darktable', 'Darktable'],
+      ['StarCraft: Ashfall', 'Starcraft: Ashfall'],
+      ['【kitty】', 'kitty'],
+      ['"UNCHANGED"', 'Test Title'],
+      ['「翻訳不要」', 'Test Title'],
+    ])(
+      '原文を引用符・かぎ括弧で囲んだり大文字小文字だけを変えたりした応答（%s）も、原文のままとみなす',
+      async (returned, title) => {
+        mockTransport.invoke.mockResolvedValue({
+          status: 'ok',
+          payload: { candidates: [{ content: { parts: [{ text: returned }] } }] },
+          latencyMs: 10,
+          headers: {},
+        });
+
+        await expect(
+          translator.translateTitle({ title, requestId: 'test-5d' })
+        ).rejects.toBeInstanceOf(TitleTranslationUnchangedError);
+      }
+    );
+
+    it('原文を含んでいても、訳した部分があれば訳文として返す', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: {
+          candidates: [{ content: { parts: [{ text: 'kitty 0.50.0 をリリース' }] } }],
+        },
+        latencyMs: 10,
+        headers: {},
+      });
+
       await expect(
         translator.translateTitle({
-          title: 'Test Title',
-          requestId: 'test-5',
+          title: 'kitty 0.50.0 released',
+          requestId: 'test-5e',
         })
-      ).rejects.toThrow('Translation API returned empty result');
+      ).resolves.toBe('kitty 0.50.0 をリリース');
     });
 
     it('should throw error when API returns UNCHANGED', async () => {
@@ -156,12 +269,16 @@ describe('GeminiTitleTranslator', () => {
         },
       });
 
-      await expect(
-        translator.translateTitle({
-          title: 'Test Title',
-          requestId: 'test-6',
-        })
-      ).rejects.toThrow('Translation API returned invalid result');
+      const promise = translator.translateTitle({
+        title: 'Test Title',
+        requestId: 'test-6',
+      });
+      await expect(promise).rejects.toThrow(
+        'Translation API returned invalid result'
+      );
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationUnchangedError
+      );
     });
 
     it('should return null when API returns original Japanese title', async () => {
@@ -205,29 +322,90 @@ describe('GeminiTitleTranslator', () => {
         },
       });
 
-      await expect(
-        translator.translateTitle({
-          title: englishTitle,
-          requestId: 'test-8',
-        })
-      ).rejects.toThrow('Translation API returned invalid result');
+      const promise = translator.translateTitle({
+        title: englishTitle,
+        requestId: 'test-8',
+      });
+      await expect(promise).rejects.toThrow(
+        'Translation API returned invalid result'
+      );
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationUnchangedError
+      );
     });
 
-    it('should throw error when API fails', async () => {
+    it('タイムアウトなど HTTP の状態が無い失敗では、status が無く cause に元の例外を持つ', async () => {
+      const abortError = Object.assign(new Error('The operation was aborted'), {
+        name: 'AbortError',
+      });
       mockTransport.invoke.mockResolvedValue({
-        status: 'error',
-        error: {
-          message: 'API Error',
-          code: 500,
-        },
+        status: 'retryable_error',
+        error: abortError,
+        latencyMs: 20000,
+        headers: {},
       });
 
-      await expect(
-        translator.translateTitle({
-          title: 'Test Title',
-          requestId: 'test-9',
-        })
-      ).rejects.toThrow('API Error');
+      const promise = translator.translateTitle({
+        title: 'Test Title',
+        requestId: 'test-9',
+      });
+
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationRequestError
+      );
+      await expect(promise).rejects.toMatchObject({
+        status: undefined,
+        cause: abortError,
+      });
+    });
+
+    it('API の呼び出しが失敗したら、HTTP の状態を持つ TitleTranslationRequestError を投げる', async () => {
+      const httpError = new Error('HTTP 404: model is no longer available');
+      mockTransport.invoke.mockResolvedValue({
+        status: 'fatal_error',
+        httpStatus: 404,
+        error: httpError,
+        latencyMs: 10,
+        headers: {},
+      });
+
+      const promise = translator.translateTitle({
+        title: 'Test Title',
+        requestId: 'test-10',
+      });
+
+      await expect(promise).rejects.toBeInstanceOf(
+        TitleTranslationRequestError
+      );
+      await expect(promise).rejects.toMatchObject({
+        name: 'TitleTranslationRequestError',
+        status: 404,
+        message: 'HTTP 404: model is no longer available',
+        cause: httpError,
+      });
+    });
+
+    it('応答が返ったが原文のままのときは、API の呼び出しの失敗として扱わない', async () => {
+      mockTransport.invoke.mockResolvedValue({
+        status: 'ok',
+        payload: {
+          candidates: [{ content: { parts: [{ text: 'kitty 0.50.0' }] } }],
+        },
+        latencyMs: 10,
+        headers: {},
+      });
+
+      const promise = translator.translateTitle({
+        title: 'kitty 0.50.0',
+        requestId: 'test-11',
+      });
+
+      await expect(promise).rejects.toThrow(
+        'Translation API returned invalid result'
+      );
+      await expect(promise).rejects.not.toBeInstanceOf(
+        TitleTranslationRequestError
+      );
     });
   });
 });

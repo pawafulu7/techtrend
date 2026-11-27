@@ -74,7 +74,7 @@ erDiagram
 
 ### 読み方
 
-- **Article**: 記事本体。`qualityScore` は品質スコア、`contentUpdatedAt`/`qualityScoreComputedAt`/`summaryComputedAt` は各バッチが差分判定・完了マーキングに使う個別タイムスタンプ。`storyId`/`storySize` は同じ出来事をまとめたストーリー（`scripts/scheduled/assign-stories.ts` が書く）、`isOffTopic`/`offTopicCheckedAt` は技術者向けでない記事の判定（`scripts/scheduled/classify-off-topic.ts` が書く。一覧の既定の表示から外す）
+- **Article**: 記事本体。`qualityScore` は品質スコア、`contentUpdatedAt`/`qualityScoreComputedAt`/`summaryComputedAt` は各バッチが差分判定・完了マーキングに使う個別タイムスタンプ。`storyId`/`storySize` は同じ出来事をまとめたストーリー（`scripts/scheduled/assign-stories.ts` が書く）、`isOffTopic`/`offTopicCheckedAt` は技術者向けでない記事の判定（`scripts/scheduled/classify-off-topic.ts` が書く。一覧の既定の表示から外す）、`titleTranslationSkippedAt` は英語のタイトルを訳さないと決めた時刻（製品名だけなど、モデルが原文のまま返した記事に `scripts/scheduled/fix-missing-translations.ts` が書く。印の付いた記事は翻訳の補完の対象から外れる）
 - **Source**: 記事の収集元（RSS/スクレイピング/API）。`groupId` は任意（`SourceGroup` に属さない Source もある）
 - **SourceGroup**: Source を分類するグループ
 - **Tag**: 記事タグ。`Article` とは暗黙の中間テーブル `_ArticleToTag` による多対多（Prisma が自動生成、schema.prisma 上に明示モデルはない）

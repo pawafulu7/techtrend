@@ -130,7 +130,7 @@ async function main() {
       } else {
         // result.error はサービスの catch した例外の message（接続先が入りうる）なので出さない
         console.error(`✗ ${category}: failed`);
-        process.exit(1);
+        process.exitCode = 1;
       }
     } else {
       // All categories
@@ -140,6 +140,10 @@ async function main() {
       console.log('\n=== Results ===');
       console.log(`Total: ${results.total}`);
       console.log(`Successful: ${results.successful}`);
+      // データが無くて飛ばしたカテゴリー（Successful に含まれる）
+      console.log(
+        `Skipped (no data): ${results.results.filter((result) => result.skipped).length}`
+      );
       console.log(`Failed: ${results.failed}`);
       console.log('');
 
@@ -152,7 +156,13 @@ async function main() {
         }
       }
 
-      if (results.failed > 0) {
+      // LLM を呼んだカテゴリーが 1 つも作れなかった回は、モデルの提供終了・API キーの不備などを
+      // 知らせるため失敗にする。データが無くて飛ばしたカテゴリーは成功に数えない
+      const attempted = results.results.filter((result) => !result.skipped);
+      if (attempted.length > 0 && attempted.every((result) => !result.success)) {
+        console.error(`\nAll ${attempted.length} attempted categories failed.`);
+        process.exitCode = 1;
+      } else if (results.failed > 0) {
         console.error(`\nWarning: ${results.failed} categories failed.`);
         // Don't exit with error code for partial failures
       }

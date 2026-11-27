@@ -49,6 +49,8 @@ export interface DiffSummaryServiceOptions {
 interface CategoryDiffResult {
   categorySlug: string;
   success: boolean;
+  /** 両方の期間にトピックが無く、LLM を呼ばずに終えた（成功に数えると、全カテゴリーの失敗を見逃す） */
+  skipped?: boolean;
   data?: DiffSummaryOutput;
   error?: string;
 }
@@ -148,6 +150,7 @@ export class DiffSummaryService {
         return {
           categorySlug,
           success: true,
+          skipped: true,
           data: {
             changes: [],
             unchanged: [],

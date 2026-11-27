@@ -74,6 +74,7 @@ model Article {
   storySize              Int? // 同じストーリーの記事数（2以上。storyId が NULL なら NULL）
   isOffTopic             Boolean                @default(false) // 技術者向けでない記事（一般の経済・政治・事件など）。一覧の既定の表示から外す。scripts/scheduled/classify-off-topic.ts が設定
   offTopicCheckedAt      DateTime?              @db.Timestamptz(6) // isOffTopic を判定した時刻（NULL = 未判定）
+  titleTranslationSkippedAt DateTime?           @db.Timestamptz(6) // 英語のタイトルを訳さないと決めた時刻（製品名だけなどでモデルが原文のまま返した、または安全性のフィルタで止められた）。NULL = 未決定。scripts/scheduled/fix-missing-translations.ts が設定
   source                 Source                 @relation(fields: [sourceId], references: [id])
   articleViews           ArticleView[]
   favorites              Favorite[]

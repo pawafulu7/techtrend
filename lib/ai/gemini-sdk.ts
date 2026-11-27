@@ -96,6 +96,22 @@ export async function generateGeminiTextResult(
   };
 }
 
+/**
+ * 応答は返ったが、安全性のフィルタなどで止められて本文が無い。
+ * 通信の失敗（SDK の ApiError など）と分けて数えられるようにする（lib/ai/gemini-call-tally.ts）。
+ * 理由（SAFETY など）は code に持ち、summarizeError が公開されるログにも出す
+ */
+export class GeminiBlockedResponseError extends Error {
+  readonly code?: string;
+
+  constructor(message: string, reason?: string) {
+    super(message);
+    this.name = 'GeminiBlockedResponseError';
+    this.code =
+      reason && /^[A-Z0-9_]{1,32}$/.test(reason) ? reason : undefined;
+  }
+}
+
 // 旧 SDK（@google/generative-ai）の response.text() が例外にしていた終了理由
 const BLOCKED_FINISH_REASONS: ReadonlySet<FinishReason> = new Set([
   FinishReason.RECITATION,
@@ -116,8 +132,9 @@ export function getGeminiResponseText(
   const candidate = response.candidates?.[0];
   if (!candidate) {
     if (response.promptFeedback) {
-      throw new Error(
-        `Gemini blocked the prompt: ${response.promptFeedback.blockReason ?? 'unknown'}`
+      throw new GeminiBlockedResponseError(
+        `Gemini blocked the prompt: ${response.promptFeedback.blockReason ?? 'unknown'}`,
+        response.promptFeedback.blockReason
       );
     }
     return '';
@@ -126,7 +143,10 @@ export function getGeminiResponseText(
     candidate.finishReason &&
     BLOCKED_FINISH_REASONS.has(candidate.finishReason)
   ) {
-    throw new Error(`Gemini stopped the response: ${candidate.finishReason}`);
+    throw new GeminiBlockedResponseError(
+      `Gemini stopped the response: ${candidate.finishReason}`,
+      candidate.finishReason
+    );
   }
   return response.text ?? '';
 }

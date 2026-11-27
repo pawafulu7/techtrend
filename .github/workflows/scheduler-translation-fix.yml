@@ -19,7 +19,10 @@ jobs:
   translation-fix:
     if: github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'YES')
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # 30 minutes max (historical worst case: 1 minute)
+    # 10 件ごとに 60 秒待つので、100 件余りで 15 分ほどかかる。1 回の件数を 300 件に限り
+    # （下の --limit。残りは次の実行に回る）、API が遅い日でも打ち切られないよう 60 分にする
+    # （打ち切られると集計・キャッシュの破棄・終了コードが出ない）
+    timeout-minutes: 60
     permissions:
       contents: read
     steps:
@@ -34,11 +37,14 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: gemini-2.0-flash-lite
-          TRANSLATION_ENABLED: true
+          # GEMINI_MODEL は指定しない。毎時の要約で訳すときと同じ既定のモデル（lib/di/config.ts）を使う。
+          # 固定していた gemini-2.0-flash-lite は提供が終わり、全件 404 で失敗していた
+          # 翻訳の有効・無効は ENABLE_TITLE_TRANSLATION で決まる（lib/di/config.ts）。
+          # 以前の TRANSLATION_ENABLED はどこからも読まれていなかった
+          ENABLE_TITLE_TRANSLATION: 'true'
         run: |
           echo "Starting translation fix process..."
-          npx tsx scripts/scheduled/fix-missing-translations.ts
+          npx tsx scripts/scheduled/fix-missing-translations.ts --limit=300
           echo "Translation fix completed."
       - name: Notify failure to Slack
         if: failure()

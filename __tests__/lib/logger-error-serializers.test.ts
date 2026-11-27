@@ -10,7 +10,10 @@ import { createErrorLogHooks, createErrorSerializers } from '@/lib/logger';
 
 const HOST = 'db.example.com';
 
-function createTestLogger(logErrorDetails: string | undefined, lines: string[]) {
+function createTestLogger(
+  logErrorDetails: string | undefined,
+  lines: string[]
+) {
   const stream = new Writable({
     write(chunk, _encoding, callback) {
       lines.push(String(chunk));
@@ -19,12 +22,18 @@ function createTestLogger(logErrorDetails: string | undefined, lines: string[]) 
   });
   const hooks = createErrorLogHooks(logErrorDetails);
   return pino(
-    { serializers: createErrorSerializers(logErrorDetails), ...(hooks ? { hooks } : {}) },
+    {
+      serializers: createErrorSerializers(logErrorDetails),
+      ...(hooks ? { hooks } : {}),
+    },
     stream
   );
 }
 
-function logWith(logErrorDetails: string | undefined, fields: Record<string, unknown>): string {
+function logWith(
+  logErrorDetails: string | undefined,
+  fields: Record<string, unknown>
+): string {
   const lines: string[] = [];
   createTestLogger(logErrorDetails, lines).error(fields, 'failed');
   return lines.join('');
@@ -58,6 +67,18 @@ describe('createErrorSerializers', () => {
     expect(parsed.errorMessage).toBe('[omitted]');
     expect(parsed.error).toBe('Error code=P1001');
     expect(parsed.jobId).toBe('job-1');
+    expect(output).not.toContain(HOST);
+  });
+
+  it('false なら外部 API のエラー応答の本文（errorText）も中身を出さない', () => {
+    const output = logWith('false', {
+      httpStatus: 403,
+      errorText: `{"error":{"message":"API has not been used in project 123456 (${HOST})"}}`,
+    });
+    const parsed = JSON.parse(output);
+
+    expect(parsed.errorText).toBe('[omitted]');
+    expect(parsed.httpStatus).toBe(403);
     expect(output).not.toContain(HOST);
   });
 
