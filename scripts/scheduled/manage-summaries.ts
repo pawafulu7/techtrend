@@ -151,9 +151,10 @@ async function main() {
         break;
     }
 
-    if (result.generated > 0) {
+    if (result.generated + result.errors > 0) {
       // 記事ごとのキャッシュは要約の保存で消える（lib/summary/batch-processor.ts）が、一覧と件数のキャッシュは
-      // 消えないので、最後にまとめて消す（collect-feeds の要約生成の後と同じ）。要約は保存済みなので失敗は警告に留める
+      // 消えないので、最後にまとめて消す（collect-feeds の要約生成の後と同じ）。要約は保存済みなので失敗は警告に留める。
+      // 失敗と数えた記事も含める（保存の後の処理が時間切れになると、保存済みでも失敗に数えられる）
       try {
         await cacheInvalidator.onBulkImport();
       } catch (error) {

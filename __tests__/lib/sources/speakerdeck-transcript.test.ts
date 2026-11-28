@@ -122,6 +122,16 @@ describe('extractSpeakerDeckTranscript', () => {
 });
 
 describe('speakerDeckTitle', () => {
+  it('og:title が空白だけなら title を使う', () => {
+    expect(
+      speakerDeckTitle(
+        cheerio.load(
+          '<html><head><meta property="og:title" content="   "><title>Page Title - Speaker Deck</title></head></html>'
+        )
+      )
+    ).toBe('Page Title');
+  });
+
   it('og:title が無ければ title から末尾の " - Speaker Deck" を除いて使う', () => {
     expect(
       speakerDeckTitle(

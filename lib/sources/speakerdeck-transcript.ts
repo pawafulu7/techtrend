@@ -29,11 +29,13 @@ export function extractSpeakerDeckTranscript($: CheerioAPI): string | null {
     .join('\n\n');
 }
 
-/** og:title かページの title（末尾の " - Speaker Deck" を除く） */
+/** og:title かページの title（末尾の " - Speaker Deck" を除く。空白だけの値は飛ばす） */
 export function speakerDeckTitle($: CheerioAPI): string {
-  const title =
-    $('meta[property="og:title"]').attr('content') || $('title').text();
-  return title.replace(' - Speaker Deck', '').trim();
+  return (
+    [$('meta[property="og:title"]').attr('content') ?? '', $('title').text()]
+      .map((text) => text.replace(' - Speaker Deck', '').trim())
+      .find((text) => text.length > 0) ?? ''
+  );
 }
 
 /** 連続する空白・改行を1つの空白にまとめる */

@@ -35,6 +35,7 @@ import {
   contentStateWhere,
   isAcceptableEnrichedContent,
 } from '../scheduled/utils/summary-reset';
+import { isValidThumbnailUrl } from '../scheduled/utils/content-recovery';
 import { SLIDE_URL_PREFIXES } from '../../lib/sources/slide-source';
 import { isUrlFromDomain } from '../../lib/utils/url/url-validator';
 import * as dotenv from 'dotenv';
@@ -288,8 +289,11 @@ async function main() {
           enrichedData.content && enrichedData.content.length > (article.content?.length || 0)
             ? enrichedData.content
             : null;
+        // 毎時の収集と同じく、http(s) の URL だけをサムネイルにする（isValidThumbnailUrl）
         const newThumbnail =
-          enrichedData.thumbnail && !article.thumbnail ? enrichedData.thumbnail : null;
+          isValidThumbnailUrl(enrichedData.thumbnail) && !article.thumbnail
+            ? enrichedData.thumbnail ?? null
+            : null;
 
         if (!newContent && !newThumbnail) {
           console.error(`  ⏭️  スキップ: 新しいデータがありません`);

@@ -36,6 +36,9 @@ interface OEmbedResponse {
   ratio: number;
 }
 
+/** 文字起こしの本文に付けるサムネイルを oEmbed で補うときの時間の上限（ミリ秒） */
+const THUMBNAIL_OEMBED_TIMEOUT_MS = 3000;
+
 export class SpeakerDeckEnricher extends BaseContentEnricher {
   private oEmbedEndpoint = 'https://speakerdeck.com/oembed.json';
 
@@ -70,10 +73,18 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
             },
             '[SpeakerDeckEnricher] Enrichment succeeded via transcript'
           );
-          // ページに画像のメタ情報が無ければ、oEmbed のサムネイルで補う（取れなくても本文は返す）
+          // ページに画像のメタ情報が無ければ、oEmbed のサムネイルで補う（取れなくても本文は返す）。
+          // 呼び出し元の時間の枠（毎時の収集は 10 秒）を補いの待ちで使い切ると、取れた本文まで捨てられるので短く切る
           if (!fromTranscript.thumbnail) {
-            const oEmbedData = await this.fetchOEmbed(url, externalSignal);
-            fromTranscript.thumbnail = oEmbedData?.thumbnail_url || null;
+            const oEmbedData = await this.fetchOEmbed(
+              url,
+              externalSignal,
+              THUMBNAIL_OEMBED_TIMEOUT_MS
+            );
+            // 応答は型を確かめずに受けているので、文字列のときだけ使う
+            const thumbnailUrl = oEmbedData?.thumbnail_url;
+            fromTranscript.thumbnail =
+              typeof thumbnailUrl === 'string' && thumbnailUrl ? thumbnailUrl : null;
           }
           return fromTranscript;
         }
@@ -124,7 +135,8 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
 
   private async fetchOEmbed(
     url: string,
-    externalSignal?: AbortSignal
+    externalSignal?: AbortSignal,
+    timeoutMs = 30000
   ): Promise<OEmbedResponse | null> {
     try {
       const oEmbedUrl = `${this.oEmbedEndpoint}?url=${encodeURIComponent(url)}`;
@@ -134,7 +146,7 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
           Accept: 'application/json',
           'User-Agent': 'TechTrend/1.0 ContentEnricher',
         },
-        signal: this.composeSignal(externalSignal, 30000),
+        signal: this.composeSignal(externalSignal, timeoutMs),
       });
 
       if (!response.ok) {
@@ -232,10 +244,13 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
       parts.push(title);
     }
 
-    // Description from og:description or meta description
-    const ogDescription = $('meta[property="og:description"]').attr('content');
-    const metaDescription = $('meta[name="description"]').attr('content');
-    const description = ogDescription || metaDescription;
+    // og:description か meta description（空白だけの値は飛ばす）
+    const description = [
+      $('meta[property="og:description"]').attr('content'),
+      $('meta[name="description"]').attr('content'),
+    ]
+      .map((text) => text?.trim() ?? '')
+      .find((text) => text.length > 0);
     if (description && description.length > 10) {
       parts.push(description);
     }

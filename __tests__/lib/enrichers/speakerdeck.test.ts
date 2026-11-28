@@ -304,6 +304,23 @@ describe('SpeakerDeckEnricher', () => {
       );
     });
 
+    it('メタ情報の og:description が空白だけなら meta description を使う', async () => {
+      routeFetch({
+        page: okText(`
+          <html><head>
+            <meta property="og:title" content="Meta Presentation">
+            <meta property="og:description" content="   ">
+            <meta name="description" content="This is the meta description for the presentation.">
+          </head><body></body></html>
+        `),
+        oEmbed: failed(404),
+      });
+
+      const result = await enricher.enrich(testUrl);
+
+      expect(result?.content).toContain('This is the meta description for the presentation.');
+    });
+
     it('should return minimal content when both strategies have limited data', async () => {
       routeFetch({
         page: okText(

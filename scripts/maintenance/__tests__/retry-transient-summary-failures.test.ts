@@ -1,9 +1,32 @@
 import { SkipReason } from '@/lib/prisma-exports';
+import { SummaryManager } from '@/lib/summary/summary-manager';
+import { getPrismaClient } from '@/lib/cli/utils/database';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import {
+  main,
   parseArgs,
   TRANSIENT_FAILURE_MARKERS,
   transientSummaryFailureWhere,
 } from '../retry-transient-summary-failures';
+
+jest.mock('@/lib/summary/summary-manager');
+jest.mock('@/lib/cli/utils/database');
+jest.mock('@/lib/cache/cache-invalidator', () => ({
+  cacheInvalidator: { onBulkImport: jest.fn() },
+}));
+
+// CI にキーは無いので、キーだけ差し替え、ほかの値は本物の env を読む（manage-summaries.test.ts と同じ）
+let mockGeminiApiKey: string | undefined = 'test-gemini-key';
+jest.mock('@/lib/config/env', () => {
+  const actual = jest.requireActual('@/lib/config/env');
+  return {
+    ...actual,
+    env: new Proxy(actual.env, {
+      get: (target, prop) =>
+        prop === 'GEMINI_API_KEY' ? mockGeminiApiKey : Reflect.get(target, prop),
+    }),
+  };
+});
 
 /** DB の条件（summaryError に印のどれかを含む）と同じ判定 */
 const matchesMarker = (summaryError: string) =>
@@ -65,4 +88,106 @@ describe('parseArgs', () => {
       expect(() => parseArgs([arg])).toThrow();
     }
   );
+});
+
+describe('main', () => {
+  const ids = Array.from({ length: 21 }, (_, i) => `article-${i}`);
+  let mockPrisma: {
+    article: { findMany: jest.Mock; updateManyAndReturn: jest.Mock };
+    $disconnect: jest.Mock;
+  };
+  let mockGenerateSummaries: jest.Mock;
+  let logSpy: jest.SpyInstance;
+  let originalExitCode: typeof process.exitCode;
+
+  /** 結果の行（`名前=値`）を名前ごとにまとめる */
+  const resultLines = () =>
+    Object.fromEntries(
+      logSpy.mock.calls
+        .map(([line]) => String(line))
+        .filter((line) => /^[a-z_]+=/.test(line))
+        .map((line) => line.split('='))
+    );
+
+  beforeEach(() => {
+    originalExitCode = process.exitCode;
+    process.exitCode = undefined;
+    mockGeminiApiKey = 'test-gemini-key';
+    mockPrisma = {
+      article: {
+        findMany: jest.fn().mockResolvedValue(ids.map((id) => ({ id }))),
+        // 渡した ID をすべて対象に戻せたとする
+        updateManyAndReturn: jest.fn(async (args: { where: { id: { in: string[] } } }) =>
+          args.where.id.in.map((id) => ({ id }))
+        ),
+      },
+      $disconnect: jest.fn().mockResolvedValue(undefined),
+    };
+    (getPrismaClient as jest.Mock).mockReturnValue(mockPrisma);
+    mockGenerateSummaries = jest.fn();
+    (SummaryManager as unknown as jest.Mock).mockImplementation(() => ({
+      generateSummaries: mockGenerateSummaries,
+    }));
+    (cacheInvalidator.onBulkImport as jest.Mock).mockReset().mockResolvedValue(undefined);
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    process.exitCode = originalExitCode;
+    jest.restoreAllMocks();
+  });
+
+  it('2つ目のまとまりで例外が出ても、一覧のキャッシュを1回消し、結果の行を出して切断する', async () => {
+    mockGenerateSummaries
+      .mockResolvedValueOnce({ generated: 20, errors: 0, skipped: 0 })
+      .mockRejectedValueOnce(new Error('connection lost'));
+
+    await expect(main([])).rejects.toThrow('connection lost');
+
+    expect(mockGenerateSummaries).toHaveBeenCalledTimes(2);
+    expect(cacheInvalidator.onBulkImport).toHaveBeenCalledTimes(1);
+    expect(resultLines()).toEqual({
+      dry_run: 'false',
+      targets: '21',
+      reset: '21',
+      generated: '20',
+      errors: '0',
+      skipped: '0',
+      aborted: 'true',
+    });
+    expect(mockPrisma.$disconnect).toHaveBeenCalledTimes(1);
+  });
+
+  it('作れた件数が0でも、対象に戻した記事があれば一覧のキャッシュを消す（保存の後の処理の時間切れは失敗に数えられる）', async () => {
+    mockPrisma.article.findMany.mockResolvedValue(ids.slice(0, 20).map((id) => ({ id })));
+    mockGenerateSummaries.mockResolvedValue({ generated: 0, errors: 20, skipped: 0 });
+
+    await main([]);
+
+    expect(cacheInvalidator.onBulkImport).toHaveBeenCalledTimes(1);
+    expect(resultLines()).toMatchObject({ generated: '0', errors: '20', aborted: 'false' });
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('最後まで進めば aborted=false を出す', async () => {
+    mockGenerateSummaries.mockResolvedValue({ generated: 1, errors: 0, skipped: 0 });
+
+    await main([]);
+
+    expect(resultLines()).toMatchObject({ targets: '21', reset: '21', aborted: 'false' });
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('API キーが無ければ数える前に止まり、aborted=true を出す（キャッシュは消さない）', async () => {
+    mockGeminiApiKey = undefined;
+
+    await main([]);
+
+    expect(mockPrisma.article.findMany).not.toHaveBeenCalled();
+    expect(cacheInvalidator.onBulkImport).not.toHaveBeenCalled();
+    expect(resultLines()).toMatchObject({ targets: '0', aborted: 'true' });
+    expect(process.exitCode).toBe(1);
+    expect(mockPrisma.$disconnect).toHaveBeenCalledTimes(1);
+  });
 });

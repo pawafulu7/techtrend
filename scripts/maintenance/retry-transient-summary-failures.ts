@@ -91,10 +91,13 @@ export function transientSummaryFailureWhere(): Prisma.ArticleWhereInput {
   };
 }
 
-async function main(): Promise<void> {
-  const options = parseArgs(process.argv.slice(2));
+export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
+  const options = parseArgs(argv);
   const prisma = getPrismaClient();
   // 途中のまとまりで例外が出ても、それまでに作った要約のぶんの後処理（一覧のキャッシュ・結果の行）を finally で行う
+  // 最後まで進んだか（途中で止まったら aborted=true を出す。保守ジョブには `名前=数値` の行しか出ないので、
+  // 「対象が0件だった」と「数える前に止まった」を見分けるため）
+  let completed = false;
   let targetCount = 0;
   let reset = 0;
   let generated = 0;
@@ -150,11 +153,14 @@ async function main(): Promise<void> {
     if (generated === 0 && errors > 0) {
       process.exitCode = 1;
     }
+    completed = true;
   } finally {
     try {
-      if (generated > 0) {
+      if (reset > 0) {
         // 記事ごとのキャッシュは要約の保存で消える（batch-processor.ts）が、一覧のキャッシュは消えないので、
-        // 最後にまとめて消す（collect-feeds の要約生成の後と同じ）。書き込みは済んでいるので失敗は警告に留める
+        // 最後にまとめて消す（collect-feeds の要約生成の後と同じ）。書き込みは済んでいるので失敗は警告に留める。
+        // 作れた件数ではなく、対象に戻した記事があるかで決める（保存の後の処理が時間切れになると、
+        // 保存済みでも失敗に数えられる）
         try {
           await cacheInvalidator.onBulkImport();
         } catch (cacheError) {
@@ -171,6 +177,7 @@ async function main(): Promise<void> {
       console.log(`generated=${generated}`);
       console.log(`errors=${errors}`);
       console.log(`skipped=${skipped}`);
+      console.log(`aborted=${!completed}`);
     } finally {
       await prisma.$disconnect();
     }
