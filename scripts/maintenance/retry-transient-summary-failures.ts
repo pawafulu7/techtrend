@@ -94,6 +94,12 @@ export function transientSummaryFailureWhere(): Prisma.ArticleWhereInput {
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
   const prisma = getPrismaClient();
+  // 途中のまとまりで例外が出ても、それまでに作った要約のぶんの後処理（一覧のキャッシュ・結果の行）を finally で行う
+  let targetCount = 0;
+  let reset = 0;
+  let generated = 0;
+  let errors = 0;
+  let skipped = 0;
 
   try {
     if (!options.dryRun && !env.GEMINI_API_KEY) {
@@ -110,12 +116,8 @@ async function main(): Promise<void> {
       orderBy: { createdAt: 'desc' },
       take: options.limit,
     });
+    targetCount = targets.length;
     console.error(`対象: ${targets.length}件${options.dryRun ? '（ドライラン）' : ''}`);
-
-    let reset = 0;
-    let generated = 0;
-    let errors = 0;
-    let skipped = 0;
 
     if (!options.dryRun && targets.length > 0) {
       const manager = new SummaryManager(prisma);
@@ -144,32 +146,34 @@ async function main(): Promise<void> {
       }
     }
 
-    if (generated > 0) {
-      // 記事ごとのキャッシュは要約の保存で消える（batch-processor.ts）が、一覧のキャッシュは消えないので、
-      // 最後にまとめて消す（collect-feeds の要約生成の後と同じ）。書き込みは済んでいるので失敗は警告に留める
-      try {
-        await cacheInvalidator.onBulkImport();
-      } catch (cacheError) {
-        console.error(
-          '警告: 一覧のキャッシュの無効化に失敗しました（TTL で切れます）:',
-          summarizeError(cacheError)
-        );
-      }
-    }
-
-    console.log(`dry_run=${options.dryRun}`);
-    console.log(`targets=${targets.length}`);
-    console.log(`reset=${reset}`);
-    console.log(`generated=${generated}`);
-    console.log(`errors=${errors}`);
-    console.log(`skipped=${skipped}`);
-
     // 作り直しを試みた記事が1件も作れなければ失敗として終わる（障害が続いている、または設定の不備）
     if (generated === 0 && errors > 0) {
       process.exitCode = 1;
     }
   } finally {
-    await prisma.$disconnect();
+    try {
+      if (generated > 0) {
+        // 記事ごとのキャッシュは要約の保存で消える（batch-processor.ts）が、一覧のキャッシュは消えないので、
+        // 最後にまとめて消す（collect-feeds の要約生成の後と同じ）。書き込みは済んでいるので失敗は警告に留める
+        try {
+          await cacheInvalidator.onBulkImport();
+        } catch (cacheError) {
+          console.error(
+            '警告: 一覧のキャッシュの無効化に失敗しました（TTL で切れます）:',
+            summarizeError(cacheError)
+          );
+        }
+      }
+
+      console.log(`dry_run=${options.dryRun}`);
+      console.log(`targets=${targetCount}`);
+      console.log(`reset=${reset}`);
+      console.log(`generated=${generated}`);
+      console.log(`errors=${errors}`);
+      console.log(`skipped=${skipped}`);
+    } finally {
+      await prisma.$disconnect();
+    }
   }
 }
 

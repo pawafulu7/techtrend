@@ -70,6 +70,11 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
             },
             '[SpeakerDeckEnricher] Enrichment succeeded via transcript'
           );
+          // ページに画像のメタ情報が無ければ、oEmbed のサムネイルで補う（取れなくても本文は返す）
+          if (!fromTranscript.thumbnail) {
+            const oEmbedData = await this.fetchOEmbed(url, externalSignal);
+            fromTranscript.thumbnail = oEmbedData?.thumbnail_url || null;
+          }
           return fromTranscript;
         }
       }

@@ -15,12 +15,15 @@ export function extractSpeakerDeckTranscript($: CheerioAPI): string | null {
     .filter((text) => text.length > 0);
   if (slides.length === 0) return null;
 
-  const description = normalizeWhitespace(
-    $('.deck-description').first().text() ||
-      $('meta[property="og:description"]').attr('content') ||
-      $('meta[name="description"]').attr('content') ||
-      ''
-  );
+  // 候補ごとに空白を詰めてから選ぶ（説明文の欄が空白や改行だけのときに、og:description を使うため）
+  const description =
+    [
+      $('.deck-description').first().text(),
+      $('meta[property="og:description"]').attr('content') ?? '',
+      $('meta[name="description"]').attr('content') ?? '',
+    ]
+      .map(normalizeWhitespace)
+      .find((text) => text.length > 0) ?? '';
   return [speakerDeckTitle($), description, ...slides]
     .filter((part) => part.length > 0)
     .join('\n\n');

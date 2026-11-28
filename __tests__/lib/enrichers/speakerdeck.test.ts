@@ -78,16 +78,18 @@ const oEmbedPayload = (overrides: Record<string, unknown> = {}) =>
 const deckPage = ({
   slides,
   description = '勉強会で発表した資料です。',
+  ogImage = true,
 }: {
   slides: string[];
   description?: string;
+  ogImage?: boolean;
 }) => `
   <!DOCTYPE html>
   <html>
   <head>
     <title>Deck Title - Speaker Deck</title>
     <meta property="og:title" content="Deck Title">
-    <meta property="og:image" content="https://files.speakerdeck.com/presentations/abc/slide_0.jpg">
+    ${ogImage ? '<meta property="og:image" content="https://files.speakerdeck.com/presentations/abc/slide_0.jpg">' : ''}
   </head>
   <body>
     <div class="deck-description text-break mb-4">
@@ -178,6 +180,31 @@ describe('SpeakerDeckEnricher', () => {
         'https://files.speakerdeck.com/presentations/abc/slide_0.jpg'
       );
       expect(oEmbedCalls()).toHaveLength(0);
+    });
+
+    it('文字起こしがあってもページに画像のメタ情報が無ければ、oEmbed のサムネイルで補う', async () => {
+      routeFetch({
+        page: okText(deckPage({ slides: ['本題のスライド'], ogImage: false })),
+        oEmbed: okText(oEmbedPayload()),
+      });
+
+      const result = await enricher.enrich(testUrl);
+
+      expect(result?.content).toContain('本題のスライド');
+      expect(result?.thumbnail).toBe('https://speakerdeck.com/thumbnail.jpg');
+      expect(oEmbedCalls()).toHaveLength(1);
+    });
+
+    it('サムネイルを補う oEmbed が取れなくても、文字起こしの本文は返す', async () => {
+      routeFetch({
+        page: okText(deckPage({ slides: ['本題のスライド'], ogImage: false })),
+        oEmbed: failed(500),
+      });
+
+      const result = await enricher.enrich(testUrl);
+
+      expect(result?.content).toContain('本題のスライド');
+      expect(result?.thumbnail).toBeNull();
     });
 
     it('文字のあるスライドが無ければ oEmbed で作り、oEmbed のサムネイルを使う', async () => {

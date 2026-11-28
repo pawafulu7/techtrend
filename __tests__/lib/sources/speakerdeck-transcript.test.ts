@@ -98,6 +98,17 @@ describe('extractSpeakerDeckTranscript', () => {
     );
   });
 
+  it('説明文の欄が空白や改行だけなら、og:description を使う', () => {
+    const $ = cheerio.load(
+      deckPage({
+        slides: [{ heading: '本題' }],
+        descriptionHtml: '<div class="deck-description text-break mb-4">\n   <p>  </p>\n</div>',
+        head: '<meta property="og:title" content="Deck Title"><meta property="og:description" content="OG の説明">',
+      })
+    );
+    expect(extractSpeakerDeckTranscript($)).toBe(['Deck Title', 'OG の説明', '本題'].join('\n\n'));
+  });
+
   it('文字のあるスライドが1枚も無ければ null（画像だけの資料）', () => {
     expect(
       extractSpeakerDeckTranscript(cheerio.load(deckPage({ slides: [] })))
