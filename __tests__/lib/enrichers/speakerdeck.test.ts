@@ -1,5 +1,10 @@
 /**
  * Tests for SpeakerDeckEnricher
+ *
+ * 発表ページの HTML を先に取り、Transcript 欄（スライドごとの文字）があれば本文にする。
+ * 無ければ oEmbed、それも無ければページのメタ情報で作る。
+ * 発表ページと oEmbed の問い合わせは URL で振り分ける（HTML の取得は失敗すると再試行するため、
+ * 呼び出しの順番に応答を並べると再試行が後ろの応答を消費する）
  */
 
 import { SpeakerDeckEnricher } from '@/lib/enrichers/speakerdeck';
@@ -19,6 +24,98 @@ jest.mock('@/lib/logger', () => ({
   },
 }));
 
+type FakeResponse = {
+  ok: boolean;
+  status: number;
+  text?: () => Promise<string>;
+};
+
+const okText = (body: string): FakeResponse => ({
+  ok: true,
+  status: 200,
+  text: async () => body,
+});
+
+const failed = (status: number): FakeResponse => ({ ok: false, status });
+
+/** 発表ページと oEmbed への問い合わせに、それぞれの応答（または例外）を返す */
+function routeFetch(routes: {
+  page: FakeResponse | Error;
+  oEmbed: FakeResponse | Error;
+}) {
+  mockFetch.mockImplementation(async (input: unknown) => {
+    const route = String(input).includes('/oembed.json')
+      ? routes.oEmbed
+      : routes.page;
+    if (route instanceof Error) throw route;
+    return route;
+  });
+}
+
+const oEmbedCalls = () =>
+  mockFetch.mock.calls.filter(([input]) =>
+    String(input).includes('/oembed.json')
+  );
+
+const oEmbedPayload = (overrides: Record<string, unknown> = {}) =>
+  JSON.stringify({
+    type: 'rich',
+    version: '1.0',
+    title: 'Test Presentation Title',
+    author_name: 'Test Author',
+    author_url: 'https://speakerdeck.com/testuser',
+    provider_name: 'Speaker Deck',
+    provider_url: 'https://speakerdeck.com',
+    thumbnail_url: 'https://speakerdeck.com/thumbnail.jpg',
+    html: '<iframe></iframe>',
+    width: 710,
+    height: 400,
+    ratio: 1.775,
+    ...overrides,
+  });
+
+/** Speaker Deck の発表ページの形（Transcript 欄はスライドごとに見出しのリンクと本文が並ぶ） */
+const deckPage = ({
+  slides,
+  description = '勉強会で発表した資料です。',
+}: {
+  slides: string[];
+  description?: string;
+}) => `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>Deck Title - Speaker Deck</title>
+    <meta property="og:title" content="Deck Title">
+    <meta property="og:image" content="https://files.speakerdeck.com/presentations/abc/slide_0.jpg">
+  </head>
+  <body>
+    <div class="deck-description text-break mb-4">
+      <p>${description}</p>
+    </div>
+    <details class="container mb-4 transcript text-break">
+      <summary><h2 class="m-0">Transcript</h2></summary>
+      <div id="transcript" class="pt-3 pb-4">
+        <ol>
+          ${slides
+            .map(
+              (text, i) => `
+          <li class="mb-2">
+            <div class="slide-transcript">
+              <h3 class="fs-6 fw-normal">
+                <a title="Deck Title ${text.slice(0, 10)}..." href="https://files.speakerdeck.com/presentations/abc/slide_${i}.jpg">${text}</a>
+              </h3>
+            </div>
+          </li>`
+            )
+            .join('')}
+        </ol>
+      </div>
+    </details>
+  </body>
+  </html>
+`;
+
 describe('SpeakerDeckEnricher', () => {
   let enricher: SpeakerDeckEnricher;
 
@@ -29,13 +126,21 @@ describe('SpeakerDeckEnricher', () => {
 
   describe('canHandle', () => {
     it('should handle speakerdeck.com URLs', () => {
-      expect(enricher.canHandle('https://speakerdeck.com/user/presentation')).toBe(true);
-      expect(enricher.canHandle('https://speakerdeck.com/oikon48/claude-code')).toBe(true);
+      expect(
+        enricher.canHandle('https://speakerdeck.com/user/presentation')
+      ).toBe(true);
+      expect(
+        enricher.canHandle('https://speakerdeck.com/oikon48/claude-code')
+      ).toBe(true);
     });
 
     it('should not handle non-speakerdeck URLs', () => {
-      expect(enricher.canHandle('https://slideshare.net/presentation')).toBe(false);
-      expect(enricher.canHandle('https://docs.google.com/presentation')).toBe(false);
+      expect(enricher.canHandle('https://slideshare.net/presentation')).toBe(
+        false
+      );
+      expect(enricher.canHandle('https://docs.google.com/presentation')).toBe(
+        false
+      );
       expect(enricher.canHandle('https://example.com/speakerdeck')).toBe(false);
     });
   });
@@ -43,90 +148,146 @@ describe('SpeakerDeckEnricher', () => {
   describe('enrich', () => {
     const testUrl = 'https://speakerdeck.com/testuser/test-presentation';
 
-    it('should extract content from oEmbed response', async () => {
-      const oEmbedResponse = {
-        type: 'rich',
-        version: '1.0',
-        title: 'Test Presentation Title',
-        author_name: 'Test Author',
-        author_url: 'https://speakerdeck.com/testuser',
-        provider_name: 'Speaker Deck',
-        provider_url: 'https://speakerdeck.com',
-        thumbnail_url: 'https://speakerdeck.com/thumbnail.jpg',
-        html: '<iframe></iframe>',
-        width: 710,
-        height: 400,
-        ratio: 1.775,
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => JSON.stringify(oEmbedResponse),
+    it('スライドの文字起こしがあれば、タイトル・説明文・各スライドの文字を本文にする（oEmbed は問い合わせない）', async () => {
+      routeFetch({
+        page: okText(
+          deckPage({
+            slides: [
+              'Deck Title 2026/11/24 発表者',
+              'アジェンダ\n  背景と課題\n  計測の方法',
+              '',
+              'まとめ 不具合の多いファイルを数値で示す',
+            ],
+          })
+        ),
+        oEmbed: okText(oEmbedPayload()),
       });
 
       const result = await enricher.enrich(testUrl);
 
-      expect(result).not.toBeNull();
+      expect(result?.content).toBe(
+        [
+          'Deck Title',
+          '勉強会で発表した資料です。',
+          'Deck Title 2026/11/24 発表者',
+          'アジェンダ 背景と課題 計測の方法',
+          'まとめ 不具合の多いファイルを数値で示す',
+        ].join('\n\n')
+      );
+      expect(result?.thumbnail).toBe(
+        'https://files.speakerdeck.com/presentations/abc/slide_0.jpg'
+      );
+      expect(oEmbedCalls()).toHaveLength(0);
+    });
+
+    it('文字のあるスライドが無ければ oEmbed で作り、oEmbed のサムネイルを使う', async () => {
+      routeFetch({
+        page: okText(deckPage({ slides: ['', '   '] })),
+        oEmbed: okText(oEmbedPayload()),
+      });
+
+      const result = await enricher.enrich(testUrl);
+
       expect(result?.content).toContain('Test Presentation Title');
       expect(result?.content).toContain('Speaker: Test Author');
       expect(result?.content).toContain('Speaker Deck');
       expect(result?.thumbnail).toBe('https://speakerdeck.com/thumbnail.jpg');
+      expect(oEmbedCalls()).toHaveLength(1);
     });
 
-    it('should fall back to HTML when oEmbed fails', async () => {
-      // oEmbed request fails
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-      });
-
-      // HTML fallback succeeds
-      const htmlResponse = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Fallback Presentation - Speaker Deck</title>
-          <meta property="og:title" content="Fallback Presentation">
-          <meta property="og:description" content="This is a test description for the presentation that is longer than minimum.">
-          <meta property="og:image" content="https://speakerdeck.com/fallback-thumb.jpg">
-        </head>
-        <body>
-          <article>
-            <div class="deck-author"><a href="/author">Fallback Author</a></div>
-          </article>
-        </body>
-        </html>
-      `;
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => htmlResponse,
+    it('oEmbed にサムネイルが無ければ、発表ページの og:image を使う', async () => {
+      routeFetch({
+        page: okText(deckPage({ slides: [] })),
+        oEmbed: okText(
+          oEmbedPayload({
+            title: 'Presentation Without Thumbnail',
+            thumbnail_url: undefined,
+          })
+        ),
       });
 
       const result = await enricher.enrich(testUrl);
 
-      expect(result).not.toBeNull();
+      expect(result?.content).toContain('Presentation Without Thumbnail');
+      expect(result?.thumbnail).toBe(
+        'https://files.speakerdeck.com/presentations/abc/slide_0.jpg'
+      );
+    });
+
+    it('発表ページを取れなければ oEmbed で作る（サムネイルが無ければ null）', async () => {
+      routeFetch({
+        page: new Error('Network error'),
+        oEmbed: okText(
+          oEmbedPayload({
+            title: 'Presentation Without Thumbnail',
+            thumbnail_url: undefined,
+          })
+        ),
+      });
+
+      const result = await enricher.enrich(testUrl);
+
+      expect(result?.content).toContain('Presentation Without Thumbnail');
+      expect(result?.thumbnail).toBeNull();
+    });
+
+    it('should include slide count when available in embed HTML', async () => {
+      routeFetch({
+        page: okText(deckPage({ slides: [] })),
+        oEmbed: okText(
+          oEmbedPayload({
+            title: 'Slides with Count',
+            html: '<iframe data-slide-count="42"></iframe>',
+          })
+        ),
+      });
+
+      const result = await enricher.enrich(testUrl);
+
+      expect(result?.content).toContain('Slides: 42');
+    });
+
+    it('文字起こしも oEmbed も無ければ、ページのメタ情報で作る', async () => {
+      routeFetch({
+        page: okText(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Fallback Presentation - Speaker Deck</title>
+            <meta property="og:title" content="Fallback Presentation">
+            <meta property="og:description" content="This is a test description for the presentation that is longer than minimum.">
+            <meta property="og:image" content="https://speakerdeck.com/fallback-thumb.jpg">
+          </head>
+          <body>
+            <article>
+              <div class="deck-author"><a href="/author">Fallback Author</a></div>
+            </article>
+          </body>
+          </html>
+        `),
+        oEmbed: failed(404),
+      });
+
+      const result = await enricher.enrich(testUrl);
+
       expect(result?.content).toContain('Fallback Presentation');
-      expect(result?.thumbnail).toBe('https://speakerdeck.com/fallback-thumb.jpg');
+      expect(result?.content).toContain('Speaker: Fallback Author');
+      expect(result?.thumbnail).toBe(
+        'https://speakerdeck.com/fallback-thumb.jpg'
+      );
     });
 
     it('should return minimal content when both strategies have limited data', async () => {
-      // oEmbed fails
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-      });
-
-      // HTML has minimal content (just platform and URL added by enricher)
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => '<html><head><title>Empty</title></head><body></body></html>',
+      routeFetch({
+        page: okText(
+          '<html><head><title>Empty</title></head><body></body></html>'
+        ),
+        oEmbed: failed(500),
       });
 
       const result = await enricher.enrich(testUrl);
 
-      // Enricher returns platform/URL info even with minimal HTML
-      // This is expected behavior - it always adds platform and URL
+      // メタ情報が無くても、Platform と URL は入る
       expect(result?.content).toContain('Platform: Speaker Deck');
       expect(result?.content).toContain('URL:');
     });
@@ -137,100 +298,6 @@ describe('SpeakerDeckEnricher', () => {
       const result = await enricher.enrich(testUrl);
 
       expect(result).toBeNull();
-    });
-
-    it('should include slide count when available in embed HTML', async () => {
-      const oEmbedResponse = {
-        type: 'rich',
-        version: '1.0',
-        title: 'Slides with Count',
-        author_name: 'Author',
-        provider_name: 'Speaker Deck',
-        html: '<iframe data-slide-count="42"></iframe>',
-        width: 710,
-        height: 400,
-        ratio: 1.775,
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => JSON.stringify(oEmbedResponse),
-      });
-
-      const result = await enricher.enrich(testUrl);
-
-      expect(result).not.toBeNull();
-      expect(result?.content).toContain('Slides: 42');
-    });
-
-    it('should fetch thumbnail from HTML when oEmbed has no thumbnail_url', async () => {
-      // oEmbed succeeds but without thumbnail_url
-      const oEmbedResponse = {
-        type: 'rich',
-        version: '1.0',
-        title: 'Presentation Without Thumbnail',
-        author_name: 'Author',
-        provider_name: 'Speaker Deck',
-        html: '<iframe></iframe>',
-        width: 710,
-        height: 400,
-        // thumbnail_url is intentionally missing
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => JSON.stringify(oEmbedResponse),
-      });
-
-      // HTML fetch for thumbnail
-      const htmlResponse = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta property="og:image" content="https://files.speakerdeck.com/presentations/abc/slide_0.jpg">
-        </head>
-        <body></body>
-        </html>
-      `;
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => htmlResponse,
-      });
-
-      const result = await enricher.enrich(testUrl);
-
-      expect(result).not.toBeNull();
-      expect(result?.content).toContain('Presentation Without Thumbnail');
-      expect(result?.thumbnail).toBe('https://files.speakerdeck.com/presentations/abc/slide_0.jpg');
-    });
-
-    it('should return null thumbnail when HTML fetch fails after oEmbed success', async () => {
-      // oEmbed succeeds but without thumbnail_url
-      const oEmbedResponse = {
-        type: 'rich',
-        version: '1.0',
-        title: 'Presentation Without Thumbnail',
-        author_name: 'Author',
-        provider_name: 'Speaker Deck',
-        html: '<iframe></iframe>',
-        width: 710,
-        height: 400,
-      };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        text: async () => JSON.stringify(oEmbedResponse),
-      });
-
-      // HTML fetch fails
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
-
-      const result = await enricher.enrich(testUrl);
-
-      expect(result).not.toBeNull();
-      expect(result?.content).toContain('Presentation Without Thumbnail');
-      expect(result?.thumbnail).toBeNull();
     });
   });
 });

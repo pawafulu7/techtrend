@@ -1,4 +1,5 @@
 import { SummaryManager } from '@/lib/summary/summary-manager';
+import { cacheInvalidator } from '@/lib/cache/cache-invalidator';
 import { getPrismaClient } from '@/lib/cli/utils/database';
 import { createNotifierFromEnv } from '@/lib/notification';
 import type { ArticleInfo } from '@/lib/notification/types';
@@ -150,6 +151,19 @@ async function main() {
         break;
     }
 
+    if (result.generated > 0) {
+      // 記事ごとのキャッシュは要約の保存で消える（lib/summary/batch-processor.ts）が、一覧と件数のキャッシュは
+      // 消えないので、最後にまとめて消す（collect-feeds の要約生成の後と同じ）。要約は保存済みなので失敗は警告に留める
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (error) {
+        console.error(
+          '[WARN] 一覧のキャッシュの無効化に失敗しました（TTL で切れます）:',
+          summarizeError(error)
+        );
+      }
+    }
+
     // Send Slack notification for newly generated summaries (generate command only)
     // Assumption: summaryComputedAt is only updated by this script during execution.
     // If other processes update summaryComputedAt concurrently, notifications may include
@@ -219,6 +233,10 @@ async function main() {
     console.error(`   生成成功: ${result.generated}`);
     console.error(`   スキップ: ${result.skipped ?? 0} (content missing/too short)`);
     console.error(`   エラー: ${result.errors}`);
+    // 本番の保守ジョブ（Maintenance - Run Script）で流したときに出るのは、この形の行だけ
+    console.log(`generated=${result.generated}`);
+    console.log(`skipped=${result.skipped ?? 0}`);
+    console.log(`errors=${result.errors}`);
 
     // 実際に処理を試みた件数（スキップを除く）
     const processed = result.generated + result.errors;

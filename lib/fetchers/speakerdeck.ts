@@ -5,6 +5,7 @@ import { fetchFeedXml } from './fetch-feed';
 import type { CreateArticleInput } from '@/types';
 import { speakerDeckConfig } from '@/lib/fetchers/config/speakerdeck';
 import * as cheerio from 'cheerio';
+import { extractSpeakerDeckTranscript } from '@/lib/sources/speakerdeck-transcript';
 
 interface PresentationCandidate {
   url: string;
@@ -18,6 +19,8 @@ interface PresentationDetails {
   publishedAt: Date;
   description?: string;
   thumbnail?: string;
+  /** タイトル・説明文・スライドごとの文字を並べた本文。文字起こしの無い資料は undefined */
+  transcript?: string;
 }
 
 export class SpeakerDeckFetcher extends BaseFetcher {
@@ -133,7 +136,8 @@ export class SpeakerDeckFetcher extends BaseFetcher {
               title: candidate.title,
               url: candidate.url,
               sourceId: this.source.id,
-              content: details.description || candidate.title,
+              // スライドの文字起こしを本文にする（説明文だけだと多くが短すぎて要約の対象から外れる）
+              content: details.transcript || details.description || candidate.title,
               publishedAt: details.publishedAt,
               author: candidate.author,
               tags: this.extractTags(candidate.title + ' ' + (details.description || '')),
@@ -335,6 +339,7 @@ export class SpeakerDeckFetcher extends BaseFetcher {
   private async fetchPresentationDetails(url: string): Promise<PresentationDetails> {
     const html = await this.fetchWithRetry(url);
     const $ = cheerio.load(html);
+    const transcript = extractSpeakerDeckTranscript($) ?? undefined;
     
     // JSON-LDから情報を取得（推奨）
     const jsonLdScript = $('script[type="application/ld+json"]').html();
@@ -344,7 +349,8 @@ export class SpeakerDeckFetcher extends BaseFetcher {
         return {
           publishedAt: new Date(data.datePublished || Date.now()),
           description: data.description,
-          thumbnail: data.thumbnailUrl
+          thumbnail: data.thumbnailUrl,
+          transcript,
         };
       } catch (_error) {
         if (speakerDeckConfig.debug) {
@@ -369,7 +375,8 @@ export class SpeakerDeckFetcher extends BaseFetcher {
     return {
       publishedAt,
       description,
-      thumbnail
+      thumbnail,
+      transcript,
     };
   }
 
