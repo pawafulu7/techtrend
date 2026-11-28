@@ -1,21 +1,43 @@
 /**
  * 薄いコンテンツの記事をContentEnricherで更新するスクリプト
- * 
+ *
  * 使用方法:
  * npx tsx scripts/maintenance/enrich-thin-content.ts [options]
- * 
+ *
  * オプション:
  * --dry-run        実際の更新を行わずにシミュレーション
  * --source=xxx     特定のソースのみ処理
  * --limit=n        処理する記事数を制限
- * --skip=n         最初のn件をスキップ（継続処理用）
- * --skip-summary   要約のリセットをスキップ
+ * --skip=n         最初のn件をスキップ（継続処理用。前回の実行が出した next_skip を渡す）
+ * --skip-summary   要約のリセットをスキップ（要約のある記事は本文だけ入れ替える。要約の無い記事は
+ *                  本文が取れれば、本文が原因の skipReason を外して要約の対象に戻す）
+ * --speakerdeck    Speaker Deck の記事（はてなブックマーク経由で集めたものを含む）だけ処理
+ *
+ * 知らない引数や、数として読めない --limit / --skip を渡すと、何もせずに失敗で終わる
+ * （打ち間違えたまま全件を書き換えないため）。
+ *
+ * 本番では GitHub Actions の Maintenance - Run Script で流す。画面に出るのは最後の `名前=数値` の行だけ。
+ * ジョブは60分で打ち切られる（1件あたり3秒ほどかかる）ので、--limit で分けて流し、次の回は出力の
+ * next_skip を --skip に渡す。next_skip は目安で、ほかの処理と重なると数件ずれるので、最後に --skip を
+ * 付けずに --dry-run --limit で流して残りを確かめる。queued_for_summary は要約の対象に戻った件数で、要約は
+ * manage-summaries.ts generate で作る
  */
 
 import { createPrismaClient } from '@/lib/prisma/create-client';
+import type { Prisma } from '@/lib/prisma-exports';
+import { env } from '@/lib/config/env';
+import { closeRedisConnection } from '@/lib/redis/client';
+import { cacheInvalidator } from '../../lib/cache/cache-invalidator';
 import { ContentEnricherFactory } from '../../lib/enrichers';
+import { HATENA_BLOG_DEV_SOURCE_ID } from '../../lib/enrichers/hatena';
 import { isEnrichmentSkipped } from '../../lib/fetchers/config/foreign-rss-sources';
-import { isHighQuality } from '../../lib/enrichers/strategies/quality';
+import {
+  contentStateWhere,
+  isAcceptableEnrichedContent,
+} from '../scheduled/utils/summary-reset';
+import { isValidThumbnailUrl } from '../scheduled/utils/content-recovery';
+import { SLIDE_URL_PREFIXES } from '../../lib/sources/slide-source';
+import { isUrlFromDomain } from '../../lib/utils/url/url-validator';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -28,18 +50,67 @@ interface Options {
   limit?: number;
   skip?: number;
   skipSummary: boolean;
+  speakerDeck: boolean;
+}
+
+/** これより短い本文を薄いとみなす */
+const THIN_CONTENT_LENGTH = 500;
+
+/** 記事ごとの待ち時間（ミリ秒）。はてなブログは連続で取ると 429 を返すので、毎時の収集と同じ間隔を空ける */
+const DEFAULT_SLEEP_MS = 1500;
+
+function sleepMsFor(sourceId: string): number {
+  return sourceId === HATENA_BLOG_DEV_SOURCE_ID
+    ? Math.max(DEFAULT_SLEEP_MS, env.HATENA_BLOG_DEV_ENRICH_SLEEP_MS)
+    : DEFAULT_SLEEP_MS;
+}
+
+const SPEAKER_DECK_SOURCE_NAME = 'Speaker Deck';
+const SPEAKER_DECK_HOST = 'speakerdeck.com';
+/** Speaker Deck の記事 URL の先頭（収集時の形。lib/sources/slide-source.ts のスライドの URL から選ぶ） */
+const SPEAKER_DECK_URL_PREFIXES = SLIDE_URL_PREFIXES.filter(
+  (prefix) => new URL(prefix).hostname.replace(/^www\./, '') === SPEAKER_DECK_HOST
+);
+
+/**
+ * Speaker Deck の記事か。はてなブックマーク経由で集めた記事はソース名では分からないので URL でも見る。
+ * URL の判定は SpeakerDeckEnricher が担当する記事（canHandle）と同じ
+ */
+function isSpeakerDeckArticle(article: { url: string; source: { name: string } }): boolean {
+  return (
+    article.source.name === SPEAKER_DECK_SOURCE_NAME ||
+    isUrlFromDomain(article.url, SPEAKER_DECK_HOST)
+  );
 }
 
 /**
- * CAS（Compare-And-Swap）更新の最大試行回数。
- *
- * updatedAt を CAS トークンに使うため、本文と無関係な更新（品質スコア再計算など）
- * でも敗北しうる。1回で諦めると取りこぼしが増えるので、記事を再取得して数回まで
- * 再試行する。
+ * 薄い本文の候補を DB で絞る条件。本文の長さは contentLength（DB のトリガーが CHAR_LENGTH(content) を保つ列）で見る。
+ * 全件を読んで JavaScript で絞ると、ソースを指定しないときに全記事の本文を読み込むため
  */
-const MAX_CAS_ATTEMPTS = 3;
+export function thinContentWhere(options: {
+  source?: string;
+  speakerDeck?: boolean;
+}): Prisma.ArticleWhereInput {
+  return {
+    AND: [
+      { OR: [{ contentLength: null }, { contentLength: { lt: THIN_CONTENT_LENGTH } }] },
+      ...(options.source ? [{ source: { name: options.source } }] : []),
+      ...(options.speakerDeck
+        ? [
+            {
+              OR: [
+                { source: { name: SPEAKER_DECK_SOURCE_NAME } },
+                ...SPEAKER_DECK_URL_PREFIXES.map((prefix) => ({ url: { startsWith: prefix } })),
+              ],
+            },
+          ]
+        : []),
+    ],
+  };
+}
 
 interface ThinContentCandidateArticle {
+  url: string;
   content: string | null;
   thumbnail: string | null;
   source: { name: string };
@@ -54,8 +125,10 @@ interface ThinContentCandidateArticle {
  *   collect-feeds.ts はサムネイルのみでも記事を保存する。従来ロジックは
  *   「サムネイルあり = 処理済み」とみなして除外していたため、
  *   「本文なし・サムネイルあり」の記事が恒久的に回復対象から漏れていた（Issue #629 項目5）。
- * - 本文はあるが500文字未満の記事は、既にサムネイルを取得済み（Speaker Deck除く）であれば
- *   ContentEnricherによる処理済みとみなし、従来通り除外する。
+ * - 本文はあるが500文字未満の記事は、既にサムネイルを取得済みであれば
+ *   ContentEnricherによる処理済みとみなし、従来通り除外する。Speaker Deck の記事は除外しない。
+ *   サムネイル（スライドの1枚目）は収集時に付くので、本文を取り直したかどうかの目印にならないため
+ *   （はてなブックマーク経由で集めた Speaker Deck も同じ）
  */
 export function isThinContentCandidate(article: ThinContentCandidateArticle): boolean {
   const content = article.content;
@@ -65,33 +138,49 @@ export function isThinContentCandidate(article: ThinContentCandidateArticle): bo
     return true;
   }
 
-  if (content.length >= 500) {
+  if (content.length >= THIN_CONTENT_LENGTH) {
     return false;
   }
 
   // 本文はあるが薄い（1〜499文字）: サムネイル取得済みなら処理済みとみなす
-  const hasEnrichedThumbnail = Boolean(article.thumbnail) && article.source.name !== 'Speaker Deck';
+  const hasEnrichedThumbnail = Boolean(article.thumbnail) && !isSpeakerDeckArticle(article);
   return !hasEnrichedThumbnail;
 }
 
-function parseArgs(): Options {
-  const args = process.argv.slice(2);
+/** `--name=n` の n を読む。整数でないか min 未満なら失敗にする */
+function parseIntOption(arg: string, name: string, min: number): number {
+  const raw = arg.slice(`--${name}=`.length);
+  const value = Number(raw);
+  if (raw === '' || !Number.isInteger(value) || value < min) {
+    throw new Error(`--${name} には${min}以上の整数を指定してください: ${arg}`);
+  }
+  return value;
+}
+
+export function parseArgs(args: string[]): Options {
   const options: Options = {
     dryRun: false,
     skipSummary: false,
+    speakerDeck: false,
   };
 
   for (const arg of args) {
     if (arg === '--dry-run') {
       options.dryRun = true;
     } else if (arg.startsWith('--source=')) {
-      options.source = arg.split('=')[1];
+      const source = arg.slice('--source='.length);
+      if (!source) throw new Error('--source にソース名を指定してください');
+      options.source = source;
     } else if (arg.startsWith('--limit=')) {
-      options.limit = parseInt(arg.split('=')[1], 10);
+      options.limit = parseIntOption(arg, 'limit', 1);
     } else if (arg.startsWith('--skip=')) {
-      options.skip = parseInt(arg.split('=')[1], 10);
+      options.skip = parseIntOption(arg, 'skip', 0);
     } else if (arg === '--skip-summary') {
       options.skipSummary = true;
+    } else if (arg === '--speakerdeck') {
+      options.speakerDeck = true;
+    } else {
+      throw new Error(`不明な引数です: ${arg}`);
     }
   }
 
@@ -99,8 +188,8 @@ function parseArgs(): Options {
 }
 
 async function main() {
-  const options = parseArgs();
-  
+  const options = parseArgs(process.argv.slice(2));
+
   console.error('========================================');
   console.error('薄いコンテンツのエンリッチメント');
   console.error('========================================');
@@ -110,6 +199,7 @@ async function main() {
     limit: options.limit || 'No limit',
     skip: options.skip || 0,
     skipSummary: options.skipSummary ? 'Yes' : 'No',
+    speakerDeck: options.speakerDeck ? 'Yes' : 'No',
   });
   console.error('');
 
@@ -118,37 +208,21 @@ async function main() {
     console.error('');
   }
 
+  let successCount = 0;
+  let failCount = 0;
+  let skipCount = 0;
+  let thumbnailCount = 0;
+  let skipEnrichmentCount = 0;
+  let concurrentUpdateSkipCount = 0;
+  // 要約の対象に戻った（要約が無く、skipReason も無い）記事の数
+  let queuedForSummaryCount = 0;
+  // 更新して、次の実行の候補から外れた記事の数（next_skip の計算に使う）
+  let resolvedCount = 0;
+
   try {
-    // 薄いコンテンツの記事を取得
-    const whereCondition: any = {
-      OR: [
-        { content: null },
-        { content: '' },
-        // SQLiteでは LENGTH 関数を直接使えないため、後でフィルタリング
-      ],
-    };
-
-    if (options.source) {
-      whereCondition.source = {
-        name: options.source,
-      };
-    }
-
-    // 記事を取得
-    const articles = await prisma.article.findMany({
-      where: whereCondition,
-      include: {
-        source: true,
-      },
-      orderBy: {
-        publishedAt: 'desc',
-      },
-      take: options.limit || undefined,
-    });
-
-    // コンテンツが500文字未満の記事もフィルタリング
+    // 本文が空か500文字未満の記事を取得
     const allThinArticles = await prisma.article.findMany({
-      where: options.source ? { source: { name: options.source } } : {},
+      where: thinContentWhere(options),
       include: {
         source: true,
       },
@@ -157,7 +231,7 @@ async function main() {
       },
     });
 
-    // 500文字未満の記事を抽出（既に処理済みの記事は除外）
+    // 既に処理済みの記事は除外
     let thinArticles = allThinArticles.filter(isThinContentCandidate);
 
     // skipを適用
@@ -172,25 +246,13 @@ async function main() {
     }
 
     console.error(`📊 対象記事数: ${thinArticles.length}件`);
-    
-    if (thinArticles.length === 0) {
-      console.error('処理対象の記事がありません。');
-      return;
-    }
 
     const enricherFactory = new ContentEnricherFactory();
-    
-    let successCount = 0;
-    let failCount = 0;
-    let skipCount = 0;
-    let thumbnailCount = 0;
-    let skipEnrichmentCount = 0;
-    let concurrentUpdateSkipCount = 0;
 
     for (let i = 0; i < thinArticles.length; i++) {
       const article = thinArticles[i];
       const progress = `[${i + 1}/${thinArticles.length}]`;
-      
+
       console.error(`\n${progress} 処理中: ${article.title.substring(0, 50)}...`);
       console.error(`  ソース: ${article.source.name}`);
       console.error(`  現在のコンテンツ: ${article.content?.length || 0}文字`);
@@ -205,7 +267,7 @@ async function main() {
 
       // エンリッチャーを取得
       const enricher = enricherFactory.getEnricher(article.url, article.source.id);
-      
+
       if (!enricher) {
         console.error(`  ⏭️  スキップ: 対応するEnricherがありません`);
         skipCount++;
@@ -216,36 +278,45 @@ async function main() {
         // コンテンツをエンリッチ
         console.error(`  🔄 エンリッチ中...`);
         const enrichedData = await enricher.enrich(article.url);
-        
+
         if (!enrichedData) {
           console.error(`  ❌ エンリッチ失敗: コンテンツを取得できませんでした`);
           failCount++;
           continue;
         }
 
-        const hasNewContent = enrichedData.content && enrichedData.content.length > (article.content?.length || 0);
-        const hasNewThumbnail = enrichedData.thumbnail && !article.thumbnail;
+        const newContent =
+          enrichedData.content && enrichedData.content.length > (article.content?.length || 0)
+            ? enrichedData.content
+            : null;
+        // 毎時の収集と同じく、http(s) の URL だけをサムネイルにする（isValidThumbnailUrl）
+        const newThumbnail =
+          isValidThumbnailUrl(enrichedData.thumbnail) && !article.thumbnail
+            ? enrichedData.thumbnail ?? null
+            : null;
 
-        if (!hasNewContent && !hasNewThumbnail) {
+        if (!newContent && !newThumbnail) {
           console.error(`  ⏭️  スキップ: 新しいデータがありません`);
           skipCount++;
           continue;
         }
 
         console.error(`  ✅ エンリッチ成功:`);
-        if (hasNewContent) {
-          console.error(`    - コンテンツ: ${article.content?.length || 0} → ${enrichedData.content?.length}文字`);
+        if (newContent) {
+          console.error(`    - コンテンツ: ${article.content?.length || 0} → ${newContent.length}文字`);
         }
-        if (hasNewThumbnail) {
+        if (newThumbnail) {
           console.error(`    - サムネイル: 取得成功`);
         }
 
         if (!options.dryRun) {
           // データベースを更新
-          const updateData: any = {};
-          
-          if (hasNewContent) {
-            updateData.content = enrichedData.content;
+          const updateData: Prisma.ArticleUpdateManyMutationInput = {};
+          let resetsSummary = false;
+          let clearsSkipReason = false;
+
+          if (newContent) {
+            updateData.content = newContent;
             // 本文を更新する他の全経路（collect-feeds.ts の5箇所、
             // re-enrich-publickey-nulls.ts）と同様に
             // contentUpdatedAt を進める。manage-quality-scores.ts は
@@ -268,6 +339,7 @@ async function main() {
               updateData.summaryVersion = 0;
               // 一覧は summaryComputedAt で要約済みかを見る。残すと要約の無いまま一覧に出る
               updateData.summaryComputedAt = null;
+              resetsSummary = true;
               console.error(`    - 要約: リセット（再生成が必要）`);
             }
             // 本文回復時は本文起因の skipReason（THIN_CONTENT / CONTENT_FETCH_FAILED /
@@ -276,151 +348,89 @@ async function main() {
             // PDF / SLIDE は本文の有無と無関係の恒久理由のためクリアしない。
             // skipReason が null で summaryError だけ残るケース（一時的な要約失敗）
             // もクリア対象にするため truthy 判定はしない。
-            // collect-feeds.ts の受入基準と同一（500文字以上は無条件、
-            // 250-499文字は isHighQuality 必須）にし、わずかな伸びでの
-            // クリアを防ぐ
-            // hasNewContent が真なら content は空でない
-            const recoveredContent = enrichedData.content ?? '';
-            if (
-              isSummaryEligible &&
-              (recoveredContent.length >= 500 ||
-                (recoveredContent.length >= 250 && isHighQuality(recoveredContent)))
-            ) {
+            // collect-feeds.ts の受入基準（isAcceptableEnrichedContent）と同じにし、
+            // わずかな伸びでのクリアを防ぐ
+            if (isSummaryEligible && isAcceptableEnrichedContent(newContent)) {
               updateData.skipReason = null;
               updateData.summaryError = null;
+              clearsSkipReason = true;
             }
           }
-          
-          if (hasNewThumbnail) {
-            updateData.thumbnail = enrichedData.thumbnail;
+
+          if (newThumbnail) {
+            updateData.thumbnail = newThumbnail;
           }
 
-          // CAS: 記事読み込み時に観測した updatedAt と現在値が一致する場合のみ更新する。
-          // hourly の collect-feeds.ts 等、他プロセスがこの間により良い本文を書き込んで
-          // いた場合に、古いスナップショット基準で上書きしないための保護（Issue #629 項目6）。
-          //
-          // CAS トークンに contentLength ではなく updatedAt を使う理由:
-          // contentLength は CHAR_LENGTH(content) の派生値のため、(a) 同じ文字数の別本文に
-          // 差し替えられた場合（ABA問題）と (b) 本文以外だけが更新された場合を検出できない。
-          // 本スクリプトの updateData は thumbnail も含みうるうえ、collect-feeds.ts には
-          // サムネイルのみを更新する経路が実在するため (b) は現実に起こりうる。
-          // updatedAt は @updatedAt により任意の更新で必ず変化するので、「読み込み後に
-          // 誰かが何かを書いた」ことを漏れなく検出できる。
-          //
-          // トレードオフ: 逆に本文と無関係な更新でも CAS が失敗する。特に品質スコア再計算
-          // （manage-quality-scores.ts / quality-score-batch.ts）は raw SQL で
-          // `"updatedAt" = NOW()` を明示セットするため、qualityScore しか変えていなくても
-          // ここで敗北する。この誤失敗による取りこぼしを避けるため、敗北時は記事を
-          // 再取得して上限付きで再試行する。
-          //
-          // 再試行時に enrich をやり直さないのは意図的。再取得後に
-          // isThinContentCandidate で「まだ薄いまま」であることを確認しており、
-          // その場合エンリッチ結果は依然として有効なため、外部への再フェッチは
-          // レート制限とレイテンシのコストに見合わない。逆に他プロセスが十分な本文を
-          // 書き込んでいた場合は候補判定で弾かれ、こちらの結果で上書きすることはない。
-          let casUpdated = false;
-          let supersededByOtherProcess = false;
-          let casTargetUpdatedAt: Date = article.updatedAt;
+          // CAS: 読み込んだときと本文の状態（contentLength と contentUpdatedAt）が同じときだけ更新する。
+          // 毎時の収集など、ほかの処理がこの間に本文を書いていたら、古い読み込みを基準に上書きしない
+          // （Issue #629 項目6）。updatedAt では比べない。品質スコアの再計算が raw SQL の NOW()（マイクロ秒）で
+          // 書くので、ミリ秒の JavaScript の Date と一致せず、誰も更新していなくても負ける（同期した開発 DB の
+          // 薄い記事で約7割）。ほかの保守スクリプトと同じ比べ方（contentStateWhere）にする。
+          // サムネイルを書くときは、読み込んだときのまま空であることも条件にする（収集にはサムネイルだけを書く経路がある）
+          const { count } = await prisma.article.updateMany({
+            where: {
+              id: article.id,
+              ...contentStateWhere(article),
+              ...(newThumbnail ? { thumbnail: article.thumbnail } : {}),
+            },
+            data: updateData,
+          });
 
-          for (let attempt = 1; attempt <= MAX_CAS_ATTEMPTS; attempt++) {
-            const { count } = await prisma.article.updateMany({
-              where: {
-                id: article.id,
-                updatedAt: casTargetUpdatedAt,
-              },
-              data: updateData,
-            });
-
-            if (count > 0) {
-              casUpdated = true;
-              break;
-            }
-
-            if (attempt === MAX_CAS_ATTEMPTS) break;
-
-            await new Promise(resolve => setTimeout(resolve, 500 * attempt));
-
-            const fresh = await prisma.article.findUnique({
-              where: { id: article.id },
-              include: { source: true },
-            });
-
-            // 再試行は「updatedAt 以外は何も変わっていない」場合に限る。
-            //
-            // isThinContentCandidate() だけでは不十分。本文が 1〜499 文字なら候補判定は
-            // true を返すため、他プロセスが「新しいが短い本文」を書いた場合や
-            // サムネイルだけを更新した場合でも再試行が通ってしまい、読み込み時点の
-            // スナップショットから作った updateData でそれらを上書きしてしまう。
-            // それは本スクリプトが CAS を導入した目的そのものに反する。
-            //
-            // 読み込み時点と比べて content / thumbnail / skipReason / sourceId の
-            // いずれかが変化していたら、他プロセスが意味のある更新を行ったとみなして
-            // 再試行せず終了する。逆に updatedAt だけが動いているケース
-            // （品質スコア再計算など本文と無関係な更新）は再試行で回収する。
-            //
-            // summary / detailedSummary / summaryVersion / summaryError を比較対象に
-            // 含めないのは、これらが「新しい本文が確定したら旧要約は無効」という理由で
-            // 無条件にリセットする値であり、他プロセスの現在値を見て判断する余地が
-            // ないため。実際の書き込みは updatedAt の CAS が最終的に守る。
-            //
-            // source は name ではなく sourceId で比較している。sourceId が同じまま
-            // Source.name だけがリネームされた場合はここを通過するが、直後の
-            // isThinContentCandidate() が最新の source.name を見るため
-            // （Speaker Deck 例外の判定に影響する変化なら）そちらで検出される。
-            const enrichmentInputChanged =
-              !fresh ||
-              fresh.content !== article.content ||
-              fresh.thumbnail !== article.thumbnail ||
-              fresh.skipReason !== article.skipReason ||
-              fresh.sourceId !== article.sourceId;
-
-            if (enrichmentInputChanged) {
-              supersededByOtherProcess = true;
-              break;
-            }
-
-            // ここに到達する時点で content / thumbnail / source は不変のため候補判定の
-            // 結果も変わらないはずだが、判定ロジックの前提が崩れた場合の保険として残す。
-            if (!isThinContentCandidate(fresh)) {
-              supersededByOtherProcess = true;
-              break;
-            }
-
-            casTargetUpdatedAt = fresh.updatedAt;
-            console.error(
-              `  🔁 CAS敗北（${attempt}/${MAX_CAS_ATTEMPTS}回目）: ` +
-              `本文・サムネイル・スキップ状態は不変のため再試行します`
-            );
-          }
-
-          if (casUpdated) {
+          if (count > 0) {
             console.error(`  💾 データベース更新完了`);
             successCount++;
-            // CAS 敗北時はサムネイルも保存されないため、加算は更新成功後に行う
-            if (hasNewThumbnail) {
+            // 更新しなかったときはサムネイルも保存されないため、加算は更新できた後に行う
+            if (newThumbnail) {
               thumbnailCount++;
             }
-          } else if (supersededByOtherProcess) {
-            console.error(`  ⏭️  スキップ: 読み込み後に他プロセスが本文・サムネイル等を更新した（または記事が削除された）ため、今回の取得結果は反映しません`);
-            skipCount++;
+            const summaryIsEmpty = resetsSummary || !article.summary;
+            const skipReasonIsNull = clearsSkipReason || article.skipReason === null;
+            if (newContent && summaryIsEmpty && skipReasonIsNull) {
+              queuedForSummaryCount++;
+            }
+            if (
+              !isThinContentCandidate({
+                ...article,
+                content: newContent ?? article.content,
+                thumbnail: newThumbnail ?? article.thumbnail,
+              })
+            ) {
+              resolvedCount++;
+            }
+            // 本文（と要約）を書き換えたので、記事の表示のキャッシュを消す。書き込みは済んでいるので失敗は警告に留める
+            try {
+              await cacheInvalidator.onArticleUpdated(article.id);
+            } catch (cacheError) {
+              console.error('  ⚠️  記事のキャッシュの無効化に失敗しました（TTL で切れます）:', cacheError);
+            }
           } else {
-            console.error(`  ⏭️  スキップ（CAS敗北）: ${MAX_CAS_ATTEMPTS}回試行しましたが、他プロセスの更新と競合し続けたためスキップしました`);
+            console.error(`  ⏭️  スキップ: 読み込んだ後にほかの処理が本文かサムネイルを更新した（または記事が削除された）ため、今回の取得結果は反映しません`);
             concurrentUpdateSkipCount++;
           }
         } else {
           // ドライラン: DB は更新しないが、取得できた件数として計上する
           successCount++;
-          if (hasNewThumbnail) {
+          if (newThumbnail) {
             thumbnailCount++;
           }
         }
 
-        // レート制限対策
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
       } catch (error) {
         console.error(`  ❌ エラー:`, error);
         failCount++;
+      } finally {
+        // レート制限対策。取れなかったときも空ける（空けずに次を取ると、はてなブログは続けて 429 を返す）
+        await new Promise(resolve => setTimeout(resolve, sleepMsFor(article.source.id)));
+      }
+    }
+
+    if (!options.dryRun && successCount > 0) {
+      // onArticleUpdated は一覧のキャッシュを消さないので、最後に一覧のキャッシュも消す
+      // （enrich-single-article.ts・collect-feeds の要約生成の後と同じ）
+      try {
+        await cacheInvalidator.onBulkImport();
+      } catch (cacheError) {
+        console.error('警告: 一覧のキャッシュの無効化に失敗しました（TTL で切れます）:', cacheError);
       }
     }
 
@@ -432,29 +442,60 @@ async function main() {
     console.error(`❌ 失敗: ${failCount}件`);
     console.error(`⏭️  スキップ: ${skipCount}件`);
     console.error(`⏭️  スキップ（対象外ソース）: ${skipEnrichmentCount}件`);
-    console.error(`⏭️  スキップ（並行更新でCAS敗北）: ${concurrentUpdateSkipCount}件`);
-    if (concurrentUpdateSkipCount > 0) {
-      console.error('   ※ 本文更新のほか、品質スコア再計算など本文と無関係な更新でも発生します。再実行で回収できます');
-    }
+    console.error(`⏭️  スキップ（ほかの処理が先に更新）: ${concurrentUpdateSkipCount}件`);
     console.error(`🖼️  サムネイル取得: ${thumbnailCount}件`);
     console.error(`📊 合計: ${thinArticles.length}件`);
 
     if (options.dryRun) {
       console.error('\n⚠️  ドライランモードのため、実際の更新は行われませんでした。');
       console.error('本番実行するには --dry-run オプションを外してください。');
-    } else if (successCount > 0 && !options.skipSummary) {
-      console.error('\n📝 要約の再生成が必要です:');
-      console.error('   npm run scripts:summarize');
+    } else if (queuedForSummaryCount > 0) {
+      console.error(`\n📝 要約の対象に戻った ${queuedForSummaryCount} 件は、要約の生成で作られます:`);
+      console.error(
+        `   npx tsx scripts/scheduled/manage-summaries.ts generate --days 1 --limit ${queuedForSummaryCount}`
+      );
     }
 
+    // 本番の保守ジョブ（Maintenance - Run Script）に出るのはこの形の行だけ
+    console.log(`dry_run=${options.dryRun}`);
+    console.log(`candidates=${thinArticles.length}`);
+    console.log(`updated=${successCount}`);
+    console.log(`failed=${failCount}`);
+    console.log(`skipped=${skipCount}`);
+    console.log(`skipped_source=${skipEnrichmentCount}`);
+    console.log(`skipped_concurrent=${concurrentUpdateSkipCount}`);
+    console.log(`thumbnails=${thumbnailCount}`);
+    console.log(`queued_for_summary=${queuedForSummaryCount}`);
+    // 次の回の --skip。今回取れなかった記事（候補に残る）を飛ばし、まだ処理していない記事から始める。
+    // ほかの処理と重なって書き込めなかった記事は、その処理が本文を入れて候補から抜けた見込みが高いので、
+    // 抜けた側に数える。数え違えたときに、まだ処理していない記事を飛ばすより、取れなかった記事を取り直す側に倒す
+    const nextSkip =
+      (options.skip ?? 0) + thinArticles.length - resolvedCount - concurrentUpdateSkipCount;
+    console.log(`next_skip=${nextSkip}`);
+
+    // 1件も取れずに失敗だけがあれば、失敗として終わる（取得先が拒むようになったなど）
+    if (failCount > 0 && successCount === 0) {
+      process.exitCode = 1;
+    }
   } catch (error) {
     console.error('エラーが発生しました:', error);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
-    await prisma.$disconnect();
+    try {
+      await prisma.$disconnect();
+    } finally {
+      // キャッシュのモジュールが読み込んだ時点で Redis に接続しているので、閉じないとプロセスが終わらない
+      await closeRedisConnection();
+    }
   }
 }
 
+// 引数の誤りなど main の try より前で失敗したときは Redis を閉じる finally を通らないので、終わったら明示して抜ける
 if (require.main === module) {
-  main().catch(console.error);
+  main()
+    .then(() => process.exit(process.exitCode || 0))
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
 }

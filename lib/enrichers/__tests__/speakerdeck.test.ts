@@ -2,9 +2,8 @@
  * SpeakerDeckEnricher tests
  *
  * Issue #608 (signal 伝播) のリグレッション防止:
- * externalSignal が enrich → fetchOEmbed (private) と
- * fetchWithRetry (HTML scraping fallback / thumbnail サブ経路) の
- * 両方の経路に伝播することを検証する。
+ * externalSignal が enrich → fetchWithRetry（発表ページの HTML）と
+ * fetchOEmbed (private) の両方の経路に伝播することを検証する。
  */
 
 import { SpeakerDeckEnricher } from '../speakerdeck';
@@ -37,7 +36,7 @@ describe('SpeakerDeckEnricher - signal propagation (Issue #608)', () => {
     jest.restoreAllMocks();
   });
 
-  it('should pass composed signal to fetchOEmbed fetch when externalSignal is provided', async () => {
+  it('should pass composed signal to both the deck page and oEmbed fetches when externalSignal is provided', async () => {
     const controller = new AbortController();
     const signalsSeen: (AbortSignal | undefined)[] = [];
 
@@ -53,9 +52,12 @@ describe('SpeakerDeckEnricher - signal propagation (Issue #608)', () => {
     const enricher = new SpeakerDeckEnricher();
     await enricher.enrich(targetUrl, controller.signal);
 
-    expect(signalsSeen.length).toBe(1);
+    // 発表ページ（JSON を返すので文字起こしが無い）→ oEmbed の順に問い合わせる
+    expect(signalsSeen.length).toBe(2);
     // composeSignal は AbortSignal.any() で external + timeout を合成したものを返す
-    expect(signalsSeen[0]).toBeInstanceOf(AbortSignal);
+    for (const signal of signalsSeen) {
+      expect(signal).toBeInstanceOf(AbortSignal);
+    }
   });
 
   it('should abort fetchOEmbed when externalSignal is already aborted', async () => {
@@ -70,11 +72,11 @@ describe('SpeakerDeckEnricher - signal propagation (Issue #608)', () => {
     const enricher = new SpeakerDeckEnricher();
     const result = await enricher.enrich(targetUrl, controller.signal);
 
-    // abort 済みの signal では、oEmbed も HTML の取得（fetchWithRetry）も問い合わせずに抜ける
+    // abort 済みの signal では、HTML の取得（fetchWithRetry）も oEmbed も問い合わせずに抜ける
     // （fetchWithValidatedRedirects が名前解決の前に throwIfAborted する。fetchWithRetry は
     //  externalSignal?.aborted ガードで再試行しない）
     expect(global.fetch).toHaveBeenCalledTimes(0);
-    // oEmbed が失敗 → HTML scraping fallback も abort 済 signal で失敗 → null
+    // 発表ページの取得が失敗 → oEmbed も abort 済 signal で失敗 → null
     expect(result).toBeNull();
   });
 

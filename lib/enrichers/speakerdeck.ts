@@ -1,6 +1,9 @@
 /**
  * Speaker Deck Content Enricher
- * Speaker Deck slide presentations content enrichment via oEmbed API
+ *
+ * 発表ページの Transcript 欄（スライドごとの文字起こし）を本文にする。発表ページの説明文や
+ * oEmbed（タイトル・発表者）は多くが 100 文字に届かず、要約の対象から外れる（THIN_CONTENT）ため。
+ * 文字起こしが無い資料（画像だけの PDF など）は、従来どおり oEmbed とページのメタ情報で作る
  */
 
 import { BaseContentEnricher, EnrichedContent } from './base';
@@ -11,6 +14,10 @@ import {
   readTextWithLimit,
 } from '@/lib/utils/url/safe-redirect';
 import * as cheerio from 'cheerio';
+import {
+  extractSpeakerDeckTranscript,
+  speakerDeckTitle,
+} from '@/lib/sources/speakerdeck-transcript';
 
 interface OEmbedResponse {
   type: string;
@@ -29,6 +36,9 @@ interface OEmbedResponse {
   ratio: number;
 }
 
+/** 文字起こしの本文に付けるサムネイルを oEmbed で補うときの時間の上限（ミリ秒） */
+const THUMBNAIL_OEMBED_TIMEOUT_MS = 3000;
+
 export class SpeakerDeckEnricher extends BaseContentEnricher {
   private oEmbedEndpoint = 'https://speakerdeck.com/oembed.json';
 
@@ -41,30 +51,54 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
     externalSignal?: AbortSignal
   ): Promise<EnrichedContent | null> {
     try {
-      // Strategy 1: Try oEmbed API first (most reliable for content)
+      // Strategy 1: 発表ページの文字起こし。取れなければ HTML は oEmbed のサムネイルの補いとメタ情報に使う
+      let html: string | null = null;
+      try {
+        html = await this.fetchWithRetry(url, externalSignal);
+      } catch (htmlError) {
+        logger.debug(
+          { err: htmlError, url },
+          '[SpeakerDeckEnricher] Failed to fetch the deck page, falling back to oEmbed'
+        );
+      }
+
+      if (html) {
+        const fromTranscript = this.extractFromTranscript(html);
+        if (fromTranscript) {
+          logger.debug(
+            {
+              url,
+              contentLength: fromTranscript.content.length,
+              source: 'transcript',
+            },
+            '[SpeakerDeckEnricher] Enrichment succeeded via transcript'
+          );
+          // ページに画像のメタ情報が無ければ、oEmbed のサムネイルで補う（取れなくても本文は返す）。
+          // 呼び出し元の時間の枠（毎時の収集は 10 秒）を補いの待ちで使い切ると、取れた本文まで捨てられるので短く切る
+          if (!fromTranscript.thumbnail) {
+            const oEmbedData = await this.fetchOEmbed(
+              url,
+              externalSignal,
+              THUMBNAIL_OEMBED_TIMEOUT_MS
+            );
+            // 応答は型を確かめずに受けているので、文字列のときだけ使う
+            const thumbnailUrl = oEmbedData?.thumbnail_url;
+            fromTranscript.thumbnail =
+              typeof thumbnailUrl === 'string' && thumbnailUrl ? thumbnailUrl : null;
+          }
+          return fromTranscript;
+        }
+      }
+
+      // Strategy 2: oEmbed（タイトル・発表者）
       const oEmbedData = await this.fetchOEmbed(url, externalSignal);
 
       if (oEmbedData) {
         const content = this.buildContentFromOEmbed(oEmbedData, url);
-        let thumbnail = oEmbedData.thumbnail_url || null;
-
-        // oEmbedにthumbnailがない場合はHTMLから取得
-        if (!thumbnail) {
-          try {
-            logger.debug(
-              { url },
-              '[SpeakerDeckEnricher] oEmbed has no thumbnail, fetching from HTML'
-            );
-            const html = await this.fetchWithRetry(url, externalSignal);
-            thumbnail = this.extractThumbnail(html);
-          } catch (htmlError) {
-            logger.debug(
-              { err: htmlError, url },
-              '[SpeakerDeckEnricher] Failed to fetch thumbnail from HTML'
-            );
-            // HTMLフェッチ失敗時は無視（contentは取得済み）
-          }
-        }
+        // oEmbed にサムネイルが無ければ、取れた HTML の og:image を使う
+        const thumbnail =
+          oEmbedData.thumbnail_url ||
+          (html ? this.extractThumbnail(html) : null);
 
         if (this.isContentSufficient(content, 50)) {
           logger.debug(
@@ -80,12 +114,15 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
         }
       }
 
-      // Strategy 2: Fallback to HTML scraping
-      logger.debug(
-        { url },
-        '[SpeakerDeckEnricher] Falling back to HTML scraping'
-      );
-      const html = await this.fetchWithRetry(url, externalSignal);
+      // Strategy 3: ページのメタ情報
+      if (!html) {
+        // 発表ページも oEmbed も取れなかった（それぞれの失敗は debug に出している）
+        logger.warn(
+          { url },
+          '[SpeakerDeckEnricher] Failed to fetch both the deck page and oEmbed'
+        );
+        return null;
+      }
       return this.extractFromHtml(html, url);
     } catch (error) {
       logger.error(
@@ -98,7 +135,8 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
 
   private async fetchOEmbed(
     url: string,
-    externalSignal?: AbortSignal
+    externalSignal?: AbortSignal,
+    timeoutMs = 30000
   ): Promise<OEmbedResponse | null> {
     try {
       const oEmbedUrl = `${this.oEmbedEndpoint}?url=${encodeURIComponent(url)}`;
@@ -108,7 +146,7 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
           Accept: 'application/json',
           'User-Agent': 'TechTrend/1.0 ContentEnricher',
         },
-        signal: this.composeSignal(externalSignal, 30000),
+        signal: this.composeSignal(externalSignal, timeoutMs),
       });
 
       if (!response.ok) {
@@ -121,7 +159,9 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
         return null;
       }
 
-      const data = JSON.parse(await readTextWithLimit(response)) as OEmbedResponse;
+      const data = JSON.parse(
+        await readTextWithLimit(response)
+      ) as OEmbedResponse;
 
       // Validate required fields
       if (!data.title) {
@@ -182,6 +222,14 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
     return null;
   }
 
+  /** 発表ページの Transcript 欄から本文を作る。文字のあるスライドが1枚も無ければ null */
+  private extractFromTranscript(
+    html: string
+  ): (EnrichedContent & { content: string }) | null {
+    const content = extractSpeakerDeckTranscript(cheerio.load(html));
+    return content ? { content, thumbnail: this.extractThumbnail(html) } : null;
+  }
+
   private extractFromHtml(html: string, url: string): EnrichedContent | null {
     const $ = cheerio.load(html);
 
@@ -191,18 +239,18 @@ export class SpeakerDeckEnricher extends BaseContentEnricher {
     // Build content from meta tags and page elements
     const parts: string[] = [];
 
-    // Title from og:title or page title
-    const ogTitle = $('meta[property="og:title"]').attr('content');
-    const pageTitle = $('title').text().trim();
-    const title = ogTitle || pageTitle;
+    const title = speakerDeckTitle($);
     if (title) {
-      parts.push(title.replace(' - Speaker Deck', '').trim());
+      parts.push(title);
     }
 
-    // Description from og:description or meta description
-    const ogDescription = $('meta[property="og:description"]').attr('content');
-    const metaDescription = $('meta[name="description"]').attr('content');
-    const description = ogDescription || metaDescription;
+    // og:description か meta description（空白だけの値は飛ばす）
+    const description = [
+      $('meta[property="og:description"]').attr('content'),
+      $('meta[name="description"]').attr('content'),
+    ]
+      .map((text) => text?.trim() ?? '')
+      .find((text) => text.length > 0);
     if (description && description.length > 10) {
       parts.push(description);
     }
